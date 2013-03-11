@@ -19,18 +19,17 @@ typedef struct {
 	int matchType;
 	int matchDistance;
 } QueryDescriptor;
+
 typedef struct {
 	int queryId;
+	QueryDescriptor* parentQuery;
 	char wordIndex;
 	int startIndex;
 } SegmentData;
 
 SegmentData * newSegmentdata();
 QueryDescriptor * newQueryDescriptor();
+void freeQueryDescriptor(QueryDescriptor * qds);
 
 #endif /* QUERY_H_ */
-
-
-
-
 

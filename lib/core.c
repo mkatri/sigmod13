@@ -36,6 +36,16 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////
 Trie_t *trie;
 
+/*QUERY DESCRIPTOR MAP GOES HERE*/
+QueryDescriptor* qmap[1000000];
+inline QueryDescriptor * getQueryDescriptor(int queryId) {
+	return qmap[queryId];
+}
+inline void addQuery(int queryId, QueryDescriptor * qds) {
+	qmap[queryId] = qds;
+}
+/*QUERY DESCRIPTOR MAP ENDS HERE*/
+
 void init() {
 	trie = newTrie();
 }
@@ -83,6 +93,8 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	queryDescriptor->matchDistance = match_dist;
 	queryDescriptor->matchType = match_type;
 
+	addQuery(query_id, queryDescriptor);
+
 	//as the query words are space separated so this method return the words and it's length
 	split(wordSizes, queryWords, query_str, &numOfWords);
 	char segment[32];
@@ -122,6 +134,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 		// loop on the word to get the segments
 		for (i = 0; i < k; i++) {
 			SegmentData *sd = newSegmentdata();
+			sd->parentQuery = queryDescriptor;
 			for (j = 0; j < first; j++) {
 				segment[j] = word[iq];
 				iq++;
@@ -142,6 +155,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 		// loop on the word to get the segments
 		for (i = 0; i < numOfSegments - k; i++) {
 			SegmentData *sd = newSegmentdata();
+			sd->parentQuery = queryDescriptor;
 			for (j = 0; j < second; j++) {
 				segment[j] = word[iq];
 				iq++;
@@ -206,6 +220,60 @@ void split(int length[6], char output[6][32], const char* query_str, int * idx) 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode EndQuery(QueryID query_id) {
+
+	puts("inside here");
+	QueryDescriptor* queryDescriptor = getQueryDescriptor(query_id);
+
+	int i, j;
+	int in, iq, wordLength, numOfSegments = queryDescriptor->matchDistance + 1,
+			k, first, second;
+	char segment[32];
+	int top = 0;
+	for (in = 0; in < 5 && queryDescriptor->words[in]; in++) {
+		//get the word length
+		iq = 0;
+		wordLength = strlen(queryDescriptor->words[in]);
+		//here (wordSizes[in]+1 to add the null at the end of char array
+		/*
+		 * k here as teste paper mention to get good partition with hamming 1
+		 * example : assume word length =10 and distance=3
+		 * so we partition the word to 4  segments with length(3,3,2,2)
+		 * so first =3;
+		 * and second =2;
+		 */
+		/*how do we prove this*/
+		k = wordLength - (wordLength / numOfSegments) * (numOfSegments);
+		first = (wordLength + numOfSegments - 1) / numOfSegments;
+		second = wordLength / numOfSegments;
+		// loop on the word to get the segments
+		for (i = 0; i < k; i++) {
+			for (j = 0; j < first; j++) {
+				segment[j] = queryDescriptor->words[in][iq];
+				iq++;
+			}
+			segment[j] = '\0';
+
+			//Delete from the linked list in trie nodes
+			delete(queryDescriptor->segmentsData[top++]); //TODO ALSO DELETE SEGMENT DATA inside the node
+			//Delete from the trie
+			TrieDelete(trie, segment, first, queryDescriptor->matchType);
+		}
+
+		// loop on the word to get the segments
+		for (i = 0; i < numOfSegments - k; i++) {
+			for (j = 0; j < second; j++) {
+				segment[j] = queryDescriptor->words[in][iq];
+				iq++;
+			}
+			segment[j] = '\0';
+
+			//Delete from the linked list in trie nodes
+			delete(queryDescriptor->segmentsData[top++]); //TODO ALSO DELETE SEGMENT DATA inside the node
+			//Delete from the trie
+			TrieDelete(trie, segment, first, queryDescriptor->matchType);
+		}
+	}
+	freeQueryDescriptor(queryDescriptor);
 	return EC_SUCCESS;
 }
 
@@ -240,12 +308,18 @@ void core_test() {
 	init();
 	char output[32][32];
 
-	char f[32] = "mother fucher";
-	char f2[32] = "bitch bugy luky";
+	char f[32] = "mother";
+	char f2[32] = "oknofucker";
 
-	StartQuery(0, f, 1, 1);
-	StartQuery(1, f2, 1, 3);
-	dfs(&(trie->root));
+	StartQuery(0, f, 1, 0);
+	StartQuery(1, f2, 1, 0);
+//	dfs(&(trie->root));
+	EndQuery(0);
+	puts("---------------------------");
+	puts("---------------------------");
+	puts("---------------------------");
+
+//	dfs(&(trie->root));
 	//	printo(f);
 	//	int num = 0;
 	//	getSegments(output, f, 11, 3, &num);

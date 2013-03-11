@@ -47,6 +47,8 @@ void deleteTrieNode(TrieNode_t* node) {
 //NODE END QUERY BEFORE CALLING THIS FUNCTION MUST DELETE ALL LINKEDLIST NODES BELONGING TO SUCH QUERY
 void TrieDelete(Trie_t* trie, char*str, int length, int type) {
 	TrieNode_t* current = &(trie->root);
+	printf("----> deleting %d characters\n", length);
+	puts(str);
 	int i;
 	for (i = 0; i < length; i++) {
 		TrieNode_t *next = next_node(current, str[i]);
