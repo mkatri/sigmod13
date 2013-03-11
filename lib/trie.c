@@ -25,8 +25,7 @@ inline TrieNode_t* next_node(TrieNode_t *current, char c) {
 DNode_t* TrieInsert(Trie_t * trie, char * str, int length, int type,
 		void* queryData) {
 	TrieNode_t* current = &(trie->root);
-	type = 0;
-	int* x = current->count;
+	current->count[type]++;
 	int i;
 	for (i = 0; i < length; i++) {
 		if (current->next[str[i] - BASE_CHAR] == 0)
