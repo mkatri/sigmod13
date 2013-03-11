@@ -7,4 +7,6 @@ typedef struct {
 	*/
 	DocID docId;
 	QueryID *matches;
+	unsigned int numResults;
+
 } DocumentDescriptor;

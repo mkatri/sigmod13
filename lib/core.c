@@ -36,6 +36,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 Trie_t *trie;
+LinkedList_t *docList;
 
 /*QUERY DESCRIPTOR MAP GOES HERE*/
 QueryDescriptor* qmap[1000000];
@@ -49,6 +50,7 @@ inline void addQuery(int queryId, QueryDescriptor * qds) {
 
 void init() {
 	trie = newTrie();
+	docList = newLinkedList();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -97,6 +99,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 
 	//as the query words are space separated so this method return the words and it's length
 	split(wordSizes, queryDescriptor, query_str, &numOfWords);
+	queryDescriptor->numWords = numOfWords;
 //	printf("%d\n",wordSizes[1]);
 //	return 0;
 
@@ -280,28 +283,52 @@ ErrorCode EndQuery(QueryID query_id) {
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 	int i = 0, e = 0;
-
-	DocumentDescriptor *doc_desc = malloc(sizeof(DocumentDescriptor));
-	doc_desc->docId = doc_id;
+	int queryMatchCount = 0;
 
 	while (doc_str[i]) {
 		while (doc_str[i] == ' ')
 			i++;
 
 		e = i;
-		while (doc_str[e] != ' ')
+		while (doc_str[e] != ' ' && doc_str[e] != '\0')
 			e++;
 
-		matchWord(&doc_str[i], e - i);
+		matchWord(&doc_str[i], e - i, &queryMatchCount);
 
-		i += e;
+		i = e;
 	}
 
+	void *alloc = malloc(
+			sizeof(DocumentDescriptor) + sizeof(QueryID) * queryMatchCount);
+	DocumentDescriptor *doc_desc = alloc + sizeof(QueryID) * queryMatchCount;
+	doc_desc->docId = doc_id;
+	doc_desc->matches = alloc;
+	doc_desc->numResults = queryMatchCount;
+	int p = 0;
+	for (i = 0; i < 1000000; i++) {
+		if (qmap[i]) {
+			if (qmap[i]->matchedWords == (1 << (qmap[i]->numWords)) - 1) {
+				printf("doc %d matched query %d\n", doc_id, i);
+				doc_desc->matches[p++] = i; //since qmap is a map, i is the QueryID
+			}
+			qmap[i]->matchedWords = 0;
+		}
+	}
+
+	append(docList, doc_desc);
+	return EC_SUCCESS;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 		QueryID** p_query_ids) {
+	DNode_t *node = docList->head.next;
+	DocumentDescriptor* doc_desc = (DocumentDescriptor *) (node->data);
+	*p_query_ids = doc_desc->matches;
+	*p_doc_id = doc_desc->docId;
+	*p_num_res = doc_desc->numResults;
+	//TODO if numRes is zero, free doc_desc
+	delete(node);
 	return EC_SUCCESS;
 }
 
@@ -310,12 +337,21 @@ void core_test() {
 	init();
 	char output[32][32];
 
-	char f[32] = "mother fucher";
+	char f[32] = "mother";
 	char f2[32] = "oknofucker";
 
-	StartQuery(0, f, 1, 1);
-	StartQuery(1, f2, 1, 1);
+	StartQuery(5, f, MT_EXACT_MATCH, 0);
+	StartQuery(7, f2, MT_EXACT_MATCH, 0);
 	dfs(&(trie->root));
+	MatchDocument(10, "mother fucker");
+	MatchDocument(20, "fuck you oknofucker");
+	DocID did;
+	QueryID *qid;
+	int numRes;
+	GetNextAvailRes(&did, &numRes, &qid);
+	printf("did = %d, qid = %d, numRes = %d\n", did, qid[0], numRes);
+	GetNextAvailRes(&did, &numRes, &qid);
+	printf("did = %d, qid = %d, numRes = %d\n", did, qid[0], numRes);
 //	EndQuery(0);
 //	puts("---------------------------");
 //	puts("---------------------------");

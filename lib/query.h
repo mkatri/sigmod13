@@ -15,6 +15,7 @@ typedef struct {
 	char queryString[MAX_WORD_LENGTH * MAX_QUERY_WORDS + 1];
 	char matchedWords;
 	DNode_t ** segmentsData;
+	char numWords;
 	int matchType;
 	int matchDistance;
 } QueryDescriptor;
