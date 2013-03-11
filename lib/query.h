@@ -9,9 +9,6 @@
 #define QUERY_H_
 #include "linked_list.h"
 
-struct QuerySegmentData {
-
-};
 typedef struct {
 	char*words[5];
 	char matchedWords;
