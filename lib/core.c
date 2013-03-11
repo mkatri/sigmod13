@@ -84,7 +84,6 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	//TODO DNode_t ** segmentsData ;
 	int in = 0, i = 0, j = 0, wordLength = 0, k, first, second, iq = 0;
 
-	char queryWords[6][32];
 	int wordSizes[6];
 	int numOfWords = 0;
 	int numOfSegments = match_dist + 1;
@@ -97,7 +96,10 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	addQuery(query_id, queryDescriptor);
 
 	//as the query words are space separated so this method return the words and it's length
-	split(wordSizes, queryWords, query_str, &numOfWords);
+	split(wordSizes, queryDescriptor, query_str, &numOfWords);
+//	printf("%d\n",wordSizes[1]);
+//	return 0;
+
 	char segment[32];
 	/*initialize the DNode array here*/
 	int top = 0;
@@ -111,15 +113,6 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 		iq = 0;
 		wordLength = wordSizes[in];
 		//here (wordSizes[in]+1 to add the null at the end of char array
-		char * word = (char *) malloc((wordLength + 1) * sizeof(char));
-		for (i = 0; i < wordLength; i++) {
-			word[i] = queryWords[in][i];
-		}
-
-		word[i] = '\0';
-
-		// add the word in it's location in the query descriptor words array
-		queryDescriptor->words[in] = word;
 
 		/*
 		 * k here as teste paper mention to get good partition with hamming 1
@@ -137,7 +130,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			SegmentData *sd = newSegmentdata();
 			sd->parentQuery = queryDescriptor;
 			for (j = 0; j < first; j++) {
-				segment[j] = word[iq];
+				segment[j] = *(queryDescriptor->words[in] + iq);
 				iq++;
 			}
 
@@ -158,7 +151,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			SegmentData *sd = newSegmentdata();
 			sd->parentQuery = queryDescriptor;
 			for (j = 0; j < second; j++) {
-				segment[j] = word[iq];
+				segment[j] = *(queryDescriptor->words[in] + iq);
 				iq++;
 			}
 			segment[j] = '\0';
@@ -180,9 +173,12 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
  * this method take string and split it to subStrings(words) as the words are space separated
  */
 
-void split(int length[6], char output[6][32], const char* query_str, int * idx) {
+void split(int length[6], QueryDescriptor *desc, const char* query_str,
+		int * idx) {
 
 	int iq = 0;
+	char *output = desc->queryString;
+	char **words = desc->words;
 
 	*idx = 0;
 	int idx2 = 0;
@@ -195,27 +191,29 @@ void split(int length[6], char output[6][32], const char* query_str, int * idx) 
 	while (query_str[iq] && query_str[iq] == ' ')
 		iq++;
 
+	words[*idx] = output;
+	int idx1 = 0;
 	// loop and get the words
 	while (query_str[iq]) {
 
 		if (query_str[iq] == ' ') {
-
-			output[(*idx)][idx2] = '\0';
-			length[(*idx)] = idx2;
+			length[(*idx)] = idx1;
 			(*idx)++;
-			idx2 = 0;
-
+			words[*idx] = &output[idx2];
+			idx1 = 0;
 			while (query_str[iq] && query_str[iq] == ' ')
 				iq++;
 
 		}
 
-		output[(*idx)][idx2++] = query_str[iq];
+		output[idx2++] = query_str[iq];
+		idx1++;
 		iq++;
 	}
-	output[(*idx)][idx2] = '\0';
-	length[(*idx)] = idx2;
+
+	length[(*idx)] = idx1;
 	(*idx)++;
+	words[*idx] = &output[idx2];
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -312,16 +310,16 @@ void core_test() {
 	init();
 	char output[32][32];
 
-	char f[32] = "mother";
+	char f[32] = "mother fucher";
 	char f2[32] = "oknofucker";
 
-	StartQuery(0, f, 1, 0);
-	StartQuery(1, f2, 1, 0);
-//	dfs(&(trie->root));
-	EndQuery(0);
-	puts("---------------------------");
-	puts("---------------------------");
-	puts("---------------------------");
+	StartQuery(0, f, 1, 1);
+	StartQuery(1, f2, 1, 1);
+	dfs(&(trie->root));
+//	EndQuery(0);
+//	puts("---------------------------");
+//	puts("---------------------------");
+//	puts("---------------------------");
 
 //	dfs(&(trie->root));
 	//	printo(f);

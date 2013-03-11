@@ -1,3 +1,7 @@
+#include "linked_list.h"
+#include "trie.h"
+#include "query.h"
+
 extern Trie_t *trie;
 
 int hammingDistance(char *a, char *b, int n, int max) {
@@ -90,7 +94,7 @@ void matchWord(char *w, int l) {
 //		TrieNode_t *p = 0;
 		while ((n = next_node(n, w[j++]))) {
 			if (!isEmpty(n->list)) {
-				DNode_t *cur = n->list.head;
+				DNode_t *cur = &n->list->head;
 				while (cur) {
 					SegmentData * segData = (SegmentData *) (cur->data);
 					QueryDescriptor * queryData = segData->parentQuery;
@@ -98,15 +102,16 @@ void matchWord(char *w, int l) {
 					if (type == MT_EDIT_DIST) {
 
 					} else if (type == MT_HAMMING_DIST) {
-//						if (i
-//								== segData->startIndex
-//										- queryData->words[segData->wordIndex] && (l - j) == queryData->words[segData->] ) {
+						if (i
+								== segData->startIndex
+										- queryData->words[segData->wordIndex]) {
 							int d1 = hammingDistance(w,
 									queryData->words[segData->wordIndex], i,
 									queryData->matchDistance);
 							if (d1 <= queryData->matchDistance) {
 								d1 += hammingDistance(w + j,
-										queryData->words[segData->wordIndex] + j, i,
+										queryData->words[segData->wordIndex]
+												+ j, i,
 										queryData->matchDistance);
 							}
 						}
