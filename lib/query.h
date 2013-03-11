@@ -10,7 +10,8 @@
 #include "linked_list.h"
 
 typedef struct {
-	char*words[5];
+	char *words[6];
+	char queryString[MAX_WORD_LENGTH * MAX_QUERY_WORDS + 1];
 	char matchedWords;
 	DNode_t ** segmentsData;
 	int matchType;
@@ -21,7 +22,7 @@ typedef struct {
 	int queryId;
 	QueryDescriptor* parentQuery;
 	char wordIndex;
-	int startIndex;
+	char* startIndex;
 } SegmentData;
 
 SegmentData * newSegmentdata();

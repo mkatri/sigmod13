@@ -1,7 +1,10 @@
-struct DocumentDescriptor { 
+#include <core.h>
+
+typedef struct {
   /* TODO of any use?
 	char *document;
 	char *nextWord;
 	*/
-	QueryId *matches;	
-}
+	DocID docId;
+	QueryID *matches;
+} DocumentDescriptor;

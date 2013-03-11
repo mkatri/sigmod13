@@ -11,10 +11,7 @@ SegmentData * newSegmentdata() {
 
 QueryDescriptor * newQueryDescriptor() {
 	QueryDescriptor * ret = (QueryDescriptor*) malloc(sizeof(QueryDescriptor));
-	ret->matchDistance = 0;
-	ret->matchType = 0;
-	ret->matchedWords = 0;
-	memset(ret->words, 0, sizeof(char*));
+	memset(ret, 0, sizeof(QueryDescriptor));
 	return ret;
 }
 

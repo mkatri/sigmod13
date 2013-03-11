@@ -23,7 +23,7 @@ DNode_t* delete(DNode_t * node) {
 	return nxt;
 }
 char isEmpty(LinkedList_t * list) {
-	return list->head.next == &list->tail;
+	return list == 0 || list->head.next == &list->tail;
 }
 //int main(int argc, char **argv) {
 //	LinkedList_t *lst = newLinkedList();

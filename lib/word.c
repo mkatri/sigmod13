@@ -1,19 +1,19 @@
-int hammingDistance(char *a, char *b, int n, int max)
-{
-  int mismatch = 0;
-  int i;
-  
-  for(i = 0; i < n; i++)
-  {
-    if((a[i] - b[i]) != 0)
-      mismatch++; 
-      
-    /* TODO test performance */  
-    if(mismatch > max) 
-      return mismatch;
-  }
-  
-  return mismatch;
+extern Trie_t *trie;
+
+int hammingDistance(char *a, char *b, int n, int max) {
+	int mismatch = 0;
+	int i;
+
+	for (i = 0; i < n; i++) {
+		if ((a[i] - b[i]) != 0)
+			mismatch++;
+
+		/* TODO test performance */
+		if (mismatch > max)
+			return mismatch;
+	}
+
+	return mismatch;
 }
 
 int editDistance(char* a, int na, char* b, int nb, int dist) {
@@ -60,8 +60,8 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 			T[cur][ib] = ret;
 
 			/* XXX not tested */
-			int difa = na - ia, difb = nb - ib, totalMin = ret + abs(
-					difa - difb);
+			int difa = na - ia, difb = nb - ib, totalMin = ret
+					+ abs(difa - difb);
 
 			if (totalMin < min)
 				min = totalMin;
@@ -78,6 +78,45 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 	return ret;
 }
 
-void matchWord(char *w, int l)
-{
+void matchWord(char *w, int l) {
+
+	if (l > 35)
+		return;
+
+	int i = 0;
+	for (i = 0; i < l; i++) {
+		int j = i;
+		TrieNode_t *n = trie;
+//		TrieNode_t *p = 0;
+		while ((n = next_node(n, w[j++]))) {
+			if (!isEmpty(n->list)) {
+				DNode_t *cur = n->list.head;
+				while (cur) {
+					SegmentData * segData = (SegmentData *) (cur->data);
+					QueryDescriptor * queryData = segData->parentQuery;
+					int type = queryData->matchType;
+					if (type == MT_EDIT_DIST) {
+
+					} else if (type == MT_HAMMING_DIST) {
+//						if (i
+//								== segData->startIndex
+//										- queryData->words[segData->wordIndex] && (l - j) == queryData->words[segData->] ) {
+							int d1 = hammingDistance(w,
+									queryData->words[segData->wordIndex], i,
+									queryData->matchDistance);
+							if (d1 <= queryData->matchDistance) {
+								d1 += hammingDistance(w + j,
+										queryData->words[segData->wordIndex] + j, i,
+										queryData->matchDistance);
+							}
+						}
+					} else if (i == 0 && j == l) { // Exact matching must be done from the start of the word only
+						queryData->matchedWords |= (1 << (segData->wordIndex));
+					}
+					cur = cur->next;
+				}
+			}
+//			p = n;
+		}
+	}
 }

@@ -32,6 +32,7 @@
 #include <core.h>
 #include "query.h"
 #include "trie.h"
+#include "document.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 Trie_t *trie;
@@ -281,6 +282,9 @@ ErrorCode EndQuery(QueryID query_id) {
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 	int i = 0, e = 0;
+
+	DocumentDescriptor *doc_desc = malloc(sizeof(DocumentDescriptor));
+	doc_desc->docId = doc_id;
 
 	while (doc_str[i]) {
 		while (doc_str[i] == ' ')
