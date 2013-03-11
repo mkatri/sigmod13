@@ -24,5 +24,6 @@ DNode_t* TrieInsert(Trie_t * trie, char * str, int length, int type,
 		void* queryData);
 TrieNode_t* next(TrieNode_t *current, char c);
 TrieNode_t * newTrieNode();
+Trie_t * newTrie();
 
 #endif /* TRIE_H_ */

@@ -29,7 +29,9 @@
 
 # Build targets (your implementation targets should go in IMPL_O)
 TEST_O=test_driver/test.o 
+OUR_TEST_O=test_ours/test.o
 IMPL_O=ref_impl/core.o
+OUR_IMPL_O=lib/core.o lib/linked_list.o lib/query.o lib/trie.o lib/word.o
 
 # Compiler flags
 CC  = gcc
@@ -39,20 +41,27 @@ CXXFLAGS=$(CFLAGS)
 LDFLAGS=-lpthread
 
 # The programs that will be built
-PROGRAMS=testdriver
+PROGRAMS=testdriver testours
 
 # The name of the library that will be built
 LIBRARY=core
+OUR_LIBRARY=core_ours
 
 # Build all programs
 all: $(PROGRAMS)
 
 lib: $(IMPL_O)
 	$(CXX) $(CXXFLAGS) -shared -o lib$(LIBRARY).so $(IMPL_O)
+	
+lib_ours: $(OUR_IMPL_O)
+	$(CXX) $(CXXFLAGS) -shared -o lib$(OUR_LIBRARY).so $(OUR_IMPL_O)	
 
 testdriver: lib $(TEST_O)
-	$(CXX) $(CXXFLAGS) -o testdriver $(TEST_O) ./lib$(LIBRARY).so
+	$(CXX) $(CXXFLAGS) -o bin/testdriver $(TEST_O) ./lib$(LIBRARY).so
+	
+testours: lib_ours $(OUR_TEST_O)
+	$(CXX) $(CXXFLAGS) -o bin/testours $(OUR_TEST_O) ./lib$(OUR_LIBRARY).so 	
 
 clean:
-	rm -f $(PROGRAMS) lib$(LIBRARY).so
+	rm -f $(PROGRAMS) bin/* lib$(LIBRARY).so lib$(OUR_LIBRARY).so
 	find . -name '*.o' -print | xargs rm -f

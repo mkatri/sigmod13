@@ -211,22 +211,22 @@ ErrorCode EndQuery(QueryID query_id) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-ErrorCode MatchDocument(DocID doc_id, const char* doc_str)
-{
-  int i = 0, e = 0;
-  
-  while(doc_str[i])
-  {
-    while(doc_str[i] == ' ') i++;
-    
-    e = i;
-    while(doc_str[e] != ' ') e++;
-    
-    matchWord(&doc_str[i], e - i);
-        
-    i += e;
-  }
-    
+ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
+	int i = 0, e = 0;
+
+	while (doc_str[i]) {
+		while (doc_str[i] == ' ')
+			i++;
+
+		e = i;
+		while (doc_str[e] != ' ')
+			e++;
+
+		matchWord(&doc_str[i], e - i);
+
+		i += e;
+	}
+
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -235,9 +235,8 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 	return EC_SUCCESS;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////
-int main(int argc, char **argv) {
-
+///////////////////////////////////////////
+void core_test() {
 	init();
 	char output[32][32];
 
@@ -248,9 +247,8 @@ int main(int argc, char **argv) {
 	StartQuery(1, f2, 1, 3);
 	dfs(&(trie->root));
 	//	printo(f);
-//	int num = 0;
-//	getSegments(output, f, 11, 3, &num);
-//	puts(output[3]);
-//	printf("done %d", num);
-	return 0;
+	//	int num = 0;
+	//	getSegments(output, f, 11, 3, &num);
+	//	puts(output[3]);
+	//	printf("done %d", num);
 }
