@@ -48,6 +48,9 @@ inline void addQuery(int queryId, QueryDescriptor * qds) {
 }
 /*QUERY DESCRIPTOR MAP ENDS HERE*/
 
+void split(int length[6], QueryDescriptor *desc, const char* query_str,
+		int * idx);
+
 void init() {
 	trie = newTrie();
 	docList = newLinkedList();
