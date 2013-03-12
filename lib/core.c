@@ -64,6 +64,7 @@ void init() {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode InitializeIndex() {
+	init();
 	return EC_SUCCESS;
 }
 
@@ -348,7 +349,7 @@ void core_test() {
 	printf("%d\n\n", sizeof(HashCluster));
 	printf("%d\n\n", sizeof(int));
 	printf("%d\n\n", sizeof(HashCluster*));
-	init();
+	InitializeIndex();
 	char output[32][32];
 
 	char f[32] = "mother";
