@@ -48,6 +48,9 @@ inline void addQuery(int queryId, QueryDescriptor * qds) {
 }
 /*QUERY DESCRIPTOR MAP ENDS HERE*/
 
+void split(int length[6], QueryDescriptor *desc, const char* query_str,
+		int * idx);
+
 void init() {
 	trie = newTrie();
 	docList = newLinkedList();
@@ -89,7 +92,6 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	int wordSizes[6];
 	int numOfWords = 0;
 	int numOfSegments = match_dist + 1;
-
 	//get query descriptor for the query
 	QueryDescriptor * queryDescriptor = newQueryDescriptor();
 	queryDescriptor->matchDistance = match_dist;
@@ -100,7 +102,6 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	//as the query words are space separated so this method return the words and it's length
 	split(wordSizes, queryDescriptor, query_str, &numOfWords);
 	queryDescriptor->numWords = numOfWords;
-//	printf("%d\n",wordSizes[1]);
 //	return 0;
 
 	char segment[32];
@@ -151,7 +152,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 		}
 
 		// loop on the word to get the segments
-		for (i = 0; i < numOfSegments - k; i++) {
+		for (i = 0; (i < numOfSegments - k)&&second  ; i++) {
 			SegmentData *sd = newSegmentdata();
 			sd->parentQuery = queryDescriptor;
 			sd->startIndex = queryDescriptor->words[in] + iq;
@@ -206,14 +207,17 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 			(*idx)++;
 			words[*idx] = &output[idx2];
 			idx1 = 0;
-			while (query_str[iq] && query_str[iq] == ' ')
+			while (query_str[iq] == ' ')
 				iq++;
 
 		}
 
-		output[idx2++] = query_str[iq];
-		idx1++;
-		iq++;
+		//to handle spaces in the end of query
+		if (query_str[iq]) {
+			output[idx2++] = query_str[iq];
+			idx1++;
+			iq++;
+		}
 	}
 
 	length[(*idx)] = idx1;
@@ -233,10 +237,12 @@ ErrorCode EndQuery(QueryID query_id) {
 			k, first, second;
 	char segment[32];
 	int top = 0;
-	for (in = 0; in < 5 && queryDescriptor->words[in]; in++) {
+	for (in = 0; in < 5 && queryDescriptor->words[in + 1] != 0; in++) {
+
 		//get the word length
 		iq = 0;
-		wordLength = strlen(queryDescriptor->words[in]);
+		wordLength = queryDescriptor->words[in + 1]
+				- queryDescriptor->words[in];
 		//here (wordSizes[in]+1 to add the null at the end of char array
 		/*
 		 * k here as teste paper mention to get good partition with hamming 1
@@ -246,6 +252,8 @@ ErrorCode EndQuery(QueryID query_id) {
 		 * and second =2;
 		 */
 		/*how do we prove this*/
+
+		printf(">>>>>     %d %d\n", wordLength, numOfSegments);
 		k = wordLength - (wordLength / numOfSegments) * (numOfSegments);
 		first = (wordLength + numOfSegments - 1) / numOfSegments;
 		second = wordLength / numOfSegments;
@@ -264,7 +272,7 @@ ErrorCode EndQuery(QueryID query_id) {
 		}
 
 		// loop on the word to get the segments
-		for (i = 0; i < numOfSegments - k; i++) {
+		for (i = 0; (i < numOfSegments - k)&&second; i++) {
 			for (j = 0; j < second; j++) {
 				segment[j] = queryDescriptor->words[in][iq];
 				iq++;
@@ -274,7 +282,7 @@ ErrorCode EndQuery(QueryID query_id) {
 			//Delete from the linked list in trie nodes
 			delete(queryDescriptor->segmentsData[top++]); //TODO ALSO DELETE SEGMENT DATA inside the node
 			//Delete from the trie
-			TrieDelete(trie, segment, first, queryDescriptor->matchType);
+			TrieDelete(trie, segment, second, queryDescriptor->matchType);
 		}
 	}
 	freeQueryDescriptor(queryDescriptor);
@@ -345,32 +353,36 @@ void core_test() {
 	char output[32][32];
 
 	char f[32] = "mother";
-	char f2[32] = "oknofucker";
+	char f2[32] = "  ok no   fucker  ";
 
-	StartQuery(5, f, MT_EDIT_DIST, 3);
-	StartQuery(7, f2, MT_EDIT_DIST, 2);
-	//dfs(&(trie->root));
-	MatchDocument(10, "yomother fucker");
-	MatchDocument(20, "fuck you oknofutcher");
-	MatchDocument(30, "fuck mother you oknofucker father");
-	DocID did;
-	QueryID *qid;
-	unsigned int numRes;
-	GetNextAvailRes(&did, &numRes, &qid);
-	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
-	GetNextAvailRes(&did, &numRes, &qid);
-	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
-	GetNextAvailRes(&did, &numRes, &qid);
-	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
-//	EndQuery(0);
-//	puts("---------------------------");
-//	puts("---------------------------");
-//	puts("---------------------------");
+	StartQuery(5, f, 0, 7);
+	StartQuery(7, f2, MT_EDIT_DIST, 7);
 
-//	dfs(&(trie->root));
-	//	printo(f);
-	//	int num = 0;
-	//	getSegments(output, f, 11, 3, &num);
-	//	puts(output[3]);
-	//	printf("done %d", num);
+	dfs(&(trie->root));
+	EndQuery(7);
+	dfs(&(trie->root));
+	printf("done\n");
+//	MatchDocument(10, "yomother fucker");
+//	MatchDocument(20, "fuck you oknofutcher");
+//	MatchDocument(30, "fuck mother you oknofucker father");
+//	DocID did;
+//	QueryID *qid;
+//	unsigned int numRes;
+//	GetNextAvailRes(&did, &numRes, &qid);
+//	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
+//	GetNextAvailRes(&did, &numRes, &qid);
+//	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
+//	GetNextAvailRes(&did, &numRes, &qid);
+//	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
+////	EndQuery(0);
+////	puts("---------------------------");
+////	puts("---------------------------");
+////	puts("---------------------------");
+//
+////	dfs(&(trie->root));
+//	//	printo(f);
+//	//	int num = 0;
+//	//	getSegments(output, f, 11, 3, &num);
+//	//	puts(output[3]);
+//	//	printf("done %d", num);
 }

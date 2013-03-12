@@ -16,10 +16,6 @@ QueryDescriptor * newQueryDescriptor() {
 }
 
 void freeQueryDescriptor(QueryDescriptor * qds) {
-	free(qds->segmentsData);
-	int i;
-	for (i = 0; i < 5 && qds->words[i]; i++)
-		free(qds->words[i]);
-	free(qds->words);
 	free(qds);
+
 }
