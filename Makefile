@@ -43,7 +43,7 @@ LIB_OBJ_DIR := bin/obj/lib
 LIB_OBJ_FILES := $(patsubst lib/%.c,bin/obj/lib/%.o,$(LIB_SRC_FILES))
 
 # The programs that will be built
-PROGRAMS=testdriver testours
+PROGRAMS=testdriver testours ourtestdriver
 
 # The name of the library that will be built
 LIBRARY=core
@@ -69,6 +69,9 @@ lib_ours: $(LIB_OBJ_FILES)
 	
 testours: lib_ours bin/obj/test.o
 	$(CXX) $(CXXFLAGS) -o bin/testours bin/obj/test.o ./bin/lib$(OUR_LIBRARY).so 	
+
+ourtestdriver: lib_ours $(TEST_O)
+	$(CXX) $(CXXFLAGS) -o bin/ourtestdriver $(TEST_O) ./bin/lib$(OUR_LIBRARY).so
 
 $(LIB_OBJ_DIR):
 	mkdir -p $(LIB_OBJ_DIR)
