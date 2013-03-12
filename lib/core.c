@@ -132,6 +132,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 		for (i = 0; i < k; i++) {
 			SegmentData *sd = newSegmentdata();
 			sd->parentQuery = queryDescriptor;
+			sd->startIndex = queryDescriptor->words[in] + iq;
 			for (j = 0; j < first; j++) {
 				segment[j] = *(queryDescriptor->words[in] + iq);
 				iq++;
@@ -140,7 +141,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			segment[j] = '\0';
 			//load the segment data
 			sd->queryId = query_id;
-			sd->startIndex = iq - first;
+			//sd->startIndex = iq - first;
 			sd->wordIndex = in;
 
 			//insert in trie
@@ -153,6 +154,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 		for (i = 0; i < numOfSegments - k; i++) {
 			SegmentData *sd = newSegmentdata();
 			sd->parentQuery = queryDescriptor;
+			sd->startIndex = queryDescriptor->words[in] + iq;
 			for (j = 0; j < second; j++) {
 				segment[j] = *(queryDescriptor->words[in] + iq);
 				iq++;
@@ -160,7 +162,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			segment[j] = '\0';
 			//load segments data
 			sd->queryId = query_id;
-			sd->startIndex = iq - second;
+			//sd->startIndex = iq - second;
 			sd->wordIndex = in;
 			//insert in trie
 			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
@@ -340,18 +342,21 @@ void core_test() {
 	char f[32] = "mother";
 	char f2[32] = "oknofucker";
 
-	StartQuery(5, f, MT_EXACT_MATCH, 0);
-	StartQuery(7, f2, MT_EXACT_MATCH, 0);
-	dfs(&(trie->root));
-	MatchDocument(10, "mother fucker");
-	MatchDocument(20, "fuck you oknofucker");
+	StartQuery(5, f, MT_EDIT_DIST, 3);
+	StartQuery(7, f2, MT_EDIT_DIST, 2);
+	//dfs(&(trie->root));
+	MatchDocument(10, "yomother fucker2");
+	MatchDocument(20, "fuck you oknofutcher");
+	MatchDocument(30, "fuck mother you oknofucker father");
 	DocID did;
 	QueryID *qid;
-	int numRes;
+	unsigned int numRes;
 	GetNextAvailRes(&did, &numRes, &qid);
-	printf("did = %d, qid = %d, numRes = %d\n", did, qid[0], numRes);
+	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
 	GetNextAvailRes(&did, &numRes, &qid);
-	printf("did = %d, qid = %d, numRes = %d\n", did, qid[0], numRes);
+	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
+	GetNextAvailRes(&did, &numRes, &qid);
+	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
 //	EndQuery(0);
 //	puts("---------------------------");
 //	puts("---------------------------");

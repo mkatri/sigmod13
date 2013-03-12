@@ -15,3 +15,4 @@
 bin/*
 .cproject
 .project
+.settings

@@ -92,7 +92,8 @@ void matchWord(char *w, int l, int *count) {
 		int j = i;
 		TrieNode_t *n = trie;
 //		TrieNode_t *p = 0;
-		while ((n = next_node(n, w[j++]))) {
+		while ((n = next_node(n, w[j])) && j < l) {
+			j++;
 			if (!isEmpty(n->list)) {
 				DNode_t *cur = n->list->head.next;
 				while (cur->data) {
