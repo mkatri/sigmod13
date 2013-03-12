@@ -29,7 +29,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-#include <core.h>
+#include "../include/core.h"
 #include "query.h"
 #include "trie.h"
 #include "document.h"
@@ -343,7 +343,12 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 }
 
 ///////////////////////////////////////////
+#include "HT.h"
+
 void core_test() {
+	printf("%d\n\n", sizeof(HashCluster));
+	printf("%d\n\n", sizeof(int));
+	printf("%d\n\n", sizeof(HashCluster*));
 	init();
 	char output[32][32];
 

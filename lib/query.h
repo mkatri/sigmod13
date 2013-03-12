@@ -8,7 +8,7 @@
 #ifndef QUERY_H_
 #define QUERY_H_
 #include "linked_list.h"
-#include <core.h>
+#include "../include/core.h"
 
 typedef struct {
 	char *words[6];

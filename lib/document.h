@@ -1,4 +1,4 @@
-#include <core.h>
+#include "../include/core.h"
 
 typedef struct {
   /* TODO of any use?
