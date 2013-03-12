@@ -29,10 +29,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-#include "../include/core.h"
+#include <core.h>
 #include "query.h"
 #include "trie.h"
 #include "document.h"
+#include "Hash_Table.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 Trie_t *trie;
@@ -343,8 +344,6 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 }
 
 ///////////////////////////////////////////
-#include "HT.h"
-
 void core_test() {
 	printf("%d\n\n", sizeof(HashCluster));
 	printf("%d\n\n", sizeof(int));
@@ -362,6 +361,7 @@ void core_test() {
 	EndQuery(7);
 	dfs(&(trie->root));
 	printf("done\n");
+	hashTest();
 //	MatchDocument(10, "yomother fucker");
 //	MatchDocument(20, "fuck you oknofutcher");
 //	MatchDocument(30, "fuck mother you oknofucker father");
