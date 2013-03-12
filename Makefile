@@ -29,9 +29,7 @@
 
 # Build targets (your implementation targets should go in IMPL_O)
 TEST_O=test_driver/test.o 
-OUR_TEST_O=test_ours/test.o
 IMPL_O=ref_impl/core.o
-OUR_IMPL_O=lib/core.o lib/linked_list.o lib/query.o lib/trie.o lib/word.o
 
 # Compiler flags
 CC  = gcc
@@ -39,6 +37,10 @@ CXX = g++
 CFLAGS=-O3 -fPIC -Wall -g -I. -I./include
 CXXFLAGS=$(CFLAGS)
 LDFLAGS=-lpthread
+
+LIB_SRC_FILES := $(wildcard lib/*.c)
+LIB_OBJ_DIR := bin/obj/lib
+LIB_OBJ_FILES := $(patsubst lib/%.c,bin/obj/lib/%.o,$(LIB_SRC_FILES))
 
 # The programs that will be built
 PROGRAMS=testdriver testours
@@ -51,17 +53,26 @@ OUR_LIBRARY=core_ours
 all: $(PROGRAMS)
 
 lib: $(IMPL_O)
-	$(CXX) $(CXXFLAGS) -shared -o lib$(LIBRARY).so $(IMPL_O)
-	
-lib_ours: $(OUR_IMPL_O)
-	$(CXX) $(CXXFLAGS) -shared -o lib$(OUR_LIBRARY).so $(OUR_IMPL_O)	
+	$(CXX) $(CXXFLAGS) -shared -o bin/lib$(LIBRARY).so $(IMPL_O)
 
 testdriver: lib $(TEST_O)
-	$(CXX) $(CXXFLAGS) -o bin/testdriver $(TEST_O) ./lib$(LIBRARY).so
+	$(CXX) $(CXXFLAGS) -o bin/testdriver $(TEST_O) ./bin/lib$(LIBRARY).so
+
+bin/obj/lib/%.o: $(LIB_OBJ_DIR) lib/%.c
+	$(CC) $(CFLAGS) -c -o $@ $^
+
+bin/obj/test.o: $(LIB_OBJ_DIR) test_ours/test.c
+	$(CC) $(CFLAGS) -c -o $@ $^
 	
-testours: lib_ours $(OUR_TEST_O)
-	$(CXX) $(CXXFLAGS) -o bin/testours $(OUR_TEST_O) ./lib$(OUR_LIBRARY).so 	
+lib_ours: $(LIB_OBJ_FILES)
+	$(CXX) $(CXXFLAGS) -shared -o bin/lib$(OUR_LIBRARY).so $(LIB_OBJ_FILES)	
+	
+testours: lib_ours bin/obj/test.o
+	$(CXX) $(CXXFLAGS) -o bin/testours bin/obj/test.o ./bin/lib$(OUR_LIBRARY).so 	
+
+$(LIB_OBJ_DIR):
+	mkdir -p $(LIB_OBJ_DIR)
 
 clean:
-	rm -f $(PROGRAMS) bin/* lib$(LIBRARY).so lib$(OUR_LIBRARY).so
-	find . -name '*.o' -print | xargs rm -f
+	rm -f $(addprefix bin/,$(PROGRAMS)) bin/lib$(LIBRARY).so bin/lib$(OUR_LIBRARY).so
+	find . -regex '.*\.s?o' -print | xargs rm -f
