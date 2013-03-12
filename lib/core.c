@@ -345,7 +345,7 @@ void core_test() {
 	StartQuery(5, f, MT_EDIT_DIST, 3);
 	StartQuery(7, f2, MT_EDIT_DIST, 2);
 	//dfs(&(trie->root));
-	MatchDocument(10, "yomother fucker2");
+	MatchDocument(10, "yomother fucker");
 	MatchDocument(20, "fuck you oknofutcher");
 	MatchDocument(30, "fuck mother you oknofucker father");
 	DocID did;
