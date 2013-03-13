@@ -49,8 +49,8 @@ HashTable* ht;
 inline void addQuery(int queryId, QueryDescriptor * qds) {
 //	qmap[queryId] = qds;
 
-	DNode_t* node = append(queries,qds);
-	insert(ht,queryId,node);
+	DNode_t* node = append(queries, qds);
+	insert(ht, queryId, node);
 
 }
 /*QUERY DESCRIPTOR MAP ENDS HERE*/
@@ -88,7 +88,7 @@ void printWords(char out[6][32], int num) {
 #ifdef CORE_DEBUG
 	int i = 0;
 	for (i = 0; i < num; i++)
-		puts(out[i]);
+	puts(out[i]);
 #endif
 }
 
@@ -245,8 +245,8 @@ ErrorCode EndQuery(QueryID query_id) {
 	puts("inside here");
 #endif
 //	QueryDescriptor* queryDescriptor = getQueryDescriptor(query_id);
-	DNode_t* node = (DNode_t*)get(ht,query_id);
-	QueryDescriptor* queryDescriptor = (QueryDescriptor*)node->data;
+	DNode_t* node = (DNode_t*) get(ht, query_id);
+	QueryDescriptor* queryDescriptor = (QueryDescriptor*) node->data;
 	delete(node);
 	int i, j;
 	int in, iq, wordLength, numOfSegments = queryDescriptor->matchDistance + 1,
@@ -334,13 +334,13 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 	doc_desc->numResults = queryMatchCount;
 	int p = 0;
 
-	DNode_t* cur = queries->head;
-	while(cur!=queries->tail){
-		QueryDescriptor * cqd = (QueryDescriptor *)cur->data;
+	DNode_t* cur = queries->head.next;
+	while (cur != &(queries->tail)) {
+		QueryDescriptor * cqd = (QueryDescriptor *) cur->data;
 		if (cqd->matchedWords == (1 << (cqd->numWords)) - 1)
 			doc_desc->matches[p++] = cqd->queryId;
-		cqd[i]->matchedWords = 0;
-		cur= cur->next;
+		cqd->matchedWords = 0;
+		cur = cur->next;
 	}
 //	for (i = 0; i < 1000000; i++) {
 //		if (qmap[i]) {
@@ -386,7 +386,7 @@ void core_test() {
 	StartQuery(7, f2, MT_EDIT_DIST, 7);
 
 	dfs(&(trie->root));
-	EndQuery(7);
+//	EndQuery(7);
 	dfs(&(trie->root));
 	printf("done\n");
 	hashTest();
