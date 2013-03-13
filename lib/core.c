@@ -80,7 +80,7 @@ void printWords(char out[6][32], int num) {
 #ifdef CORE_DEBUG
 	int i = 0;
 	for (i = 0; i < num; i++)
-		puts(out[i]);
+	puts(out[i]);
 #endif
 }
 
@@ -328,7 +328,9 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 #ifdef CORE_DEBUG
 				printf("doc %d matched query %d\n", doc_id, i);
 #endif
-				doc_desc->matches[p++] = i; //since qmap is a map, i is the QueryID
+				doc_desc->matches[p] = i; //since qmap is a map, i is the QueryID
+				if (p++ == queryMatchCount)
+					break;
 			}
 			qmap[i]->matchedWords = 0;
 		}
