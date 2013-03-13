@@ -19,6 +19,7 @@ typedef struct {
 	int matchType;
 	int matchDistance;
 	int queryId;
+	int docId;
 } QueryDescriptor;
 
 typedef struct {

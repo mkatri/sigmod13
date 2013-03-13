@@ -1,7 +1,7 @@
 #include "Hash_Table.h"
 
-size_t size = 5000011;
-char clusterSize = 4;
+size_t size = 1000000007;
+char clusterSize = 8;
 
 int hash(int key) {
 	return key % size;

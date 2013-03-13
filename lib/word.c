@@ -3,6 +3,14 @@
 #include "query.h"
 
 extern Trie_t *trie;
+extern int pos;
+extern int * qres;
+extern int sizeOfPool;
+
+void doubleSize(){
+	sizeOfPool<<=1;
+	qres = (int*) realloc(qres,sizeof(int)*sizeOfPool);
+}
 
 int hammingDistance(char *a, char *b, int n, int max) {
 	int mismatch = 0;
@@ -100,7 +108,7 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 	return ret;
 }
 
-void matchWord(char *w, int l, int *count) {
+void matchWord(char *w, int l, int *count, int doc_id) {
 
 	if (l > 35)
 		return;
@@ -119,7 +127,10 @@ void matchWord(char *w, int l, int *count) {
 					SegmentData * segData = (SegmentData *) (cur->data);
 					QueryDescriptor * queryData = segData->parentQuery;
 					int type = queryData->matchType;
-
+					if(queryData->docId!=doc_id){
+						queryData->docId=doc_id;
+						queryData->matchedWords=0;
+					}
 					if (((queryData->matchedWords) & (1 << (segData->wordIndex)))) {
 						cur = cur->next;
 						continue;
@@ -149,8 +160,11 @@ void matchWord(char *w, int l, int *count) {
 									queryData->matchedWords |= (1
 											<< (segData->wordIndex));
 									if (queryData->matchedWords
-											== (1 << (queryData->numWords)) - 1)
+											== (1 << (queryData->numWords)) - 1){
 										(*count)++;
+										if(pos==sizeOfPool)doubleSize();
+										qres[pos++]=queryData->queryId;
+									}
 								}
 							}
 						}
@@ -175,16 +189,23 @@ void matchWord(char *w, int l, int *count) {
 									queryData->matchedWords |= (1
 											<< (segData->wordIndex));
 									if (queryData->matchedWords
-											== (1 << (queryData->numWords)) - 1)
+											== (1 << (queryData->numWords)) - 1){
 										(*count)++;
+										if(pos==sizeOfPool)doubleSize();
+										qres[pos++]=queryData->queryId;
+
+									}
 								}
 							}
 						}
 					} else if (i == 0 && j == l) { // Exact matching must be done from the start of the word only
 						queryData->matchedWords |= (1 << (segData->wordIndex));
 						if (queryData->matchedWords
-								== (1 << (queryData->numWords)) - 1)
+								== (1 << (queryData->numWords)) - 1){
 							(*count)++;
+							if(pos==sizeOfPool)doubleSize();
+							qres[pos++]=queryData->queryId;
+						}
 					}
 					cur = cur->next;
 				}

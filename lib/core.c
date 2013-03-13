@@ -43,6 +43,9 @@ LinkedList_t *queries;
 /*QUERY DESCRIPTOR MAP GOES HERE*/
 //QueryDescriptor* qmap[1000000];
 HashTable* ht;
+int * qres;
+int pos;
+int sizeOfPool=1000000000;
 //inline QueryDescriptor * getQueryDescriptor(int queryId) {
 //	return qmap[queryId];
 //}
@@ -59,6 +62,8 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 		int * idx);
 
 void init() {
+	pos = 0;
+	qres = (int*) malloc(sizeof(int)*sizeOfPool);
 	queries = newLinkedList();
 	ht = new_Hash_Table();
 	trie = newTrie();
@@ -109,6 +114,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	queryDescriptor->matchDistance = match_dist;
 	queryDescriptor->matchType = match_type;
 	queryDescriptor->queryId = query_id;
+	queryDescriptor->docId = -1;
 
 	addQuery(query_id, queryDescriptor);
 
@@ -318,6 +324,9 @@ ErrorCode EndQuery(QueryID query_id) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
+int cmpfunc(const QueryID * a, const QueryID * b) {
+	return (*a - *b);
+}
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 	int i = 0, e = 0;
@@ -331,7 +340,7 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 		while (doc_str[e] != ' ' && doc_str[e] != '\0')
 			e++;
 
-		matchWord(&doc_str[i], e - i, &queryMatchCount);
+		matchWord(&doc_str[i], e - i, &queryMatchCount,doc_id);
 
 		i = e;
 	}
@@ -342,16 +351,18 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 	doc_desc->docId = doc_id;
 	doc_desc->matches = alloc;
 	doc_desc->numResults = queryMatchCount;
-	int p = 0;
-
-	DNode_t* cur = queries->head.next;
-	while (cur != &(queries->tail)) {
-		QueryDescriptor * cqd = (QueryDescriptor *) cur->data;
-		if (cqd->matchedWords == (1 << (cqd->numWords)) - 1)
-			doc_desc->matches[p++] = cqd->queryId;
-		cqd->matchedWords = 0;
-		cur = cur->next;
-	}
+	for (i = 0; i < pos; i++)
+		doc_desc->matches[i] = qres[i];
+	qsort(doc_desc->matches, pos, 4, cmpfunc);
+	pos = 0;
+//	DNode_t* cur = queries->head.next;
+//	while (cur != &(queries->tail)) {
+//		QueryDescriptor * cqd = (QueryDescriptor *) cur->data;
+//		if (cqd->matchedWords == (1 << (cqd->numWords)) - 1)
+//			doc_desc->matches[p++] = cqd->queryId;
+//		cqd->matchedWords = 0;
+//		cur = cur->next;
+//	}
 //	for (i = 0; i < 1000000; i++) {
 //		if (qmap[i]) {
 //			if (qmap[i]->matchedWords == (1 << (qmap[i]->numWords)) - 1) {
