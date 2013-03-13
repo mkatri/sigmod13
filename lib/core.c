@@ -51,6 +51,7 @@ inline void addQuery(int queryId, QueryDescriptor * qds) {
 
 	DNode_t* node = append(queries, qds);
 	insert(ht, queryId, node);
+	printf("addQuery id: %d =========> %d\n", queryId, node);
 
 }
 /*QUERY DESCRIPTOR MAP ENDS HERE*/
@@ -246,6 +247,7 @@ ErrorCode EndQuery(QueryID query_id) {
 #endif
 //	QueryDescriptor* queryDescriptor = getQueryDescriptor(query_id);
 	DNode_t* node = (DNode_t*) get(ht, query_id);
+	printf("endQuery id: %d =========> %d\n", query_id, node);
 	QueryDescriptor* queryDescriptor = (QueryDescriptor*) node->data;
 	delete(node);
 	int i, j;
@@ -303,6 +305,9 @@ ErrorCode EndQuery(QueryID query_id) {
 		}
 	}
 	freeQueryDescriptor(queryDescriptor);
+	delete_H(ht, query_id);
+	node = (DNode_t*) get(ht, query_id);
+	printf("endQuery id: %d =========> %d\n", query_id, node);
 //	qmap[query_id] = 0;
 	return EC_SUCCESS;
 }
@@ -376,20 +381,22 @@ void core_test() {
 //	printf("%d\n\n", sizeof(HashCluster));
 //	printf("%d\n\n", sizeof(int));
 //	printf("%d\n\n", sizeof(HashCluster*));
-	InitializeIndex();
-	char output[32][32];
+//	InitializeIndex();
+//	char output[32][32];
+//
+//	char f[32] = "mother";
+//	char f2[32] = "  ok no   fucker  ";
+//
+//	StartQuery(5, f, 0, 7);
+//	StartQuery(7, f2, MT_EDIT_DIST, 7);
+//
+////	dfs(&(trie->root));
+//	EndQuery(7);
+////	dfs(&(trie->root));
+//	printf("done\n");
 
-	char f[32] = "mother";
-	char f2[32] = "  ok no   fucker  ";
-
-	StartQuery(5, f, 0, 7);
-	StartQuery(7, f2, MT_EDIT_DIST, 7);
-
-	dfs(&(trie->root));
-	EndQuery(7);
-	dfs(&(trie->root));
-	printf("done\n");
 	hashTest();
+
 //	MatchDocument(10, "yomother fucker");
 //	MatchDocument(20, "fuck you oknofutcher");
 //	MatchDocument(30, "fuck mother you oknofucker father");
