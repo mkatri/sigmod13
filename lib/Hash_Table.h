@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #define byte char
+#define ll long long
 
 typedef struct {
 	int* keys;
