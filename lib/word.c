@@ -140,8 +140,7 @@ void matchWord(char *w, int l, int *count) {
 											queryData->matchDistance - d1);
 							if (d1 <= queryData->matchDistance) {
 								d1 += editDistance(w + j, l - j,
-										queryData->words[segData->wordIndex]
-												+ j,
+										segData->startIndex + j - i,
 										queryData->words[segData->wordIndex + 1]
 												- segData->startIndex - (j - i),
 										queryData->matchDistance - d1);

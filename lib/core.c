@@ -97,12 +97,6 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 //#ifdef CORE_DEBUG
 //	printf("query: %d --> %s\n", query_id, query_str);
 //#endif
-	if (query_id == 6 || query_id == 18 || query_id == 42 || query_id == 51
-			|| query_id == 55 || query_id == 87 || query_id == 124
-			|| query_id == 132 || query_id == 149)
-		printf(
-				"start query: id = %d match type = %d , match dist = %d , query = %s\n",
-				query_id, match_type, match_dist, query_str);
 
 //TODO DNode_t ** segmentsData ;
 	int in = 0, i = 0, j = 0, wordLength = 0, k, first, second, iq = 0;
@@ -257,13 +251,6 @@ ErrorCode EndQuery(QueryID query_id) {
 	puts("inside here");
 #endif
 
-	if (query_id == 6 || query_id == 18 || query_id == 42 || query_id == 51
-			|| query_id == 55 || query_id == 87 || query_id == 124
-			|| query_id == 132 || query_id == 149)
-		printf(
-				"end query: id = %d match type = %d , match dist = %d , query = %s\n",
-				query_id);
-
 //	QueryDescriptor* queryDescriptor = getQueryDescriptor(query_id);
 	DNode_t* node = (DNode_t*) get(ht, query_id);
 	QueryDescriptor* queryDescriptor = (QueryDescriptor*) node->data;
@@ -333,8 +320,6 @@ ErrorCode EndQuery(QueryID query_id) {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
-	if (doc_id == 94 || doc_id > 960)
-		printf("\n\nDOC ID: %d  %s\n\n", doc_id, doc_str);
 	int i = 0, e = 0;
 	int queryMatchCount = 0;
 
