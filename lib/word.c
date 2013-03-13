@@ -102,7 +102,8 @@ void matchWord(char *w, int l, int *count) {
 			j++;
 			if (!isEmpty(n->list)) {
 				DNode_t *cur = n->list->head.next;
-				while (cur->data) {
+				while (cur->data && cur != &(n->list->tail)) {
+					/*XXX somewhere you set the data of the list tail, this is not cool*/
 					SegmentData * segData = (SegmentData *) (cur->data);
 					QueryDescriptor * queryData = segData->parentQuery;
 					int type = queryData->matchType;
