@@ -77,9 +77,9 @@ void TrieDelete(Trie_t* trie, char*str, int length, int type) {
 }
 void dfs(TrieNode_t * node) {
 	int i;
-
+#ifdef CORE_DEBUG
 	printf("%d %d %d\n", node->count[0], node->count[1], node->count[2]);
-
+#endif
 	for (i = 0; i < CHAR_SET_SIZE; i++) {
 		if (node->next[i] != 0) {
 			putchar(i + 'a');

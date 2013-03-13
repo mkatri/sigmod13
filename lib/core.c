@@ -125,12 +125,12 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	for (top = 0; top < numOfSegments * numOfWords; top++)
 		queryDescriptor->segmentsData[top] = 0;
 	top = 0;
-	printf("num of words %d\n",numOfWords);
+	//printf("num of words %d\n",numOfWords);
 	for (in = 0; in < numOfWords; in++) {
 		//get the word length
 		iq = 0;
 		wordLength = wordSizes[in];
-		printf("word >> %s\n", queryDescriptor->words[in]);
+		//printf("word >> %s\n", queryDescriptor->words[in]);
 		//here (wordSizes[in]+1 to add the null at the end of char array
 
 		/*
@@ -161,7 +161,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			sd->wordIndex = in;
 
 			//insert in trie
-			printf("segment >>>> %s\n", segment);
+		//	printf("segment >>>> %s\n", segment);
 			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
 					first, match_type, sd);
 
@@ -182,7 +182,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			//sd->startIndex = iq - second;
 			sd->wordIndex = in;
 			//insert in trie
-			printf("segment >>>> %s\n", segment);
+		//	printf("segment >>>> %s\n", segment);
 			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
 					second, match_type, sd);
 		}
@@ -259,7 +259,7 @@ ErrorCode EndQuery(QueryID query_id) {
 			k, first, second;
 	char segment[32];
 	int top = 0;
-	for (in = 0; in < 5 && queryDescriptor->words[in + 1] != 0; in++) {
+	for (in = 0; in < 5 && queryDescriptor->words[in + 1] ; in++) {
 
 		//get the word length
 		iq = 0;
@@ -277,6 +277,7 @@ ErrorCode EndQuery(QueryID query_id) {
 #ifdef CORE_DEBUG
 		printf(">>>>>     %d %d\n", wordLength, numOfSegments);
 #endif
+
 		k = wordLength - (wordLength / numOfSegments) * (numOfSegments);
 		first = (wordLength + numOfSegments - 1) / numOfSegments;
 		second = wordLength / numOfSegments;
@@ -393,7 +394,7 @@ void core_test() {
 //	StartQuery(5, f, 0, 7);
 	StartQuery(7, f, MT_EDIT_DIST, 0);
 //
-	dfs(&(trie->root));
+//	dfs(&(trie->root));
 //	EndQuery(7);
 ////	dfs(&(trie->root));
 //	printf("done\n");
@@ -407,7 +408,8 @@ void core_test() {
 	QueryID *qid;
 	unsigned int numRes;
 	GetNextAvailRes(&did, &numRes, &qid);
-	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
+
+//	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
 //	GetNextAvailRes(&did, &numRes, &qid);
 //	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
 //	GetNextAvailRes(&did, &numRes, &qid);
