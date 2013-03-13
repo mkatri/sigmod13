@@ -20,6 +20,16 @@ int hammingDistance(char *a, char *b, int n, int max) {
 	return mismatch;
 }
 
+inline int preCheck(int na, int nb, int dist) {
+	if (na == 0)
+		return nb;
+	if (nb == 0)
+		return na;
+	if (abs(na - nb) > dist)
+		return dist + 1;
+	return 0;
+}
+
 int editDistance(char* a, int na, char* b, int nb, int dist) {
 	int oo = 0x7FFFFFFF;
 
@@ -104,10 +114,10 @@ void matchWord(char *w, int l, int *count) {
 			j++;
 			if (!isEmpty(n->list)) {
 				DNode_t *cur = n->list->head.next;
-				while (cur->next) {
+				while (cur->data && cur != &(n->list->tail)) {
+					/*XXX somewhere you set the data of the list tail, this is not cool*/
 					SegmentData * segData = (SegmentData *) (cur->data);
 					QueryDescriptor * queryData = segData->parentQuery;
-//					printf("---->%x\n",segData);
 					int type = queryData->matchType;
 
 					if (((queryData->matchedWords) & (1 << (segData->wordIndex)))) {
@@ -116,28 +126,35 @@ void matchWord(char *w, int l, int *count) {
 					}
 
 					if (type == MT_EDIT_DIST) {
-
-						int d1 = editDistance(w, i,
-								queryData->words[segData->wordIndex],
+						int d1;
+						if ((d1 = preCheck(i,
 								segData->startIndex
 										- queryData->words[segData->wordIndex],
-								queryData->matchDistance);
-						if (d1 <= queryData->matchDistance) {
-							d1 += editDistance(w + j, l - j,
-									queryData->words[segData->wordIndex] + j,
-									queryData->words[segData->wordIndex + 1]
-											- segData->startIndex - (j - i),
-									queryData->matchDistance - d1);
-
+								queryData->matchDistance))
+								<= queryData->matchDistance) {
+							d1 +=
+									editDistance(w, i,
+											queryData->words[segData->wordIndex],
+											segData->startIndex
+													- queryData->words[segData->wordIndex],
+											queryData->matchDistance - d1);
 							if (d1 <= queryData->matchDistance) {
-								queryData->matchedWords |= (1
-										<< (segData->wordIndex));
-								if (queryData->matchedWords
-										== (1 << (queryData->numWords)) - 1)
-									(*count)++;
+								d1 += editDistance(w + j, l - j,
+										queryData->words[segData->wordIndex]
+												+ j,
+										queryData->words[segData->wordIndex + 1]
+												- segData->startIndex - (j - i),
+										queryData->matchDistance - d1);
+
+								if (d1 <= queryData->matchDistance) {
+									queryData->matchedWords |= (1
+											<< (segData->wordIndex));
+									if (queryData->matchedWords
+											== (1 << (queryData->numWords)) - 1)
+										(*count)++;
+								}
 							}
 						}
-
 					} else if (type == MT_HAMMING_DIST) {
 						if (i
 								== segData->startIndex
