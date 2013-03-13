@@ -51,6 +51,8 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 		T[cur][ib] = ia;
 		ib_st++;
 
+		min = ia + abs(na - ia - nb + ib);
+
 		for (ib = ib_st; ib <= ib_en; ib++) {
 			int ret = oo;
 

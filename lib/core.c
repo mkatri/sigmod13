@@ -86,11 +86,11 @@ void printWords(char out[6][32], int num) {
 
 ErrorCode StartQuery(QueryID query_id, const char* query_str,
 		MatchType match_type, unsigned int match_dist) {
-#ifdef CORE_DEBUG
-	printf("query: %d --> %s\n", query_id, query_str);
-#endif
+//#ifdef CORE_DEBUG
+//	printf("query: %d --> %s\n", query_id, query_str);
+//#endif
 
-	//TODO DNode_t ** segmentsData ;
+//TODO DNode_t ** segmentsData ;
 	int in = 0, i = 0, j = 0, wordLength = 0, k, first, second, iq = 0;
 
 	int wordSizes[6];
@@ -156,7 +156,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 		}
 
 		// loop on the word to get the segments
-		for (i = 0; (i < numOfSegments - k)&&second  ; i++) {
+		for (i = 0; (i < numOfSegments - k) && second; i++) {
 			SegmentData *sd = newSegmentdata();
 			sd->parentQuery = queryDescriptor;
 			sd->startIndex = queryDescriptor->words[in] + iq;
@@ -278,7 +278,7 @@ ErrorCode EndQuery(QueryID query_id) {
 		}
 
 		// loop on the word to get the segments
-		for (i = 0; (i < numOfSegments - k)&&second; i++) {
+		for (i = 0; (i < numOfSegments - k) && second; i++) {
 			for (j = 0; j < second; j++) {
 				segment[j] = queryDescriptor->words[in][iq];
 				iq++;
@@ -353,9 +353,9 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 
 ///////////////////////////////////////////
 void core_test() {
-	printf("%d\n\n", sizeof(HashCluster));
-	printf("%d\n\n", sizeof(int));
-	printf("%d\n\n", sizeof(HashCluster*));
+//	printf("%d\n\n", sizeof(HashCluster));
+//	printf("%d\n\n", sizeof(int));
+//	printf("%d\n\n", sizeof(HashCluster*));
 	InitializeIndex();
 	char output[32][32];
 
