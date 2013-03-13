@@ -21,7 +21,7 @@ HashTable* new_Hash_Table() {
 }
 
 HashCluster* getCluster() {
-	HashCluster* clust = (HashCluster*) malloc(sizeof(HashCluster*));
+	HashCluster* clust = (HashCluster*) malloc(sizeof(HashCluster));
 
 	clust->keys = (int*) malloc(clusterSize * sizeof(int));
 
@@ -37,9 +37,9 @@ HashCluster* getCluster() {
 
 /* TODO */
 void freeCluster(HashCluster* clust) {
-//	free(clust->keys);
-//	free(clust->pointers);
-//	free(clust);
+	free(clust->keys);
+	free(clust->pointers);
+	free(clust);
 }
 
 void insert(HashTable* ht, int id, void* ptr) {
@@ -120,8 +120,8 @@ void delete_H(HashTable* ht, int id) {
 
 		res->keys[*i] = -1;
 		res->currClusterSize--;
-		printf("====== %d %d %d %d\n", res->keys[0], res->keys[1], res->keys[2],
-				res->keys[3]);
+//		printf("====== %d %d %d %d\n", res->keys[0], res->keys[1], res->keys[2],
+//				res->keys[3]);
 		if (res->currClusterSize == 0) {
 			if (ht->table[h] == res) {
 				ht->table[h] = res->next;

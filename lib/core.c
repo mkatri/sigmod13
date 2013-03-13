@@ -51,7 +51,6 @@ inline void addQuery(int queryId, QueryDescriptor * qds) {
 
 	DNode_t* node = append(queries, qds);
 	insert(ht, queryId, node);
-	printf("addQuery id: %d =========> %d\n", queryId, node);
 
 }
 /*QUERY DESCRIPTOR MAP ENDS HERE*/
@@ -247,7 +246,6 @@ ErrorCode EndQuery(QueryID query_id) {
 #endif
 //	QueryDescriptor* queryDescriptor = getQueryDescriptor(query_id);
 	DNode_t* node = (DNode_t*) get(ht, query_id);
-	printf("endQuery id: %d =========> %d\n", query_id, node);
 	QueryDescriptor* queryDescriptor = (QueryDescriptor*) node->data;
 	delete(node);
 	int i, j;
@@ -307,7 +305,6 @@ ErrorCode EndQuery(QueryID query_id) {
 	freeQueryDescriptor(queryDescriptor);
 	delete_H(ht, query_id);
 	node = (DNode_t*) get(ht, query_id);
-	printf("endQuery id: %d =========> %d\n", query_id, node);
 //	qmap[query_id] = 0;
 	return EC_SUCCESS;
 }
