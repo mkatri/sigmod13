@@ -386,7 +386,7 @@ void core_test() {
 	StartQuery(7, f2, MT_EDIT_DIST, 7);
 
 	dfs(&(trie->root));
-//	EndQuery(7);
+	EndQuery(7);
 	dfs(&(trie->root));
 	printf("done\n");
 	hashTest();
