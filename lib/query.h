@@ -18,6 +18,7 @@ typedef struct {
 	char numWords;
 	int matchType;
 	int matchDistance;
+	int queryId;
 } QueryDescriptor;
 
 typedef struct {

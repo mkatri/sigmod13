@@ -29,7 +29,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-#include <core.h>
+//#include <core.h>
 #include "query.h"
 #include "trie.h"
 #include "document.h"
@@ -38,14 +38,20 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////
 Trie_t *trie;
 LinkedList_t *docList;
+LinkedList_t *queries;
 
 /*QUERY DESCRIPTOR MAP GOES HERE*/
 QueryDescriptor* qmap[1000000];
+HashTable* ht;
 inline QueryDescriptor * getQueryDescriptor(int queryId) {
 	return qmap[queryId];
 }
 inline void addQuery(int queryId, QueryDescriptor * qds) {
-	qmap[queryId] = qds;
+//	qmap[queryId] = qds;
+
+	DNode_t* node = append(queries,qds);
+	insert(ht,queryId,node);
+
 }
 /*QUERY DESCRIPTOR MAP ENDS HERE*/
 
@@ -53,6 +59,8 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 		int * idx);
 
 void init() {
+	queries = newLinkedList();
+	ht = new_Hash_Table();
 	trie = newTrie();
 	docList = newLinkedList();
 }
@@ -100,6 +108,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	QueryDescriptor * queryDescriptor = newQueryDescriptor();
 	queryDescriptor->matchDistance = match_dist;
 	queryDescriptor->matchType = match_type;
+	queryDescriptor->queryId = query_id;
 
 	addQuery(query_id, queryDescriptor);
 
@@ -322,17 +331,26 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 	doc_desc->matches = alloc;
 	doc_desc->numResults = queryMatchCount;
 	int p = 0;
-	for (i = 0; i < 1000000; i++) {
-		if (qmap[i]) {
-			if (qmap[i]->matchedWords == (1 << (qmap[i]->numWords)) - 1) {
-#ifdef CORE_DEBUG
-				printf("doc %d matched query %d\n", doc_id, i);
-#endif
-				doc_desc->matches[p++] = i; //since qmap is a map, i is the QueryID
-			}
-			qmap[i]->matchedWords = 0;
-		}
+
+	DNode_t* cur = queries->head;
+	while(cur!=queries->tail){
+		QueryDescriptor * cqd = (QueryDescriptor *)cur->data;
+		if (cqd->matchedWords == (1 << (cqd->numWords)) - 1)
+			doc_desc->matches[p++] = cqd->queryId;
+		cqd[i]->matchedWords = 0;
+		cur= cur->next;
 	}
+//	for (i = 0; i < 1000000; i++) {
+//		if (qmap[i]) {
+//			if (qmap[i]->matchedWords == (1 << (qmap[i]->numWords)) - 1) {
+//#ifdef CORE_DEBUG
+//				printf("doc %d matched query %d\n", doc_id, i);
+//#endif
+//				doc_desc->matches[p++] = i; //since qmap is a map, i is the QueryID
+//			}
+//			qmap[i]->matchedWords = 0;
+//		}
+//	}
 
 	append(docList, doc_desc);
 	return EC_SUCCESS;
