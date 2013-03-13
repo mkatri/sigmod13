@@ -288,6 +288,7 @@ ErrorCode EndQuery(QueryID query_id) {
 		}
 	}
 	freeQueryDescriptor(queryDescriptor);
+	qmap[query_id] = 0;
 	return EC_SUCCESS;
 }
 

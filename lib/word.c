@@ -29,9 +29,17 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 
 	int cur = 0, min;
 	ia = 0;
+	min = 1 << 30;
 
-	for (ib = 0; ib <= nb; ib++)
+	for (ib = 0; ib <= nb; ib++) {
 		T[cur][ib] = ib;
+		int tmp = ib + abs((na - ia) - (nb - ib));
+		if (tmp < min)
+			min = tmp;
+	}
+
+	if (min > dist)
+		return min;
 
 	cur = 1 - cur;
 
@@ -42,8 +50,6 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 		ib = 0;
 		T[cur][ib] = ia;
 		ib_st++;
-
-		min = 1 << 30;
 
 		for (ib = ib_st; ib <= ib_en; ib++) {
 			int ret = oo;
