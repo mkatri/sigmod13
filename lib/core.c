@@ -41,11 +41,11 @@ LinkedList_t *docList;
 LinkedList_t *queries;
 
 /*QUERY DESCRIPTOR MAP GOES HERE*/
-QueryDescriptor* qmap[1000000];
+//QueryDescriptor* qmap[1000000];
 HashTable* ht;
-inline QueryDescriptor * getQueryDescriptor(int queryId) {
-	return qmap[queryId];
-}
+//inline QueryDescriptor * getQueryDescriptor(int queryId) {
+//	return qmap[queryId];
+//}
 inline void addQuery(int queryId, QueryDescriptor * qds) {
 //	qmap[queryId] = qds;
 
@@ -244,8 +244,10 @@ ErrorCode EndQuery(QueryID query_id) {
 #ifdef CORE_DEBUG
 	puts("inside here");
 #endif
-	QueryDescriptor* queryDescriptor = getQueryDescriptor(query_id);
-
+//	QueryDescriptor* queryDescriptor = getQueryDescriptor(query_id);
+	DNode_t* node = (DNode_t*)get(ht,query_id);
+	QueryDescriptor* queryDescriptor = (QueryDescriptor*)node->data;
+	delete(node);
 	int i, j;
 	int in, iq, wordLength, numOfSegments = queryDescriptor->matchDistance + 1,
 			k, first, second;
@@ -301,7 +303,7 @@ ErrorCode EndQuery(QueryID query_id) {
 		}
 	}
 	freeQueryDescriptor(queryDescriptor);
-	qmap[query_id] = 0;
+//	qmap[query_id] = 0;
 	return EC_SUCCESS;
 }
 
