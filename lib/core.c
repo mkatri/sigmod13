@@ -97,6 +97,12 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 //#ifdef CORE_DEBUG
 //	printf("query: %d --> %s\n", query_id, query_str);
 //#endif
+	if (query_id == 6 || query_id == 18 || query_id == 42 || query_id == 51
+			|| query_id == 55 || query_id == 87 || query_id == 124
+			|| query_id == 132 || query_id == 149)
+		printf(
+				"start query: id = %d match type = %d , match dist = %d , query = %s\n",
+				query_id, match_type, match_dist, query_str);
 
 //TODO DNode_t ** segmentsData ;
 	int in = 0, i = 0, j = 0, wordLength = 0, k, first, second, iq = 0;
@@ -161,7 +167,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			sd->wordIndex = in;
 
 			//insert in trie
-		//	printf("segment >>>> %s\n", segment);
+			//	printf("segment >>>> %s\n", segment);
 			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
 					first, match_type, sd);
 
@@ -182,7 +188,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			//sd->startIndex = iq - second;
 			sd->wordIndex = in;
 			//insert in trie
-		//	printf("segment >>>> %s\n", segment);
+			//	printf("segment >>>> %s\n", segment);
 			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
 					second, match_type, sd);
 		}
@@ -250,6 +256,14 @@ ErrorCode EndQuery(QueryID query_id) {
 #ifdef CORE_DEBUG
 	puts("inside here");
 #endif
+
+	if (query_id == 6 || query_id == 18 || query_id == 42 || query_id == 51
+			|| query_id == 55 || query_id == 87 || query_id == 124
+			|| query_id == 132 || query_id == 149)
+		printf(
+				"end query: id = %d match type = %d , match dist = %d , query = %s\n",
+				query_id);
+
 //	QueryDescriptor* queryDescriptor = getQueryDescriptor(query_id);
 	DNode_t* node = (DNode_t*) get(ht, query_id);
 	QueryDescriptor* queryDescriptor = (QueryDescriptor*) node->data;
@@ -259,7 +273,7 @@ ErrorCode EndQuery(QueryID query_id) {
 			k, first, second;
 	char segment[32];
 	int top = 0;
-	for (in = 0; in < 5 && queryDescriptor->words[in + 1] ; in++) {
+	for (in = 0; in < 5 && queryDescriptor->words[in + 1]; in++) {
 
 		//get the word length
 		iq = 0;
@@ -319,6 +333,8 @@ ErrorCode EndQuery(QueryID query_id) {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
+	if (doc_id == 94 || doc_id > 960)
+		printf("\n\nDOC ID: %d  %s\n\n", doc_id, doc_str);
 	int i = 0, e = 0;
 	int queryMatchCount = 0;
 
@@ -370,6 +386,7 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 
 ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 		QueryID** p_query_ids) {
+
 	DNode_t *node = docList->head.next;
 	DocumentDescriptor* doc_desc = (DocumentDescriptor *) (node->data);
 	*p_query_ids = doc_desc->matches;
