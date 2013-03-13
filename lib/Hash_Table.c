@@ -1,5 +1,3 @@
-#include <stdlib.h>
-#include <stdio.h>
 #include "Hash_Table.h"
 
 size_t size = 5000011;
@@ -17,15 +15,16 @@ int hash(int key) {
 }
 
 HashTable* new_Hash_Table() {
-	HashTable* ht = (HashTable*) malloc(sizeof(HashTable*));
+	HashTable* ht = (HashTable*) malloc(sizeof(HashTable));
 	ht->table = (HashCluster**) malloc(size * sizeof(HashCluster*));
 	return ht;
 }
 
 HashCluster* getCluster() {
-	HashCluster* clust = (HashCluster*) malloc(sizeof(HashCluster*));
+	HashCluster* clust = (HashCluster*) malloc(sizeof(HashCluster));
 
 	clust->keys = (int*) malloc(clusterSize * sizeof(int));
+
 	clust->pointers = malloc(clusterSize * sizeof(void*));
 
 	int* k = clust->keys;
@@ -38,6 +37,9 @@ HashCluster* getCluster() {
 
 /* TODO */
 void freeCluster(HashCluster* clust) {
+	free(clust->keys);
+	free(clust->pointers);
+	free(clust);
 }
 
 void insert(HashTable* ht, int id, void* ptr) {
@@ -94,8 +96,8 @@ void* get(HashTable* ht, int id) {
 	HashCluster* res = ht->table[h];
 
 	HashCluster* prev = ht->table[h];
-//	printf("====== %d %d %d %d\n", res->keys[0], res->keys[1], res->keys[2],
-//			res->keys[3]);
+//	printf("====== %d %d %d %d\n", res->pointers[0], res->pointers[1],
+//			res->pointers[2], res->pointers[3]);
 	search(&res, &prev, id, i);
 	int ii = *i;
 	free(i);
@@ -121,7 +123,11 @@ void delete_H(HashTable* ht, int id) {
 //		printf("====== %d %d %d %d\n", res->keys[0], res->keys[1], res->keys[2],
 //				res->keys[3]);
 		if (res->currClusterSize == 0) {
-			beforeRes->next = res->next;
+			if (ht->table[h] == res) {
+				ht->table[h] = res->next;
+			} else {
+				beforeRes->next = res->next;
+			}
 			freeCluster(res);
 		}
 	}
@@ -133,22 +139,22 @@ void hashTest() {
 	int i = 0;
 	printf("======INSERTION======\n");
 	for (i = 0; i < 10; ++i) {
-		printf("%d\n", i);
-		insert(ht, i, i + 5);
+		printf("%d\n", 0);
+		insert(ht, 0, i + 5);
 	}
 	printf("=====GET=======\n");
 	for (i = 0; i < 10; ++i) {
-		printf("%d\n", i);
-		printf("pointer returned: %d\n", get(ht, i));
+		printf("%d\n", 0);
+		printf("pointer returned: %d\n", get(ht, 0));
 	}
 	printf("======DELETION======\n");
 	for (i = 0; i < 10; ++i) {
-		printf("%d\n", i);
-		delete_H(ht, i);
+		printf("%d\n", 0);
+		delete_H(ht, 0);
 	}
 	printf("=====GET=======\n");
 	for (i = 0; i < 10; ++i) {
-		printf("%d\n", i);
-		printf("pointer returned: %d\n", get(ht, i));
+		printf("%d\n", 0);
+		printf("pointer returned: %d\n", get(ht, 0));
 	}
 }

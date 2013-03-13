@@ -1,3 +1,5 @@
+#include <stdlib.h>
+#include <stdio.h>
 #define byte char
 
 typedef struct {
