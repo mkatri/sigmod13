@@ -233,7 +233,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			sd->wordIndex = in;
 
 			//insert in trie
-		//	printf("segment >>>> %s\n", segment);
+			//	printf("segment >>>> %s\n", segment);
 			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
 					first, match_type, sd);
 
@@ -254,7 +254,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			//sd->startIndex = iq - second;
 			sd->wordIndex = in;
 			//insert in trie
-		//	printf("segment >>>> %s\n", segment);
+			//	printf("segment >>>> %s\n", segment);
 			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
 					second, match_type, sd);
 		}
@@ -322,6 +322,7 @@ ErrorCode EndQuery(QueryID query_id) {
 #ifdef CORE_DEBUG
 	puts("inside here");
 #endif
+
 //	QueryDescriptor* queryDescriptor = getQueryDescriptor(query_id);
 	DNode_t* node = (DNode_t*) get(ht, query_id);
 	QueryDescriptor* queryDescriptor = (QueryDescriptor*) node->data;
@@ -331,7 +332,7 @@ ErrorCode EndQuery(QueryID query_id) {
 			k, first, second;
 	char segment[32];
 	int top = 0;
-	for (in = 0; in < 5 && queryDescriptor->words[in + 1] ; in++) {
+	for (in = 0; in < 5 && queryDescriptor->words[in + 1]; in++) {
 
 		//get the word length
 		iq = 0;
@@ -440,6 +441,7 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 
 ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 		QueryID** p_query_ids) {
+
 	DNode_t *node = docList->head.next;
 	DocumentDescriptor* doc_desc = (DocumentDescriptor *) (node->data);
 	*p_query_ids = doc_desc->matches;
