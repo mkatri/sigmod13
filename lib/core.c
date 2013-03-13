@@ -1,4 +1,3 @@
-//#define CORE_DEBUG
 /*
  * core.cpp version 1.0
  * Copyright (c) 2013 KAUST - InfoCloud Group (All Rights Reserved)
@@ -26,14 +25,76 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+//#define CORE_DEBUG
+#define NUM_THREADS 12
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <pthread.h>
 #include <core.h>
 #include "query.h"
 #include "trie.h"
 #include "document.h"
 #include "Hash_Table.h"
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+//////////////// NAIVE THREADING STRUCTS //////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////
+
+pthread_t threads[NUM_THREADS];
+int wake_up;
+int done;
+pthread_cond_t done_cond;
+pthread_cond_t wake_up_cond;
+pthread_mutex_t thread_sync_lock;
+pthread_mutex_t doc_lock;
+pthread_mutex_t match_count_lock;
+pthread_mutex_t match_lock;
+
+char *cur_doc;
+int cur_doc_i;
+int cur_doc_match_count;
+
+void *matcher_thread(void *n) {
+	while (1) {
+		pthread_mutex_lock(&thread_sync_lock);
+		if (wake_up <= 0)
+			pthread_cond_wait(&wake_up_cond, &thread_sync_lock);
+		else {
+			wake_up--;
+		}
+		pthread_mutex_unlock(&thread_sync_lock);
+
+		while (1) {
+			pthread_mutex_lock(&doc_lock);
+			int i = cur_doc_i;
+			if (!cur_doc[i]) {
+				pthread_mutex_unlock(&doc_lock);
+				break;
+			}
+
+			while (cur_doc[i] == ' ')
+				i++;
+
+			int e = i;
+			while (cur_doc[e] != ' ' && cur_doc[e] != '\0')
+				e++;
+
+			cur_doc_i = e;
+
+			matchWord(&cur_doc[i], e - i, &cur_doc_match_count,
+					&match_count_lock);
+			pthread_mutex_unlock(&doc_lock);
+		}
+
+		pthread_mutex_lock(&thread_sync_lock);
+		done++;
+		pthread_cond_signal(&done_cond);
+		pthread_mutex_unlock(&thread_sync_lock);
+	}
+	return 0;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 Trie_t *trie;
@@ -65,6 +126,17 @@ void init() {
 
 ErrorCode InitializeIndex() {
 	init();
+	pthread_cond_init(&wake_up_cond, NULL);
+	pthread_cond_init(&done_cond, NULL);
+	pthread_mutex_init(&thread_sync_lock, NULL);
+	pthread_mutex_init(&doc_lock, NULL);
+	pthread_mutex_init(&match_count_lock, NULL);
+	pthread_mutex_init(&match_lock, NULL);
+
+	int i;
+	for (i = 0; i < NUM_THREADS; i++) {
+		pthread_create(&threads[i], NULL, matcher_thread, NULL);
+	}
 	return EC_SUCCESS;
 }
 
@@ -299,29 +371,26 @@ ErrorCode EndQuery(QueryID query_id) {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
-	int i = 0, e = 0;
-	int queryMatchCount = 0;
-
-	while (doc_str[i]) {
-		while (doc_str[i] == ' ')
-			i++;
-
-		e = i;
-		while (doc_str[e] != ' ' && doc_str[e] != '\0')
-			e++;
-
-		matchWord(&doc_str[i], e - i, &queryMatchCount);
-
-		i = e;
+	pthread_mutex_lock(&thread_sync_lock);
+	cur_doc = doc_str;
+	cur_doc_i = 0;
+	cur_doc_match_count = 0;
+	wake_up = NUM_THREADS;
+	done = 0;
+	pthread_cond_signal(&wake_up_cond);
+	while (done < NUM_THREADS) {
+		pthread_cond_wait(&done_cond, &thread_sync_lock);
 	}
+	pthread_mutex_unlock(&thread_sync_lock);
 
 	void *alloc = malloc(
-			sizeof(DocumentDescriptor) + sizeof(QueryID) * queryMatchCount);
-	DocumentDescriptor *doc_desc = alloc + sizeof(QueryID) * queryMatchCount;
+			sizeof(DocumentDescriptor) + sizeof(QueryID) * cur_doc_match_count);
+	DocumentDescriptor *doc_desc = alloc
+			+ sizeof(QueryID) * cur_doc_match_count;
 	doc_desc->docId = doc_id;
 	doc_desc->matches = alloc;
-	doc_desc->numResults = queryMatchCount;
-	int p = 0;
+	doc_desc->numResults = cur_doc_match_count;
+	int p = 0, i;
 	for (i = 0; i < 1000000; i++) {
 		if (qmap[i]) {
 			if (qmap[i]->matchedWords == (1 << (qmap[i]->numWords)) - 1) {
@@ -329,7 +398,7 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 				printf("doc %d matched query %d\n", doc_id, i);
 #endif
 				doc_desc->matches[p] = i; //since qmap is a map, i is the QueryID
-				if (p++ == queryMatchCount)
+				if (p++ == cur_doc_match_count)
 					break;
 			}
 			qmap[i]->matchedWords = 0;

@@ -65,7 +65,7 @@ bin/obj/test.o: $(LIB_OBJ_DIR) test_ours/test.c
 	$(CC) $(CFLAGS) -c -o $@ $^
 	
 lib_ours: $(LIB_OBJ_FILES)
-	$(CXX) $(CXXFLAGS) -shared -o bin/lib$(OUR_LIBRARY).so $(LIB_OBJ_FILES)	
+	$(CXX) $(CXXFLAGS) -shared -o bin/lib$(OUR_LIBRARY).so $(LIB_OBJ_FILES) $(LDFLAGS)
 	
 testours: lib_ours bin/obj/test.o
 	$(CXX) $(CXXFLAGS) -o bin/testours bin/obj/test.o ./bin/lib$(OUR_LIBRARY).so 	

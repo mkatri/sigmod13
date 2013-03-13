@@ -1,3 +1,4 @@
+#include <pthread.h>
 #include "linked_list.h"
 #include "trie.h"
 #include "query.h"
@@ -101,7 +102,7 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 	return ret;
 }
 
-void matchWord(char *w, int l, int *count) {
+void matchWord(char *w, int l, int *count, pthread_mutex_t *count_lock) {
 
 	if (l > 35)
 		return;
@@ -109,8 +110,7 @@ void matchWord(char *w, int l, int *count) {
 	int i = 0;
 	for (i = 0; i < l; i++) {
 		int j = i;
-		TrieNode_t *n = trie;
-//		TrieNode_t *p = 0;
+		TrieNode_t *n = &trie->root;
 		while ((n = next_node(n, w[j])) && j < l) {
 			j++;
 			if (!isEmpty(n->list)) {
@@ -154,11 +154,22 @@ void matchWord(char *w, int l, int *count) {
 										queryData->matchDistance - d1);
 							}
 							if (d1 <= queryData->matchDistance) {
-								queryData->matchedWords |= (1
-										<< (segData->wordIndex));
-								if (queryData->matchedWords
-										== (1 << (queryData->numWords)) - 1)
-									(*count)++;
+
+								pthread_mutex_lock(&queryData->query_lock);
+								if (((queryData->matchedWords)
+										& (1 << (segData->wordIndex))) == 0) {
+									queryData->matchedWords |= (1
+											<< (segData->wordIndex));
+
+									if (queryData->matchedWords
+											== (1 << (queryData->numWords))
+													- 1) {
+										pthread_mutex_lock(count_lock);
+										(*count)++;
+										pthread_mutex_unlock(count_lock);
+									}
+								}
+								pthread_mutex_unlock(&queryData->query_lock);
 							}
 
 						}
@@ -180,24 +191,45 @@ void matchWord(char *w, int l, int *count) {
 										queryData->matchDistance - d1);
 
 								if (d1 <= queryData->matchDistance) {
-									queryData->matchedWords |= (1
-											<< (segData->wordIndex));
-									if (queryData->matchedWords
-											== (1 << (queryData->numWords)) - 1)
-										(*count)++;
+									pthread_mutex_lock(&queryData->query_lock);
+									if (((queryData->matchedWords)
+											& (1 << (segData->wordIndex)))
+											== 0) {
+										queryData->matchedWords |= (1
+												<< (segData->wordIndex));
+
+										if (queryData->matchedWords
+												== (1 << (queryData->numWords))
+														- 1) {
+											pthread_mutex_lock(count_lock);
+											(*count)++;
+											pthread_mutex_unlock(count_lock);
+										}
+									}
+									pthread_mutex_unlock(
+											&queryData->query_lock);
 								}
 							}
 						}
 					} else if (i == 0 && j == l) { // Exact matching must be done from the start of the word only
-						queryData->matchedWords |= (1 << (segData->wordIndex));
-						if (queryData->matchedWords
-								== (1 << (queryData->numWords)) - 1)
-							(*count)++;
+						pthread_mutex_lock(&queryData->query_lock);
+						if (((queryData->matchedWords)
+								& (1 << (segData->wordIndex))) == 0) {
+							queryData->matchedWords |= (1
+									<< (segData->wordIndex));
+
+							if (queryData->matchedWords
+									== (1 << (queryData->numWords)) - 1) {
+								pthread_mutex_lock(count_lock);
+								(*count)++;
+								pthread_mutex_unlock(count_lock);
+							}
+						}
+						pthread_mutex_unlock(&queryData->query_lock);
 					}
 					cur = cur->next;
 				}
 			}
-//			p = n;
 		}
 	}
 }
