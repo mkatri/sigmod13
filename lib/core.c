@@ -84,11 +84,11 @@ void printWords(char out[6][32], int num) {
 
 ErrorCode StartQuery(QueryID query_id, const char* query_str,
 		MatchType match_type, unsigned int match_dist) {
-#ifdef CORE_DEBUG
-	printf("query: %d --> %s\n", query_id, query_str);
-#endif
+//#ifdef CORE_DEBUG
+//	printf("query: %d --> %s\n", query_id, query_str);
+//#endif
 
-	//TODO DNode_t ** segmentsData ;
+//TODO DNode_t ** segmentsData ;
 	int in = 0, i = 0, j = 0, wordLength = 0, k, first, second, iq = 0;
 
 	int wordSizes[6];
@@ -154,7 +154,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 		}
 
 		// loop on the word to get the segments
-		for (i = 0; (i < numOfSegments - k)&&second  ; i++) {
+		for (i = 0; (i < numOfSegments - k) && second; i++) {
 			SegmentData *sd = newSegmentdata();
 			sd->parentQuery = queryDescriptor;
 			sd->startIndex = queryDescriptor->words[in] + iq;
@@ -231,7 +231,7 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 
 ErrorCode EndQuery(QueryID query_id) {
 
-	puts("inside here");
+//	puts("inside here");
 	QueryDescriptor* queryDescriptor = getQueryDescriptor(query_id);
 
 	int i, j;
@@ -255,7 +255,7 @@ ErrorCode EndQuery(QueryID query_id) {
 		 */
 		/*how do we prove this*/
 
-		printf(">>>>>     %d %d\n", wordLength, numOfSegments);
+//		printf(">>>>>     %d %d\n", wordLength, numOfSegments);
 		k = wordLength - (wordLength / numOfSegments) * (numOfSegments);
 		first = (wordLength + numOfSegments - 1) / numOfSegments;
 		second = wordLength / numOfSegments;
@@ -274,7 +274,7 @@ ErrorCode EndQuery(QueryID query_id) {
 		}
 
 		// loop on the word to get the segments
-		for (i = 0; (i < numOfSegments - k)&&second; i++) {
+		for (i = 0; (i < numOfSegments - k) && second; i++) {
 			for (j = 0; j < second; j++) {
 				segment[j] = queryDescriptor->words[in][iq];
 				iq++;
@@ -321,7 +321,7 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 	for (i = 0; i < 1000000; i++) {
 		if (qmap[i]) {
 			if (qmap[i]->matchedWords == (1 << (qmap[i]->numWords)) - 1) {
-				printf("doc %d matched query %d\n", doc_id, i);
+//				printf("doc %d matched query %d\n", doc_id, i);
 				doc_desc->matches[p++] = i; //since qmap is a map, i is the QueryID
 			}
 			qmap[i]->matchedWords = 0;
@@ -347,9 +347,9 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 
 ///////////////////////////////////////////
 void core_test() {
-	printf("%d\n\n", sizeof(HashCluster));
-	printf("%d\n\n", sizeof(int));
-	printf("%d\n\n", sizeof(HashCluster*));
+//	printf("%d\n\n", sizeof(HashCluster));
+//	printf("%d\n\n", sizeof(int));
+//	printf("%d\n\n", sizeof(HashCluster*));
 	InitializeIndex();
 	char output[32][32];
 
