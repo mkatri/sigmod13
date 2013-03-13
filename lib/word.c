@@ -102,9 +102,10 @@ void matchWord(char *w, int l, int *count) {
 			j++;
 			if (!isEmpty(n->list)) {
 				DNode_t *cur = n->list->head.next;
-				while (cur->data) {
+				while (cur->next) {
 					SegmentData * segData = (SegmentData *) (cur->data);
 					QueryDescriptor * queryData = segData->parentQuery;
+//					printf("---->%x\n",segData);
 					int type = queryData->matchType;
 
 					if (((queryData->matchedWords) & (1 << (segData->wordIndex)))) {

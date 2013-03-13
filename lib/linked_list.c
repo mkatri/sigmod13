@@ -5,6 +5,7 @@
 LinkedList_t* newLinkedList() {
 	LinkedList_t* ret = (LinkedList_t*) malloc(sizeof(LinkedList_t));
 	ret->head.next = &(ret->tail), ret->tail.prev = &(ret->head);
+	ret->head.data = 0, ret->tail.data = 0;
 	ret->head.prev = 0, ret->tail.next = 0;
 	return ret;
 }
