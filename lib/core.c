@@ -363,6 +363,7 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 //		cqd->matchedWords = 0;
 //		cur = cur->next;
 //	}
+
 //	for (i = 0; i < 1000000; i++) {
 //		if (qmap[i]) {
 //			if (qmap[i]->matchedWords == (1 << (qmap[i]->numWords)) - 1) {
@@ -395,6 +396,8 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 
 ///////////////////////////////////////////
 void core_test() {
+	unsigned int t = 9113677439;
+	printf("%llu",t); fflush(0);
 //	printf("%d\n\n", sizeof(HashCluster));
 //	printf("%d\n\n", sizeof(int));
 //	printf("%d\n\n", sizeof(HashCluster*));

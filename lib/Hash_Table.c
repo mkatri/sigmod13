@@ -1,9 +1,10 @@
 #include "Hash_Table.h"
 
 size_t size = 1000000007;
+//int size = 5000011;
 char clusterSize = 8;
 
-int hash(int key) {
+int hash(unsigned int key) {
 	return key % size;
 //	return ((long long)key * 2654435761l) % size;
 	//===================
