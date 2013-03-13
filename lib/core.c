@@ -1,4 +1,4 @@
-#define CORE_DEBUG
+//#define CORE_DEBUG
 /*
  * core.cpp version 1.0
  * Copyright (c) 2013 KAUST - InfoCloud Group (All Rights Reserved)
@@ -77,9 +77,11 @@ ErrorCode DestroyIndex() {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 void printWords(char out[6][32], int num) {
+#ifdef CORE_DEBUG
 	int i = 0;
 	for (i = 0; i < num; i++)
 		puts(out[i]);
+#endif
 }
 
 ErrorCode StartQuery(QueryID query_id, const char* query_str,
@@ -230,8 +232,9 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode EndQuery(QueryID query_id) {
-
+#ifdef CORE_DEBUG
 	puts("inside here");
+#endif
 	QueryDescriptor* queryDescriptor = getQueryDescriptor(query_id);
 
 	int i, j;
@@ -254,8 +257,9 @@ ErrorCode EndQuery(QueryID query_id) {
 		 * and second =2;
 		 */
 		/*how do we prove this*/
-
+#ifdef CORE_DEBUG
 		printf(">>>>>     %d %d\n", wordLength, numOfSegments);
+#endif
 		k = wordLength - (wordLength / numOfSegments) * (numOfSegments);
 		first = (wordLength + numOfSegments - 1) / numOfSegments;
 		second = wordLength / numOfSegments;
@@ -321,7 +325,9 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 	for (i = 0; i < 1000000; i++) {
 		if (qmap[i]) {
 			if (qmap[i]->matchedWords == (1 << (qmap[i]->numWords)) - 1) {
+#ifdef CORE_DEBUG
 				printf("doc %d matched query %d\n", doc_id, i);
+#endif
 				doc_desc->matches[p++] = i; //since qmap is a map, i is the QueryID
 			}
 			qmap[i]->matchedWords = 0;

@@ -24,7 +24,9 @@ inline TrieNode_t* next_node(TrieNode_t *current, char c) {
 
 DNode_t* TrieInsert(Trie_t * trie, char * str, int length, int type,
 		void* queryData) {
+#ifdef CORE_DEBUG
 	puts(str);
+#endif
 	TrieNode_t* current = &(trie->root);
 	current->count[type]++;
 	int i;
@@ -39,7 +41,9 @@ DNode_t* TrieInsert(Trie_t * trie, char * str, int length, int type,
 	return append(current->list, queryData);
 }
 void deleteTrieNode(TrieNode_t* node) {
+#ifdef CORE_DEBUG
 	printf("DELETING NODE\n");
+#endif
 	if (node->list != 0)
 		free(node->list);
 	free(node);
@@ -48,8 +52,10 @@ void deleteTrieNode(TrieNode_t* node) {
 //NODE END QUERY BEFORE CALLING THIS FUNCTION MUST DELETE ALL LINKEDLIST NODES BELONGING TO SUCH QUERY
 void TrieDelete(Trie_t* trie, char*str, int length, int type) {
 	TrieNode_t* current = &(trie->root);
+#ifdef CORE_DEBUG
 	printf("----> deleting %d characters\n", length);
 	puts(str);
+#endif
 	int i;
 	for (i = 0; i < length; i++) {
 		TrieNode_t *next = next_node(current, str[i]);
@@ -71,7 +77,9 @@ void TrieDelete(Trie_t* trie, char*str, int length, int type) {
 }
 void dfs(TrieNode_t * node) {
 	int i;
+#ifdef CORE_DEBUG
 	printf("%d %d %d\n", node->count[0], node->count[1], node->count[2]);
+#endif
 	for (i = 0; i < CHAR_SET_SIZE; i++) {
 		if (node->next[i] != 0) {
 			putchar(i + 'a');
