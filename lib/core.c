@@ -125,10 +125,12 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	for (top = 0; top < numOfSegments * numOfWords; top++)
 		queryDescriptor->segmentsData[top] = 0;
 	top = 0;
+	printf("num of words %d\n",numOfWords);
 	for (in = 0; in < numOfWords; in++) {
 		//get the word length
 		iq = 0;
 		wordLength = wordSizes[in];
+		printf("word >> %s\n", queryDescriptor->words[in]);
 		//here (wordSizes[in]+1 to add the null at the end of char array
 
 		/*
@@ -159,6 +161,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			sd->wordIndex = in;
 
 			//insert in trie
+			printf("segment >>>> %s\n", segment);
 			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
 					first, match_type, sd);
 
@@ -179,6 +182,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			//sd->startIndex = iq - second;
 			sd->wordIndex = in;
 			//insert in trie
+			printf("segment >>>> %s\n", segment);
 			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
 					second, match_type, sd);
 		}
@@ -216,12 +220,14 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 	while (query_str[iq]) {
 
 		if (query_str[iq] == ' ') {
-			length[(*idx)] = idx1;
-			(*idx)++;
-			words[*idx] = &output[idx2];
-			idx1 = 0;
 			while (query_str[iq] == ' ')
 				iq++;
+			if (query_str[iq]) {
+				length[(*idx)] = idx1;
+				(*idx)++;
+				words[*idx] = &output[idx2];
+				idx1 = 0;
+			}
 
 		}
 
@@ -378,30 +384,30 @@ void core_test() {
 //	printf("%d\n\n", sizeof(HashCluster));
 //	printf("%d\n\n", sizeof(int));
 //	printf("%d\n\n", sizeof(HashCluster*));
-//	InitializeIndex();
+	InitializeIndex();
 //	char output[32][32];
 //
-//	char f[32] = "mother";
+	char f[32] = "    mother    cook    torli     bitngan    ";
 //	char f2[32] = "  ok no   fucker  ";
 //
 //	StartQuery(5, f, 0, 7);
-//	StartQuery(7, f2, MT_EDIT_DIST, 7);
+	StartQuery(7, f, MT_EDIT_DIST, 0);
 //
-////	dfs(&(trie->root));
+	dfs(&(trie->root));
 //	EndQuery(7);
 ////	dfs(&(trie->root));
 //	printf("done\n");
 
-	hashTest();
-
+	//hashTest();
+	MatchDocument(10, "    mother    cook    torli     bitngan    ");
 //	MatchDocument(10, "yomother fucker");
 //	MatchDocument(20, "fuck you oknofutcher");
 //	MatchDocument(30, "fuck mother you oknofucker father");
-//	DocID did;
-//	QueryID *qid;
-//	unsigned int numRes;
-//	GetNextAvailRes(&did, &numRes, &qid);
-//	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
+	DocID did;
+	QueryID *qid;
+	unsigned int numRes;
+	GetNextAvailRes(&did, &numRes, &qid);
+	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
 //	GetNextAvailRes(&did, &numRes, &qid);
 //	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
 //	GetNextAvailRes(&did, &numRes, &qid);
