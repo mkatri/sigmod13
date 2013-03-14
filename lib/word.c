@@ -1,8 +1,9 @@
 #include <pthread.h>
-#include "threading.h"
+#include "submit_params.h"
 #include "linked_list.h"
 #include "trie.h"
 #include "query.h"
+#include "dyn_array.h"
 
 extern Trie_t *trie;
 
@@ -102,7 +103,7 @@ int editDistance(int tid, char* a, int na, char* b, int nb, int dist) {
 	return ret;
 }
 
-void matchWord(int did, int tid, char *w, int l, int *count) {
+void matchWord(int did, int tid, char *w, int l, DynamicArray *results) {
 	if (l > 35)
 		return;
 
@@ -111,6 +112,9 @@ void matchWord(int did, int tid, char *w, int l, int *count) {
 		int j = i;
 		TrieNode_t *n = &trie->root;
 		while ((n = next_node(n, w[j])) && j < l) {
+			if (n->count[MT_EDIT_DIST] == 0 && n->count[MT_HAMMING_DIST] == 0
+					&& i > 0)
+				break;
 			j++;
 			if (!isEmpty(n->list)) {
 				DNode_t *cur = n->list->head.next;
@@ -119,7 +123,10 @@ void matchWord(int did, int tid, char *w, int l, int *count) {
 					SegmentData * segData = (SegmentData *) (cur->data);
 					QueryDescriptor * queryData = segData->parentQuery;
 					int type = queryData->matchType;
-
+					if (queryData->docId[tid] != did) {
+						queryData->docId[tid] = did;
+						queryData->matchedWords[tid] = 0;
+					}
 					if (((queryData->matchedWords[tid])
 							& (1 << (segData->wordIndex)))) {
 						cur = cur->next;
@@ -153,7 +160,7 @@ void matchWord(int did, int tid, char *w, int l, int *count) {
 
 								if (queryData->matchedWords[tid]
 										== (1 << (queryData->numWords)) - 1) {
-									(*count)++;
+									dyn_array_insert(results, queryData->queryId);
 								}
 							}
 						}
@@ -181,7 +188,7 @@ void matchWord(int did, int tid, char *w, int l, int *count) {
 									if (queryData->matchedWords[tid]
 											== (1 << (queryData->numWords))
 													- 1) {
-										(*count)++;
+										dyn_array_insert(results, queryData->queryId);
 									}
 								}
 							}
@@ -192,7 +199,7 @@ void matchWord(int did, int tid, char *w, int l, int *count) {
 
 						if (queryData->matchedWords[tid]
 								== (1 << (queryData->numWords)) - 1) {
-							(*count)++;
+							dyn_array_insert(results, queryData->queryId);
 						}
 					}
 					cur = cur->next;

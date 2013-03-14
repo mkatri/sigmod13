@@ -28,6 +28,7 @@
 //#define CORE_DEBUG
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <math.h>
 #include <pthread.h>
 #include <core.h>
@@ -36,7 +37,8 @@
 #include "document.h"
 #include "Hash_Table.h"
 #include "cir_queue.h"
-#include "threading.h"
+#include "submit_params.h"
+#include "dyn_array.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //////////////// DOC THREADING STRUCTS //////////////////////////////////////////////////////
@@ -50,7 +52,10 @@ char *free_docs[NUM_THREADS];
 DocumentDescriptor *busy_docs[NUM_THREADS];
 pthread_mutex_t docList_lock;
 pthread_cond_t docList_avail;
+DynamicArray matches[NUM_THREADS];
+int cmpfunc(const QueryID * a, const QueryID * b);
 ///////////////////////////////////////////////////////////////////////////////////////////////
+
 Trie_t *trie;
 LinkedList_t *docList;
 LinkedList_t *queries;
@@ -87,14 +92,14 @@ void init() {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-pthread_mutex_t big_lock;
-
 void *matcher_thread(void *n) {
 	int tid = n;
+	QueryID *qres = matches[tid].array;
 	while (1) {
 		DocumentDescriptor *doc_desc = cir_queue_remove(&cirq_busy_docs);
 		char *doc = doc_desc->document;
-		int i = 0, match_count = 0;
+		int i = 0;
+		matches[tid].tail = 0;
 		while (doc[i]) {
 			while (doc[i] == ' ')
 				i++;
@@ -103,23 +108,16 @@ void *matcher_thread(void *n) {
 			while (doc[e] != ' ' && doc[e] != '\0')
 				e++;
 
-			matchWord(doc_desc->docId, tid, &doc[i], e - i, &match_count, &big_lock);
+			matchWord(doc_desc->docId, tid, &doc[i], e - i, &matches[tid]);
 			i = e;
 		}
 
-		doc_desc->matches = malloc(sizeof(QueryID) * match_count);
-		doc_desc->numResults = match_count;
+		doc_desc->matches = malloc(sizeof(QueryID) * matches[tid].tail);
+		doc_desc->numResults = matches[tid].tail;
 
-		int p = 0;
+		memcpy(doc_desc->matches, qres, sizeof(QueryID) * matches[tid].tail);
+		qsort(doc_desc->matches, matches[tid].tail, sizeof(QueryID), cmpfunc);
 
-		DNode_t* cur = queries->head.next;
-		while (cur != &(queries->tail)) {
-			QueryDescriptor * cqd = (QueryDescriptor *) cur->data;
-			if (cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
-				doc_desc->matches[p++] = cqd->queryId;
-			cqd->matchedWords[tid] = 0;
-			cur = cur->next;
-		}
 		//XXX could be moved above when we're using array instead of linkedlist
 		cir_queue_insert(&cirq_free_docs, doc_desc->document);
 
@@ -127,7 +125,6 @@ void *matcher_thread(void *n) {
 		append(docList, doc_desc);
 		pthread_cond_signal(&docList_avail);
 		pthread_mutex_unlock(&docList_lock);
-
 	}
 	return 0;
 }
@@ -139,12 +136,12 @@ ErrorCode InitializeIndex() {
 	cir_queue_init(&cirq_busy_docs, &busy_docs, NUM_THREADS);
 
 	pthread_mutex_init(&docList_lock, NULL);
-	pthread_mutex_init(&big_lock, NULL);
 	pthread_cond_init(&docList_avail, NULL);
 
 	int i;
 	for (i = 0; i < NUM_THREADS; i++) {
 		free_docs[i] = documents[i];
+		dyn_array_init(&matches[i], RES_POOL_INITSIZE);
 	}
 	cirq_free_docs.size = NUM_THREADS;
 
@@ -188,6 +185,8 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	queryDescriptor->matchDistance = match_dist;
 	queryDescriptor->matchType = match_type;
 	queryDescriptor->queryId = query_id;
+	for (in = 0; in < NUM_THREADS; in++)
+		queryDescriptor->docId[in] = -1;
 
 	addQuery(query_id, queryDescriptor);
 
@@ -398,8 +397,12 @@ ErrorCode EndQuery(QueryID query_id) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
+int cmpfunc(const QueryID * a, const QueryID * b) {
+	return (*a - *b);
+}
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
+
 	docCount++;
 	char *doc_buf = cir_queue_remove(&cirq_free_docs);
 	strcpy(doc_buf, doc_str);
@@ -435,17 +438,18 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 
 ///////////////////////////////////////////
 void core_test() {
+
 //	printf("%d\n\n", sizeof(HashCluster));
 //	printf("%d\n\n", sizeof(int));
 //	printf("%d\n\n", sizeof(HashCluster*));
 	InitializeIndex();
 //	char output[32][32];
 //
-	char f[32] = "    mother    cook    torli     bitngan    ";
+	char *f = "    mother    cook    torli     bitngan    ";
 //	char f2[32] = "  ok no   fucker  ";
 //
 //	StartQuery(5, f, 0, 7);
-	StartQuery(7, f, MT_EDIT_DIST, 0);
+	StartQuery(7, f, MT_EXACT_MATCH, 0);
 //
 //	dfs(&(trie->root));
 //	EndQuery(7);

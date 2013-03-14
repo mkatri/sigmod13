@@ -1,10 +1,10 @@
 #include "Hash_Table.h"
+#include "submit_params.h"
 
-size_t size = 5000011;
-char clusterSize = 4;
+char clusterSize = 8;
 
-int hash(int key) {
-	return key % size;
+int hash(unsigned int key) {
+	return key % HT_SIZE;
 //	return ((long long)key * 2654435761l) % size;
 	//===================
 //	long long k = key;
@@ -16,7 +16,7 @@ int hash(int key) {
 
 HashTable* new_Hash_Table() {
 	HashTable* ht = (HashTable*) malloc(sizeof(HashTable));
-	ht->table = (HashCluster**) malloc(size * sizeof(HashCluster*));
+	ht->table = (HashCluster**) malloc(HT_SIZE * sizeof(HashCluster*));
 	return ht;
 }
 
