@@ -1,6 +1,6 @@
 #include "Hash_Table.h"
 
-size_t size = 1000000007;
+size_t size = 1000007;
 //int size = 5000011;
 char clusterSize = 8;
 
