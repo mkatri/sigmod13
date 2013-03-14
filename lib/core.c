@@ -36,7 +36,7 @@
 #include "document.h"
 #include "Hash_Table.h"
 #include "cir_queue.h"
-#include "threading.h"
+#include "submit_params.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //////////////// DOC THREADING STRUCTS //////////////////////////////////////////////////////
@@ -103,7 +103,8 @@ void *matcher_thread(void *n) {
 			while (doc[e] != ' ' && doc[e] != '\0')
 				e++;
 
-			matchWord(doc_desc->docId, tid, &doc[i], e - i, &match_count, &big_lock);
+			matchWord(doc_desc->docId, tid, &doc[i], e - i, &match_count,
+					&big_lock);
 			i = e;
 		}
 
@@ -115,9 +116,11 @@ void *matcher_thread(void *n) {
 		DNode_t* cur = queries->head.next;
 		while (cur != &(queries->tail)) {
 			QueryDescriptor * cqd = (QueryDescriptor *) cur->data;
-			if (cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
+			if (cqd->doc_id[tid] == doc_desc->docId
+					&& cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
 				doc_desc->matches[p++] = cqd->queryId;
-			cqd->matchedWords[tid] = 0;
+			if (p == match_count)
+				break;
 			cur = cur->next;
 		}
 		//XXX could be moved above when we're using array instead of linkedlist
@@ -188,6 +191,8 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	queryDescriptor->matchDistance = match_dist;
 	queryDescriptor->matchType = match_type;
 	queryDescriptor->queryId = query_id;
+	for (in = 0; in < NUM_THREADS; in++)
+		queryDescriptor->doc_id[in] = -1;
 
 	addQuery(query_id, queryDescriptor);
 

@@ -1,5 +1,5 @@
 #include <pthread.h>
-#include "threading.h"
+#include "submit_params.h"
 #include "linked_list.h"
 #include "trie.h"
 #include "query.h"
@@ -111,6 +111,9 @@ void matchWord(int did, int tid, char *w, int l, int *count) {
 		int j = i;
 		TrieNode_t *n = &trie->root;
 		while ((n = next_node(n, w[j])) && j < l) {
+			if (n->count[MT_EDIT_DIST] == 0 && n->count[MT_HAMMING_DIST] == 0
+					&& i > 0)
+				break;
 			j++;
 			if (!isEmpty(n->list)) {
 				DNode_t *cur = n->list->head.next;
@@ -119,6 +122,11 @@ void matchWord(int did, int tid, char *w, int l, int *count) {
 					SegmentData * segData = (SegmentData *) (cur->data);
 					QueryDescriptor * queryData = segData->parentQuery;
 					int type = queryData->matchType;
+
+					if (queryData->doc_id[tid] != did) {
+						queryData->doc_id[tid] = did;
+						queryData->matchedWords[tid] = 0;
+					}
 
 					if (((queryData->matchedWords[tid])
 							& (1 << (segData->wordIndex)))) {
