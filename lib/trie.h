@@ -8,6 +8,7 @@
 #ifndef TRIE_H_
 #define TRIE_H_
 #include "linked_list.h"
+#include "submit_params.h"
 #define CHAR_SET_SIZE 26
 #define BASE_CHAR 'a'
 
@@ -24,7 +25,7 @@ typedef struct TrieNode2{
 	struct TrieNode2* next[CHAR_SET_SIZE];
 	char c;
 	char terminal;
-	int docId;
+	int docIds[NUM_THREADS];
 }TrieNode_t2;
 typedef struct Trie2 {
 	TrieNode_t2 root;
@@ -39,8 +40,8 @@ Trie_t * newTrie();
 TrieNode_t2 * newTrieNode2();
 
 Trie_t2 * newTrie2() ;
-void TrieInsert2(Trie_t2* trie, char * str, int length,int docId) ;
+void TrieInsert2(Trie_t2* trie, char * str, int length,int docId,int tid) ;
 //void TrieDelete2(Trie_t2* trie);
-char TriewordExist(Trie_t2* trie,char * str , int length,int docId);
+char TriewordExist(Trie_t2* trie,char * str , int length,int docId,int tid);
 
 #endif /* TRIE_H_ */

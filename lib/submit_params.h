@@ -19,9 +19,9 @@
 
 #else
 
-#define RES_POOL_INITSIZE 10000000
-#define NUM_THREADS 24
-#define HT_SIZE 1000000007
+#define RES_POOL_INITSIZE 1000000
+#define NUM_THREADS 23
+#define HT_SIZE 100000007
 
 #endif
 

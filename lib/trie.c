@@ -22,9 +22,9 @@ inline TrieNode_t* next_node(TrieNode_t *current, char c) {
 	return current->next[c - BASE_CHAR];
 }
 
-inline TrieNode_t2* next_node2(TrieNode_t2 *current, char c) {
-	return current->next[c - BASE_CHAR];
-}
+//inline TrieNode_t2* next_node2(TrieNode_t2 *current, char c) {
+//	return current->next[c - BASE_CHAR];
+//}
 DNode_t* TrieInsert(Trie_t * trie, char * str, int length, int type,
 		void* queryData) {
 #ifdef CORE_DEBUG
@@ -43,14 +43,14 @@ DNode_t* TrieInsert(Trie_t * trie, char * str, int length, int type,
 		current->list = newLinkedList();
 	return append(current->list, queryData);
 }
-void deleteTrieNode(TrieNode_t* node) {
-#ifdef CORE_DEBUG
-	printf("DELETING NODE\n");
-#endif
-	if (node->list != 0)
-		free(node->list);
-	free(node);
-}
+//void deleteTrieNode(TrieNode_t* node) {
+//#ifdef CORE_DEBUG
+//	printf("DELETING NODE\n");
+//#endif
+//	if (node->list != 0)
+//		free(node->list);
+//	free(node);
+//}
 
 //NODE END QUERY BEFORE CALLING THIS FUNCTION MUST DELETE ALL LINKEDLIST NODES BELONGING TO SUCH QUERY
 void TrieDelete(Trie_t* trie, char*str, int length, int type) {
@@ -63,20 +63,20 @@ void TrieDelete(Trie_t* trie, char*str, int length, int type) {
 	for (i = 0; i < length; i++) {
 		TrieNode_t *next = next_node(current, str[i]);
 		next->count[type]--;
-		if (next->count[0] + next->count[1] + next->count[2] == 0) {
-			current->next[str[i] - BASE_CHAR] = 0;
-		}
-		if (current->count[0] + current->count[1] + current->count[2] == 0
-				&& current != &(trie->root)) {
-			deleteTrieNode(current);
-		}
+//		if (next->count[0] + next->count[1] + next->count[2] == 0) {
+//			current->next[str[i] - BASE_CHAR] = 0;
+//		}
+//		if (current->count[0] + current->count[1] + current->count[2] == 0
+//				&& current != &(trie->root)) {
+//			deleteTrieNode(current);
+//		}
 		current = next;
 	}
-//Alternative Implementation:Delete LinkedList node here (note:full traversal is required)
-	if (current->count[0] + current->count[1] + current->count[2] == 0
-			&& current != &(trie->root)) { //Note the check if current!=&(trie.root) is not really required unless we are kidding (LOL)
-		deleteTrieNode(current);
-	}
+////Alternative Implementation:Delete LinkedList node here (note:full traversal is required)
+//	if (current->count[0] + current->count[1] + current->count[2] == 0
+//			&& current != &(trie->root)) { //Note the check if current!=&(trie.root) is not really required unless we are kidding (LOL)
+//		deleteTrieNode(current);
+//	}
 }
 
 // NEW TRIE !
@@ -96,35 +96,34 @@ Trie_t2 * newTrie2() {
 	t->root.terminal = 0;
 	return t;
 }
-void TrieInsert2(Trie_t2* trie, char * str, int length, int docId) {
-	TrieNode_t2 *cur = &(trie->root);
-	int i;
-	for (i = 0; i < length; i++) {
-		if (cur->next[str[i] - BASE_CHAR] == 0) {
-			cur->next[str[i] - BASE_CHAR] = newTrieNode2();
-			cur->next[str[i] - BASE_CHAR]->c = str[i] - BASE_CHAR;
-			cur->next[str[i] - BASE_CHAR]->terminal |= (i == length - 1);
-			cur->next[str[i] - BASE_CHAR]->docId = docId;
-		}
-		cur = cur->next[str[i] - BASE_CHAR];
-	}
-}
-char TriewordExist(Trie_t2* trie, char * str, int length, int docId) {
+char TriewordExist(Trie_t2* trie, char * str, int length, int docId, int tid) {
 	TrieNode_t2 *cur = &(trie->root);
 	int i;
 	for (i = 0; i < length; i++)
 		if (cur->next[str[i] - BASE_CHAR] != 0)
 			cur = cur->next[str[i] - BASE_CHAR];
-		else
+		else {
+			for (; i < length; i++) {
+				if (cur->next[str[i] - BASE_CHAR] == 0) {
+					cur->next[str[i] - BASE_CHAR] = newTrieNode2();
+					cur->next[str[i] - BASE_CHAR]->c = str[i] - BASE_CHAR;
+					cur->next[str[i] - BASE_CHAR]->terminal |=
+							(i == length - 1);
+					cur->next[str[i] - BASE_CHAR]->docIds[tid] = docId;
+				}
+				cur = cur->next[str[i] - BASE_CHAR];
+			}
 			return 0;
+		}
 	if (cur->terminal) {
-		if (cur->docId == docId)
+		if (cur->docIds[tid] == docId)
 			return 1;
-		cur->docId = docId;
+		cur->docIds[tid] = docId;
 	} else {
 		cur->terminal = 1;
-		cur->docId = docId;
+		cur->docIds[tid] = docId;
 	}
+
 	return 0;
 }
 

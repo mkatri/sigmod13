@@ -102,7 +102,10 @@ int editDistance(int tid, char* a, int na, char* b, int nb, int dist) {
 
 	return ret;
 }
-
+inline int min(int a, int b){
+	if(a<=b)return a;
+	return b;
+}
 void matchWord(int did, int tid, char *w, int l, int *count) {
 	if (l > 35)
 		return;
@@ -143,6 +146,17 @@ void matchWord(int did, int tid, char *w, int l, int *count) {
 										- queryData->words[segData->wordIndex],
 								queryData->matchDistance))
 								<= queryData->matchDistance) {
+//							int preCalc = hammingDistance(w,queryData->words[segData->wordIndex],min(l,queryData->words[segData->wordIndex+1]-queryData->words[segData->wordIndex]),queryData->matchDistance)+abs(l,queryData->words[segData->wordIndex+1]-queryData->words[segData->wordIndex]);
+//							if(preCalc<=queryData->matchDistance){
+//								queryData->matchedWords[tid] |= (1
+//																		<< (segData->wordIndex));
+//
+//																if (queryData->matchedWords[tid]
+//																		== (1 << (queryData->numWords)) - 1) {
+//																	(*count)++;
+//																}
+//																continue;
+//							}
 							d1 +=
 									editDistance(tid, w, i,
 											queryData->words[segData->wordIndex],

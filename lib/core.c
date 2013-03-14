@@ -95,7 +95,7 @@ void init() {
 // Keeps all currently active queries
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
-
+int cnt = 0;
 void *matcher_thread(void *n) {
 	int tid = n;
 	while (1) {
@@ -111,10 +111,10 @@ void *matcher_thread(void *n) {
 			while (doc[e] != ' ' && doc[e] != '\0')
 				e++;
 
-			if (!TriewordExist(dtrie[tid], &doc[i], e - i, doc_desc->docId)) {
-				TrieInsert2(dtrie[tid], &doc[i], e - i, doc_desc->docId);
+			if (!TriewordExist(dtrie[tid], &doc[i], e - i, doc_desc->docId,tid)) {
+//				TrieInsert2(dtrie[tid], &doc[i], e - i, doc_desc->docId,tid);
 				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount);
-			}
+			}else cnt++;
 			i = e;
 		}
 
@@ -184,7 +184,7 @@ ErrorCode InitializeIndex() {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode DestroyIndex() {
-//	/printf("%d\n", cnt);
+	printf("%d\n", cnt);
 	return EC_SUCCESS;
 }
 
