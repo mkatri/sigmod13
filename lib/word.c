@@ -7,9 +7,9 @@ extern int pos;
 extern int * qres;
 extern int sizeOfPool;
 
-void doubleSize(){
-	sizeOfPool<<=1;
-	qres = (int*) realloc(qres,sizeof(int)*sizeOfPool);
+void doubleSize() {
+	sizeOfPool <<= 1;
+	qres = (int*) realloc(qres, sizeof(int) * sizeOfPool);
 }
 
 int hammingDistance(char *a, char *b, int n, int max) {
@@ -119,6 +119,9 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 		TrieNode_t *n = trie;
 //		TrieNode_t *p = 0;
 		while ((n = next_node(n, w[j])) && j < l) {
+			if (n->count[MT_EDIT_DIST] == 0 && n->count[MT_HAMMING_DIST] == 0
+					&& i > 0)
+				break;
 			j++;
 			if (!isEmpty(n->list)) {
 				DNode_t *cur = n->list->head.next;
@@ -127,9 +130,9 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 					SegmentData * segData = (SegmentData *) (cur->data);
 					QueryDescriptor * queryData = segData->parentQuery;
 					int type = queryData->matchType;
-					if(queryData->docId!=doc_id){
-						queryData->docId=doc_id;
-						queryData->matchedWords=0;
+					if (queryData->docId != doc_id) {
+						queryData->docId = doc_id;
+						queryData->matchedWords = 0;
 					}
 					if (((queryData->matchedWords) & (1 << (segData->wordIndex)))) {
 						cur = cur->next;
@@ -160,10 +163,12 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 									queryData->matchedWords |= (1
 											<< (segData->wordIndex));
 									if (queryData->matchedWords
-											== (1 << (queryData->numWords)) - 1){
+											== (1 << (queryData->numWords))
+													- 1) {
 										(*count)++;
-										if(pos==sizeOfPool)doubleSize();
-										qres[pos++]=queryData->queryId;
+										if (pos == sizeOfPool)
+											doubleSize();
+										qres[pos++] = queryData->queryId;
 									}
 								}
 							}
@@ -189,10 +194,12 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 									queryData->matchedWords |= (1
 											<< (segData->wordIndex));
 									if (queryData->matchedWords
-											== (1 << (queryData->numWords)) - 1){
+											== (1 << (queryData->numWords))
+													- 1) {
 										(*count)++;
-										if(pos==sizeOfPool)doubleSize();
-										qres[pos++]=queryData->queryId;
+										if (pos == sizeOfPool)
+											doubleSize();
+										qres[pos++] = queryData->queryId;
 
 									}
 								}
@@ -201,10 +208,11 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 					} else if (i == 0 && j == l) { // Exact matching must be done from the start of the word only
 						queryData->matchedWords |= (1 << (segData->wordIndex));
 						if (queryData->matchedWords
-								== (1 << (queryData->numWords)) - 1){
+								== (1 << (queryData->numWords)) - 1) {
 							(*count)++;
-							if(pos==sizeOfPool)doubleSize();
-							qres[pos++]=queryData->queryId;
+							if (pos == sizeOfPool)
+								doubleSize();
+							qres[pos++] = queryData->queryId;
 						}
 					}
 					cur = cur->next;
