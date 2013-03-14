@@ -1,11 +1,14 @@
 #include "linked_list.h"
 #include "trie.h"
 #include "query.h"
+#include "StringHashing.h"
+#include "word.h"
 
 extern Trie_t *trie;
 extern int pos;
 extern int * qres;
 extern int sizeOfPool;
+extern StringHashing* sh;
 
 void doubleSize() {
 	sizeOfPool <<= 1;
@@ -38,26 +41,26 @@ inline int preCheck(int na, int nb, int dist) {
 	return 0;
 }
 
+extern cnt1 = 0, cnt2 = 0;
+
 int editDistance(char* a, int na, char* b, int nb, int dist) {
 	int oo = 0x7FFFFFFF;
+	int tmp, h;
+	cnt1++;
+	if ((tmp = get_editDistance(a, na, b, nb, &h, sh)) > -1) {
+		cnt2++;
+		return tmp;
+	}
 
 	static int T[2][100];
 
 	int ia, ib;
 
-	int cur = 0, min;
+	int cur = 0;
 	ia = 0;
-	min = 1 << 30;
 
-	for (ib = 0; ib <= nb; ib++) {
+	for (ib = 0; ib <= nb; ib++)
 		T[cur][ib] = ib;
-		int tmp = ib + abs((na - ia) - (nb - ib));
-		if (tmp < min)
-			min = tmp;
-	}
-
-	if (min > dist)
-		return min;
 
 	cur = 1 - cur;
 
@@ -68,8 +71,6 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 		ib = 0;
 		T[cur][ib] = ia;
 		ib_st++;
-
-		min = ia + abs(na - ia - nb + ib);
 
 		for (ib = ib_st; ib <= ib_en; ib++) {
 			int ret = oo;
@@ -89,22 +90,13 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 
 			T[cur][ib] = ret;
 
-			/* XXX not tested */
-			int difa = na - ia, difb = nb - ib, totalMin = ret
-					+ abs(difa - difb);
-
-			if (totalMin < min)
-				min = totalMin;
 		}
-
-		if (min > dist)
-			return min;
 
 		cur = 1 - cur;
 	}
 
 	int ret = T[1 - cur][nb];
-
+	add_editDistance(a, na, b, nb, ret, h, sh);
 	return ret;
 }
 
@@ -140,6 +132,10 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 					}
 
 					if (type == MT_EDIT_DIST) {
+						if (segData->queryId == 1126 && doc_id == 532)
+							ok = 1;
+						else
+							ok = 0;
 						int d1;
 						if ((d1 = preCheck(i,
 								segData->startIndex

@@ -8,7 +8,7 @@
 #ifndef TRIE_H_
 #define TRIE_H_
 #include "linked_list.h"
-#define CHAR_SET_SIZE 26
+#define CHAR_SET_SIZE 27
 #define BASE_CHAR 'a'
 
 typedef struct TrieNode {

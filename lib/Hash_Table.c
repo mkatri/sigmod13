@@ -1,12 +1,12 @@
 #include "Hash_Table.h"
 
-size_t size = 1000000007;
+size_t size = 5000011;
 //int size = 5000011;
 char clusterSize = 8;
 
 int hash(unsigned int key) {
 	return key % size;
-//	return ((long long)key * 2654435761l) % size;
+	return ((long long) key * 2654435761l) % size;
 	//===================
 //	long long k = key;
 //	k = ((k >> 16) ^ k) * 0x45d9f3bl;
@@ -29,7 +29,10 @@ HashCluster* getCluster() {
 	clust->pointers = malloc(clusterSize * sizeof(void*));
 
 	int* k = clust->keys;
-	k[0] = k[1] = k[2] = k[3] = -1;
+	int i;
+	for (i = 0; i < clusterSize; ++i)
+		k[i] = -1;
+
 	clust->currClusterSize = 0;
 	clust->next = 0;
 
@@ -66,7 +69,6 @@ void insert(HashTable* ht, int id, void* ptr) {
 	clust->keys[i] = id;
 	clust->pointers[i] = ptr;
 	clust->currClusterSize++;
-
 }
 
 void search(HashCluster** res, HashCluster** before, int key, int* index) {
@@ -97,14 +99,10 @@ void* get(HashTable* ht, int id) {
 	HashCluster* res = ht->table[h];
 
 	HashCluster* prev = ht->table[h];
-//	printf("====== %d %d %d %d\n", res->pointers[0], res->pointers[1],
-//			res->pointers[2], res->pointers[3]);
+
 	search(&res, &prev, id, i);
 	int ii = *i;
 	free(i);
-//	printf("====== %d %d %d %d\n", res->keys[0], res->keys[1], res->keys[2],
-//			res->keys[3]);
-//	printf("====== %d\n",ii);
 	if (res != NULL)
 		return res->pointers[ii];
 

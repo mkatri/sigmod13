@@ -34,6 +34,7 @@
 #include "trie.h"
 #include "document.h"
 #include "Hash_Table.h"
+#include "StringHashing.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 Trie_t *trie;
@@ -45,7 +46,8 @@ LinkedList_t *queries;
 HashTable* ht;
 int * qres;
 int pos;
-int sizeOfPool=1000000000;
+int sizeOfPool = 100000;
+
 //inline QueryDescriptor * getQueryDescriptor(int queryId) {
 //	return qmap[queryId];
 //}
@@ -61,13 +63,17 @@ inline void addQuery(int queryId, QueryDescriptor * qds) {
 void split(int length[6], QueryDescriptor *desc, const char* query_str,
 		int * idx);
 
+StringHashing* sh;
+
 void init() {
 	pos = 0;
-	qres = (int*) malloc(sizeof(int)*sizeOfPool);
+	qres = (int*) malloc(sizeof(int) * sizeOfPool);
 	queries = newLinkedList();
 	ht = new_Hash_Table();
 	trie = newTrie();
 	docList = newLinkedList();
+
+	sh = new_StringHashing();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -340,7 +346,7 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 		while (doc_str[e] != ' ' && doc_str[e] != '\0')
 			e++;
 
-		matchWord(&doc_str[i], e - i, &queryMatchCount,doc_id);
+		matchWord(&doc_str[i], e - i, &queryMatchCount, doc_id);
 
 		i = e;
 	}
@@ -397,7 +403,8 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 ///////////////////////////////////////////
 void core_test() {
 	unsigned int t = 9113677439;
-	printf("%llu",t); fflush(0);
+	printf("%llu", t);
+	fflush(0);
 //	printf("%d\n\n", sizeof(HashCluster));
 //	printf("%d\n\n", sizeof(int));
 //	printf("%d\n\n", sizeof(HashCluster*));
