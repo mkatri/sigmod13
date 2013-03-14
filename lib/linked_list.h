@@ -7,7 +7,6 @@
 
 #ifndef LINKEDLIST_H_
 #define LINKEDLIST_H_
-
 typedef struct DNode {
 	struct DNode *prev, *next;
 	void * data;
@@ -32,5 +31,4 @@ DNode_t* delete(DNode_t * node);
  * returns true if the linkedlist list is empty
  */
 char isEmpty(LinkedList_t * list);
-
 #endif /* LINKEDLIST_H_ */

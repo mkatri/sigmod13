@@ -34,20 +34,19 @@
 #include "trie.h"
 #include "document.h"
 #include "Hash_Table.h"
-#include "StringHashing.h"
-
+#include "word.h"
+#include "Edit_Distance.h"
 ///////////////////////////////////////////////////////////////////////////////////////////////
 Trie_t *trie;
 LinkedList_t *docList;
 LinkedList_t *queries;
-
+Edit_Distance* ed;
 /*QUERY DESCRIPTOR MAP GOES HERE*/
 //QueryDescriptor* qmap[1000000];
 HashTable* ht;
 int * qres;
 int pos;
-int sizeOfPool = 100000;
-
+int sizeOfPool = 10000;
 //inline QueryDescriptor * getQueryDescriptor(int queryId) {
 //	return qmap[queryId];
 //}
@@ -63,8 +62,6 @@ inline void addQuery(int queryId, QueryDescriptor * qds) {
 void split(int length[6], QueryDescriptor *desc, const char* query_str,
 		int * idx);
 
-StringHashing* sh;
-
 void init() {
 	pos = 0;
 	qres = (int*) malloc(sizeof(int) * sizeOfPool);
@@ -72,8 +69,7 @@ void init() {
 	ht = new_Hash_Table();
 	trie = newTrie();
 	docList = newLinkedList();
-
-	sh = new_StringHashing();
+	ed = new_Edit_Distance();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////

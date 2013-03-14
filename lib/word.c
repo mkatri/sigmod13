@@ -1,14 +1,13 @@
 #include "linked_list.h"
 #include "trie.h"
 #include "query.h"
-#include "StringHashing.h"
 #include "word.h"
 
 extern Trie_t *trie;
 extern int pos;
 extern int * qres;
 extern int sizeOfPool;
-extern StringHashing* sh;
+extern Edit_Distance* ed;
 
 void doubleSize() {
 	sizeOfPool <<= 1;
@@ -41,16 +40,12 @@ inline int preCheck(int na, int nb, int dist) {
 	return 0;
 }
 
-extern cnt1 = 0, cnt2 = 0;
-
 int editDistance(char* a, int na, char* b, int nb, int dist) {
 	int oo = 0x7FFFFFFF;
-	int tmp, h;
-	cnt1++;
-	if ((tmp = get_editDistance(a, na, b, nb, &h, sh)) > -1) {
-		cnt2++;
+	int tmp;
+
+	if ((tmp = get_editDistance(a, na, b, nb, ed)) > -1)
 		return tmp;
-	}
 
 	static int T[2][100];
 
@@ -96,7 +91,9 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 	}
 
 	int ret = T[1 - cur][nb];
-	add_editDistance(a, na, b, nb, ret, h, sh);
+
+	add_editDistance(a, na, b, nb, ret, T, ed);
+
 	return ret;
 }
 
@@ -132,7 +129,7 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 					}
 
 					if (type == MT_EDIT_DIST) {
-						if (segData->queryId == 1126 && doc_id == 532)
+						if (segData->queryId == 753 && doc_id == 338)
 							ok = 1;
 						else
 							ok = 0;

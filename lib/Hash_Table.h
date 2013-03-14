@@ -1,6 +1,3 @@
-#ifndef HT
-#define HT
-
 #include <stdlib.h>
 #include <stdio.h>
 #define byte char
@@ -21,5 +18,3 @@ HashTable* new_Hash_Table();
 void insert(HashTable* ht, int key, void* ptr);
 void* get(HashTable* ht, int key);
 void delete_H(HashTable* ht, int key);
-int hash(unsigned int key);
-#endif
