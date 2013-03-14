@@ -1,13 +1,16 @@
 #include "linked_list.h"
 #include "trie.h"
 #include "query.h"
+#include "Edit_Distance.h"
 #include "word.h"
 
+//Time=2652[2s:652ms]
+
+Edit_Distance* ed;
 extern Trie_t *trie;
 extern int pos;
 extern int * qres;
 extern int sizeOfPool;
-extern Edit_Distance* ed;
 
 void doubleSize() {
 	sizeOfPool <<= 1;
@@ -84,7 +87,7 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 				ret = d2;
 			if (d3 < ret)
 				ret = d3;
-//			add_editDistance(a, ia, b, ib, ret, T, ed);
+
 			T[cur][ib] = ret;
 
 		}
@@ -92,7 +95,7 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 		node = add_editDistance(a, ia, b, nb, T[cur], node);
 		cur = 1 - cur;
 	}
-
+	currNode = node;
 	int ret = T[1 - cur][nb];
 
 	return ret;
@@ -109,14 +112,16 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 		TrieNode_t *n = trie;
 //		TrieNode_t *p = 0;
 		while ((n = next_node(n, w[j])) && j < l) {
+
 			if (n->count[MT_EDIT_DIST] == 0 && n->count[MT_HAMMING_DIST] == 0
 					&& i > 0)
 				break;
+
 			j++;
 			if (!isEmpty(n->list)) {
 				DNode_t *cur = n->list->head.next;
 				while (cur->data && cur != &(n->list->tail)) {
-					/*XXX somewhere you set the data of the list tail, this is not cool*/
+
 					SegmentData * segData = (SegmentData *) (cur->data);
 					QueryDescriptor * queryData = segData->parentQuery;
 					int type = queryData->matchType;
@@ -130,22 +135,23 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 					}
 
 					if (type == MT_EDIT_DIST) {
-						if (segData->queryId == 753 && doc_id == 338)
-							ok = 1;
-						else
-							ok = 0;
 						int d1;
 						if ((d1 = preCheck(i,
 								segData->startIndex
 										- queryData->words[segData->wordIndex],
 								queryData->matchDistance))
 								<= queryData->matchDistance) {
+
 							d1 +=
 									editDistance(w, i,
 											queryData->words[segData->wordIndex],
 											segData->startIndex
 													- queryData->words[segData->wordIndex],
 											queryData->matchDistance - d1);
+
+							ED_Trie_Node* tmpnode = currNode;
+							currNode = 0;
+
 							if (d1 <= queryData->matchDistance) {
 								d1 += editDistance(w + j, l - j,
 										segData->startIndex + j - i,
@@ -166,6 +172,7 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 									}
 								}
 							}
+							currNode = tmpnode;
 						}
 					} else if (type == MT_HAMMING_DIST) {
 						if (i
@@ -214,5 +221,6 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 			}
 //			p = n;
 		}
+		currNode = 0;
 	}
 }

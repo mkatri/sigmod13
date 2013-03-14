@@ -2,4 +2,4 @@
 
 int ok;
 int editDistance(char* a, int na, char* b, int nb, int dist);
-
+ED_Trie_Node* currNode;

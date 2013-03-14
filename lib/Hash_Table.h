@@ -1,16 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #define byte char
-#define ll long long
 
 typedef struct {
-	int* keys;
-	void** pointers;byte currClusterSize;
-	void* next;
-} HashCluster;
-
-typedef struct {
-	HashCluster * *table;
+	void * *table;
 } HashTable;
 
 void hashTest();

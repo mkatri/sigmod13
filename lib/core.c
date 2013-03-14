@@ -34,19 +34,19 @@
 #include "trie.h"
 #include "document.h"
 #include "Hash_Table.h"
-#include "word.h"
-#include "Edit_Distance.h"
+
 ///////////////////////////////////////////////////////////////////////////////////////////////
 Trie_t *trie;
 LinkedList_t *docList;
 LinkedList_t *queries;
-Edit_Distance* ed;
+
 /*QUERY DESCRIPTOR MAP GOES HERE*/
 //QueryDescriptor* qmap[1000000];
 HashTable* ht;
 int * qres;
 int pos;
-int sizeOfPool = 10000;
+int sizeOfPool = 1000000;
+Trie_t2 * dtrie;
 //inline QueryDescriptor * getQueryDescriptor(int queryId) {
 //	return qmap[queryId];
 //}
@@ -62,7 +62,9 @@ inline void addQuery(int queryId, QueryDescriptor * qds) {
 void split(int length[6], QueryDescriptor *desc, const char* query_str,
 		int * idx);
 
+extern ed;
 void init() {
+	dtrie = newTrie2();
 	pos = 0;
 	qres = (int*) malloc(sizeof(int) * sizeOfPool);
 	queries = newLinkedList();
@@ -82,10 +84,11 @@ ErrorCode InitializeIndex() {
 	init();
 	return EC_SUCCESS;
 }
-
+int cnt = 0;
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode DestroyIndex() {
+	printf("%d\n", cnt);
 	return EC_SUCCESS;
 }
 
@@ -331,9 +334,9 @@ int cmpfunc(const QueryID * a, const QueryID * b) {
 }
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
+
 	int i = 0, e = 0;
 	int queryMatchCount = 0;
-
 	while (doc_str[i]) {
 		while (doc_str[i] == ' ')
 			i++;
@@ -341,12 +344,16 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 		e = i;
 		while (doc_str[e] != ' ' && doc_str[e] != '\0')
 			e++;
-
-		matchWord(&doc_str[i], e - i, &queryMatchCount, doc_id);
-
+		if (!TriewordExist(dtrie, &doc_str[i], e - i, doc_id)) {
+			TrieInsert2(dtrie, &doc_str[i], e - i, doc_id);
+			matchWord(&doc_str[i], e - i, &queryMatchCount, doc_id);
+		} else {
+			cnt++;
+		}
 		i = e;
 	}
 
+//	TrieDelete2(dtrie);
 	void *alloc = malloc(
 			sizeof(DocumentDescriptor) + sizeof(QueryID) * queryMatchCount);
 	DocumentDescriptor *doc_desc = alloc + sizeof(QueryID) * queryMatchCount;
@@ -398,16 +405,15 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 
 ///////////////////////////////////////////
 void core_test() {
-	unsigned int t = 9113677439;
-	printf("%llu", t);
-	fflush(0);
+//	unsigned int t = 9113677439;
+//	printf("%llu",t); fflush(0);
 //	printf("%d\n\n", sizeof(HashCluster));
 //	printf("%d\n\n", sizeof(int));
 //	printf("%d\n\n", sizeof(HashCluster*));
 	InitializeIndex();
 //	char output[32][32];
 //
-	char f[32] = "    mother    cook    torli     bitngan    ";
+	char f[32] = " cook  ";
 //	char f2[32] = "  ok no   fucker  ";
 //
 //	StartQuery(5, f, 0, 7);
@@ -419,7 +425,7 @@ void core_test() {
 //	printf("done\n");
 
 	//hashTest();
-	MatchDocument(10, "    mother    cook    torli     bitngan    ");
+	MatchDocument(10, " cook     ");
 //	MatchDocument(10, "yomother fucker");
 //	MatchDocument(20, "fuck you oknofutcher");
 //	MatchDocument(30, "fuck mother you oknofucker father");
@@ -428,7 +434,7 @@ void core_test() {
 	unsigned int numRes;
 	GetNextAvailRes(&did, &numRes, &qid);
 
-//	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
+	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
 //	GetNextAvailRes(&did, &numRes, &qid);
 //	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
 //	GetNextAvailRes(&did, &numRes, &qid);
