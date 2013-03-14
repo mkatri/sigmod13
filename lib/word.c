@@ -49,6 +49,8 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 
 	static int T[2][100];
 
+	ED_Trie_Node* node = ed->trie->root;
+
 	int ia, ib;
 
 	int cur = 0;
@@ -82,17 +84,16 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 				ret = d2;
 			if (d3 < ret)
 				ret = d3;
-
+//			add_editDistance(a, ia, b, ib, ret, T, ed);
 			T[cur][ib] = ret;
 
 		}
 
+		node = add_editDistance(a, ia, b, nb, T[cur], node);
 		cur = 1 - cur;
 	}
 
 	int ret = T[1 - cur][nb];
-
-	add_editDistance(a, na, b, nb, ret, T, ed);
 
 	return ret;
 }
