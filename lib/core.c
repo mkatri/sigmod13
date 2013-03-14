@@ -64,6 +64,7 @@ unsigned long docCount;
 /*QUERY DESCRIPTOR MAP GOES HERE*/
 //QueryDescriptor* qmap[1000000];
 HashTable* ht;
+Trie_t2 *dtrie[NUM_THREADS];
 //inline QueryDescriptor * getQueryDescriptor(int queryId) {
 //	return qmap[queryId];
 //}
@@ -108,7 +109,10 @@ void *matcher_thread(void *n) {
 			while (doc[e] != ' ' && doc[e] != '\0')
 				e++;
 
-			matchWord(doc_desc->docId, tid, &doc[i], e - i, &matches[tid]);
+			if (!TriewordExist(dtrie[tid], &doc[i], e - i, doc_desc->docId)) {
+				TrieInsert2(dtrie[tid], &doc[i], e - i, doc_desc->docId);
+				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matches[tid]);
+			}
 			i = e;
 		}
 
@@ -142,6 +146,7 @@ ErrorCode InitializeIndex() {
 	for (i = 0; i < NUM_THREADS; i++) {
 		free_docs[i] = documents[i];
 		dyn_array_init(&matches[i], RES_POOL_INITSIZE);
+		dtrie[i] = newTrie2();
 	}
 	cirq_free_docs.size = NUM_THREADS;
 
@@ -150,10 +155,10 @@ ErrorCode InitializeIndex() {
 	}
 	return EC_SUCCESS;
 }
-
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode DestroyIndex() {
+//	/printf("%d\n", cnt);
 	return EC_SUCCESS;
 }
 
@@ -402,7 +407,6 @@ int cmpfunc(const QueryID * a, const QueryID * b) {
 }
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
-
 	docCount++;
 	char *doc_buf = cir_queue_remove(&cirq_free_docs);
 	strcpy(doc_buf, doc_str);
@@ -439,13 +443,16 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 ///////////////////////////////////////////
 void core_test() {
 
+//	unsigned int t = 9113677439;
+//	printf("%llu",t); fflush(0);
 //	printf("%d\n\n", sizeof(HashCluster));
 //	printf("%d\n\n", sizeof(int));
 //	printf("%d\n\n", sizeof(HashCluster*));
 	InitializeIndex();
 //	char output[32][32];
 //
-	char *f = "    mother    cook    torli     bitngan    ";
+
+	char f[32] = " cook  ";
 //	char f2[32] = "  ok no   fucker  ";
 //
 //	StartQuery(5, f, 0, 7);
@@ -457,7 +464,7 @@ void core_test() {
 //	printf("done\n");
 
 	//hashTest();
-	MatchDocument(10, "    mother    cook    torli     bitngan    ");
+	MatchDocument(10, " cook     ");
 //	MatchDocument(10, "yomother fucker");
 //	MatchDocument(20, "fuck you oknofutcher");
 //	MatchDocument(30, "fuck mother you oknofucker father");

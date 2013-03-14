@@ -22,6 +22,9 @@ inline TrieNode_t* next_node(TrieNode_t *current, char c) {
 	return current->next[c - BASE_CHAR];
 }
 
+inline TrieNode_t2* next_node2(TrieNode_t2 *current, char c) {
+	return current->next[c - BASE_CHAR];
+}
 DNode_t* TrieInsert(Trie_t * trie, char * str, int length, int type,
 		void* queryData) {
 #ifdef CORE_DEBUG
@@ -71,10 +74,60 @@ void TrieDelete(Trie_t* trie, char*str, int length, int type) {
 	}
 //Alternative Implementation:Delete LinkedList node here (note:full traversal is required)
 	if (current->count[0] + current->count[1] + current->count[2] == 0
-			&& current != &(trie->root)) { //Note the check if current!=&(trie.root) is not really required unless we are kidding
+			&& current != &(trie->root)) { //Note the check if current!=&(trie.root) is not really required unless we are kidding (LOL)
 		deleteTrieNode(current);
 	}
 }
+
+// NEW TRIE !
+//--------------------------------------------------------------------------------------------------------------
+TrieNode_t2 * newTrieNode2() {
+	TrieNode_t2* ret = (TrieNode_t2*) (malloc(sizeof(TrieNode_t2)));
+	memset(ret->next, 0, sizeof(ret->next));
+	ret->c = 0;
+	ret->terminal = 0;
+	return ret;
+}
+
+Trie_t2 * newTrie2() {
+	Trie_t2* t = (Trie_t2 *) malloc(sizeof(Trie_t2));
+	memset(t->root.next, 0, sizeof(t->root.next));
+	t->root.c = 0;
+	t->root.terminal = 0;
+	return t;
+}
+void TrieInsert2(Trie_t2* trie, char * str, int length, int docId) {
+	TrieNode_t2 *cur = &(trie->root);
+	int i;
+	for (i = 0; i < length; i++) {
+		if (cur->next[str[i] - BASE_CHAR] == 0) {
+			cur->next[str[i] - BASE_CHAR] = newTrieNode2();
+			cur->next[str[i] - BASE_CHAR]->c = str[i] - BASE_CHAR;
+			cur->next[str[i] - BASE_CHAR]->terminal |= (i == length - 1);
+			cur->next[str[i] - BASE_CHAR]->docId = docId;
+		}
+		cur = cur->next[str[i] - BASE_CHAR];
+	}
+}
+char TriewordExist(Trie_t2* trie, char * str, int length, int docId) {
+	TrieNode_t2 *cur = &(trie->root);
+	int i;
+	for (i = 0; i < length; i++)
+		if (cur->next[str[i] - BASE_CHAR] != 0)
+			cur = cur->next[str[i] - BASE_CHAR];
+		else
+			return 0;
+	if (cur->terminal) {
+		if (cur->docId == docId)
+			return 1;
+		cur->docId = docId;
+	} else {
+		cur->terminal = 1;
+		cur->docId = docId;
+	}
+	return 0;
+}
+
 void dfs(TrieNode_t * node) {
 	int i;
 #ifdef CORE_DEBUG
