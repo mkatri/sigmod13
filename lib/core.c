@@ -45,7 +45,7 @@ LinkedList_t *queries;
 HashTable* ht;
 int * qres;
 int pos;
-int sizeOfPool=1000000000;
+int sizeOfPool=1000000;
 //inline QueryDescriptor * getQueryDescriptor(int queryId) {
 //	return qmap[queryId];
 //}
@@ -396,15 +396,15 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 
 ///////////////////////////////////////////
 void core_test() {
-	unsigned int t = 9113677439;
-	printf("%llu",t); fflush(0);
+//	unsigned int t = 9113677439;
+//	printf("%llu",t); fflush(0);
 //	printf("%d\n\n", sizeof(HashCluster));
 //	printf("%d\n\n", sizeof(int));
 //	printf("%d\n\n", sizeof(HashCluster*));
 	InitializeIndex();
 //	char output[32][32];
 //
-	char f[32] = "    mother    cook    torli     bitngan    ";
+	char f[32] = " cook  ";
 //	char f2[32] = "  ok no   fucker  ";
 //
 //	StartQuery(5, f, 0, 7);
@@ -416,7 +416,7 @@ void core_test() {
 //	printf("done\n");
 
 	//hashTest();
-	MatchDocument(10, "    mother    cook    torli     bitngan    ");
+	MatchDocument(10, " cook     ");
 //	MatchDocument(10, "yomother fucker");
 //	MatchDocument(20, "fuck you oknofutcher");
 //	MatchDocument(30, "fuck mother you oknofucker father");
@@ -425,7 +425,7 @@ void core_test() {
 	unsigned int numRes;
 	GetNextAvailRes(&did, &numRes, &qid);
 
-//	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
+	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
 //	GetNextAvailRes(&did, &numRes, &qid);
 //	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
 //	GetNextAvailRes(&did, &numRes, &qid);
