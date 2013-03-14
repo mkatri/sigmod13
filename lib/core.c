@@ -47,9 +47,13 @@ int * qres;
 int pos;
 int sizeOfPool = 1000000;
 Trie_t2 * dtrie;
+int sizeOfSegemntPool = 1000000;
+int poolIndex = 0;
+SegmentData * SegmentPool[1000000];
 //inline QueryDescriptor * getQueryDescriptor(int queryId) {
 //	return qmap[queryId];
 //}
+
 inline void addQuery(int queryId, QueryDescriptor * qds) {
 //	qmap[queryId] = qds;
 
@@ -62,7 +66,43 @@ inline void addQuery(int queryId, QueryDescriptor * qds) {
 void split(int length[6], QueryDescriptor *desc, const char* query_str,
 		int * idx);
 
+void addSegment(SegmentData *s) {
+
+	SegmentPool[poolIndex++] = s;
+}
+
+
+void allocateSegments() {
+
+	SegmentData * fir = (SegmentData*) malloc(sizeof(SegmentData) * 10000);
+	memset(fir,0,10000*sizeof(SegmentData));
+	int i;
+	for ( i = 0; i < 10000; i++) {
+		addSegment( &(fir[i]) );
+	}
+}
+
+SegmentData * getSegment() {
+
+
+	if(poolIndex==0)
+	{
+		allocateSegments();
+	}
+	SegmentData *ret=SegmentPool[0];
+
+
+	SegmentPool[0]=SegmentPool[poolIndex-1];
+	poolIndex--;
+
+	return ret;
+
+}
+
 void init() {
+	int i=0;
+	for(i=0;i<1000000;i++)
+		SegmentPool[i]=0;
 	dtrie = newTrie2();
 	pos = 0;
 	qres = (int*) malloc(sizeof(int) * sizeOfPool);
@@ -70,6 +110,9 @@ void init() {
 	ht = new_Hash_Table();
 	trie = newTrie();
 	docList = newLinkedList();
+
+	//add segments
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -86,7 +129,7 @@ int cnt = 0;
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode DestroyIndex() {
-	printf("%d\n",cnt);
+
 	return EC_SUCCESS;
 }
 
@@ -155,7 +198,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 		second = wordLength / numOfSegments;
 		// loop on the word to get the segments
 		for (i = 0; i < k; i++) {
-			SegmentData *sd = newSegmentdata();
+			SegmentData *sd = getSegment();
 			sd->parentQuery = queryDescriptor;
 			sd->startIndex = queryDescriptor->words[in] + iq;
 			for (j = 0; j < first; j++) {
@@ -178,7 +221,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 
 		// loop on the word to get the segments
 		for (i = 0; (i < numOfSegments - k) && second; i++) {
-			SegmentData *sd = newSegmentdata();
+			SegmentData *sd = getSegment();
 			sd->parentQuery = queryDescriptor;
 			sd->startIndex = queryDescriptor->words[in] + iq;
 			for (j = 0; j < second; j++) {
@@ -269,7 +312,8 @@ ErrorCode EndQuery(QueryID query_id) {
 			k, first, second;
 	char segment[32];
 	int top = 0;
-	for (in = 0; in < 5 && queryDescriptor->words[in + 1]; in++) {
+	int numOfWords=(int)(queryDescriptor->numWords);
+	for (in = 0; in < numOfWords; in++) {
 
 		//get the word length
 		iq = 0;
@@ -287,7 +331,7 @@ ErrorCode EndQuery(QueryID query_id) {
 #ifdef CORE_DEBUG
 		printf(">>>>>     %d %d\n", wordLength, numOfSegments);
 #endif
-
+		SegmentData *retSegment;
 		k = wordLength - (wordLength / numOfSegments) * (numOfSegments);
 		first = (wordLength + numOfSegments - 1) / numOfSegments;
 		second = wordLength / numOfSegments;
@@ -298,7 +342,8 @@ ErrorCode EndQuery(QueryID query_id) {
 				iq++;
 			}
 			segment[j] = '\0';
-
+			retSegment=(SegmentData*)(queryDescriptor->segmentsData[top]->data);
+			addSegment(retSegment);
 			//Delete from the linked list in trie nodes
 			delete(queryDescriptor->segmentsData[top++]); //TODO ALSO DELETE SEGMENT DATA inside the node
 			//Delete from the trie
@@ -314,6 +359,8 @@ ErrorCode EndQuery(QueryID query_id) {
 			segment[j] = '\0';
 
 			//Delete from the linked list in trie nodes
+			retSegment=(SegmentData*)(queryDescriptor->segmentsData[top]->data);
+			addSegment(retSegment);
 			delete(queryDescriptor->segmentsData[top++]); //TODO ALSO DELETE SEGMENT DATA inside the node
 			//Delete from the trie
 			TrieDelete(trie, segment, second, queryDescriptor->matchType);
@@ -333,8 +380,6 @@ int cmpfunc(const QueryID * a, const QueryID * b) {
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 
-
-
 	int i = 0, e = 0;
 	int queryMatchCount = 0;
 	while (doc_str[i]) {
@@ -344,10 +389,10 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 		e = i;
 		while (doc_str[e] != ' ' && doc_str[e] != '\0')
 			e++;
-		if (!TriewordExist(dtrie, &doc_str[i], e - i,doc_id)) {
-			TrieInsert2(dtrie, &doc_str[i], e - i,doc_id);
+		if (!TriewordExist(dtrie, &doc_str[i], e - i, doc_id)) {
+			TrieInsert2(dtrie, &doc_str[i], e - i, doc_id);
 			matchWord(&doc_str[i], e - i, &queryMatchCount, doc_id);
-		}else{
+		} else {
 			cnt++;
 		}
 		i = e;
@@ -407,13 +452,14 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 void core_test() {
 //	unsigned int t = 9113677439;
 //	printf("%llu",t); fflush(0);
-//	printf("%d\n\n", sizeof(HashCluster));
+//	printf("%d\n\n", sizeof(SegmentData));
+	//getSegment();
 //	printf("%d\n\n", sizeof(int));
 //	printf("%d\n\n", sizeof(HashCluster*));
 	InitializeIndex();
 //	char output[32][32];
 //
-	char f[32] = " cook  ";
+	char f[32] = " cook lolo nity ";
 //	char f2[32] = "  ok no   fucker  ";
 //
 //	StartQuery(5, f, 0, 7);
