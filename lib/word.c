@@ -3,6 +3,7 @@
 #include "linked_list.h"
 #include "trie.h"
 #include "query.h"
+#include "dyn_array.h"
 
 extern Trie_t *trie;
 
@@ -123,8 +124,8 @@ void matchWord(int did, int tid, char *w, int l, int *count) {
 					QueryDescriptor * queryData = segData->parentQuery;
 					int type = queryData->matchType;
 
-					if (queryData->doc_id[tid] != did) {
-						queryData->doc_id[tid] = did;
+					if (queryData->docId[tid] != did) {
+						queryData->docId[tid] = did;
 						queryData->matchedWords[tid] = 0;
 					}
 

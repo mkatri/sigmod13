@@ -5,7 +5,7 @@
  *      Author: kimo
  *      ref emaxx
  */
-
+/*
 #include "treap.h"
 #include <sys/time.h>
 #define MAX_PRIORITY (1<<30);
@@ -215,3 +215,4 @@ printf("..delete..\n");
 	return 0;
 }
 
+*/

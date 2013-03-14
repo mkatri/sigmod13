@@ -23,7 +23,7 @@ DNode_t* delete(DNode_t * node) {
 	free(node);
 	return nxt;
 }
-char isEmpty(LinkedList_t * list) {
+inline char isEmpty(LinkedList_t * list) {
 	return list == 0 || list->head.next == &list->tail;
 }
 //int main(int argc, char **argv) {

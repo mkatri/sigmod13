@@ -8,7 +8,8 @@
 #ifndef THREADING_H_
 #define THREADING_H_
 
-#define HOME
+
+//#define HOME
 
 #ifdef HOME
 
@@ -19,7 +20,7 @@
 #else
 
 #define RES_POOL_INITSIZE 10000000
-#define NUM_THREADS 12
+#define NUM_THREADS 24
 #define HT_SIZE 1000000007
 
 #endif

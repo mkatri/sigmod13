@@ -15,7 +15,7 @@ typedef struct {
 	char *words[6];
 	char queryString[MAX_WORD_LENGTH * MAX_QUERY_WORDS + 1];
 	char matchedWords[NUM_THREADS];
-	DocID doc_id[NUM_THREADS];
+	int docId[NUM_THREADS];
 	DNode_t ** segmentsData;
 	char numWords;
 	int matchType;
