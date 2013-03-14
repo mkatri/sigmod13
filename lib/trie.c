@@ -84,7 +84,6 @@ void TrieDelete(Trie_t* trie, char*str, int length, int type) {
 TrieNode_t2 * newTrieNode2() {
 	TrieNode_t2* ret = (TrieNode_t2*) (malloc(sizeof(TrieNode_t2)));
 	memset(ret->next, 0, sizeof(ret->next));
-	ret->list = 0;
 	ret->c = 0;
 	ret->terminal = 0;
 	return ret;
@@ -92,28 +91,25 @@ TrieNode_t2 * newTrieNode2() {
 
 Trie_t2 * newTrie2() {
 	Trie_t2* t = (Trie_t2 *) malloc(sizeof(Trie_t2));
-	t->root.list = 0;
 	memset(t->root.next, 0, sizeof(t->root.next));
 	t->root.c = 0;
 	t->root.terminal = 0;
 	return t;
 }
-void TrieInsert2(Trie_t2* trie, char * str, int length) {
+void TrieInsert2(Trie_t2* trie, char * str, int length,int docId) {
 	TrieNode_t2 *cur = &(trie->root);
 	int i;
 	for (i = 0; i < length; i++) {
-		if (cur->list == 0)
-			cur->list = newLinkedList();
 		if (cur->next[str[i] - BASE_CHAR] == 0) {
 			cur->next[str[i] - BASE_CHAR] = newTrieNode2();
 			cur->next[str[i] - BASE_CHAR]->c = str[i] - BASE_CHAR;
 			cur->next[str[i] - BASE_CHAR]->terminal |= (i == length - 1);
-			append(cur->list, cur->next[str[i] - BASE_CHAR]);
+			cur->next[str[i] - BASE_CHAR]->docId = docId;
 		}
 		cur = cur->next[str[i] - BASE_CHAR];
 	}
 }
-char TriewordExist(Trie_t2* trie, char * str, int length) {
+char TriewordExist(Trie_t2* trie, char * str, int length,int docId) {
 	TrieNode_t2 *cur = &(trie->root);
 	int i;
 	for (i = 0; i < length; i++)
@@ -121,27 +117,15 @@ char TriewordExist(Trie_t2* trie, char * str, int length) {
 			cur = cur->next[str[i] - BASE_CHAR];
 		else
 			return 0;
-	return cur->terminal != 0;
-}
-inline void TrieDeleteNode2(TrieNode_t2* node) {
-	if (node->list != 0)
-		free(node->list);
-	free(node);
-}
-void delete2(TrieNode_t2 * root) {
-	if (isEmpty(root->list)) {
-		return;
+	if(cur->terminal){
+		if(cur->docId == docId)
+			return 1;
+		cur->docId=docId;
+	}else{
+		cur->terminal=1;
+		cur->docId=docId;
 	}
-	DNode_t * cur = root->list->head.next;
-	while (cur != &(root->list->tail)) {
-		delete2((TrieNode_t2 *) cur->data);
-		TrieDeleteNode2((TrieNode_t2 *) cur->data);
-		cur = cur->next;
-	}
-}
-
-void TrieDelete2(Trie_t2* trie) {
-	delete2(&(trie->root));
+	return 0;
 }
 
 void dfs(TrieNode_t * node) {

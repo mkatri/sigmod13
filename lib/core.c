@@ -46,6 +46,7 @@ HashTable* ht;
 int * qres;
 int pos;
 int sizeOfPool = 1000000;
+Trie_t2 * dtrie;
 //inline QueryDescriptor * getQueryDescriptor(int queryId) {
 //	return qmap[queryId];
 //}
@@ -62,6 +63,7 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 		int * idx);
 
 void init() {
+	dtrie = newTrie2();
 	pos = 0;
 	qres = (int*) malloc(sizeof(int) * sizeOfPool);
 	queries = newLinkedList();
@@ -80,10 +82,11 @@ ErrorCode InitializeIndex() {
 	init();
 	return EC_SUCCESS;
 }
-
+int cnt = 0;
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode DestroyIndex() {
+	printf("%d\n",cnt);
 	return EC_SUCCESS;
 }
 
@@ -330,11 +333,10 @@ int cmpfunc(const QueryID * a, const QueryID * b) {
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 
-	Trie_t2 * dtrie = newTrie2();
+
 
 	int i = 0, e = 0;
 	int queryMatchCount = 0;
-
 	while (doc_str[i]) {
 		while (doc_str[i] == ' ')
 			i++;
@@ -342,15 +344,16 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 		e = i;
 		while (doc_str[e] != ' ' && doc_str[e] != '\0')
 			e++;
-		if (!TriewordExist(dtrie, &doc_str[i], e - i)) {
-			TrieInsert2(dtrie, &doc_str[i], e - i);
+		if (!TriewordExist(dtrie, &doc_str[i], e - i,doc_id)) {
+			TrieInsert2(dtrie, &doc_str[i], e - i,doc_id);
 			matchWord(&doc_str[i], e - i, &queryMatchCount, doc_id);
 		}else{
-//			printf("!!");
+			cnt++;
 		}
 		i = e;
 	}
-	TrieDelete2(dtrie);
+
+//	TrieDelete2(dtrie);
 	void *alloc = malloc(
 			sizeof(DocumentDescriptor) + sizeof(QueryID) * queryMatchCount);
 	DocumentDescriptor *doc_desc = alloc + sizeof(QueryID) * queryMatchCount;
