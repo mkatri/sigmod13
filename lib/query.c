@@ -12,12 +12,10 @@ SegmentData * newSegmentdata() {
 QueryDescriptor * newQueryDescriptor() {
 	QueryDescriptor * ret = (QueryDescriptor*) malloc(sizeof(QueryDescriptor));
 	memset(ret, 0, sizeof(QueryDescriptor));
-	pthread_mutex_init(&ret->query_lock, NULL);
 	return ret;
 }
 
 void freeQueryDescriptor(QueryDescriptor * qds) {
-	pthread_mutex_destroy(&qds->query_lock);
 	free(qds);
 
 }

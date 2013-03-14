@@ -7,15 +7,14 @@
 
 #ifndef QUERY_H_
 #define QUERY_H_
-#include <pthread.h>
+#include "threading.h"
 #include "linked_list.h"
 #include "../include/core.h"
 
 typedef struct {
 	char *words[6];
 	char queryString[MAX_WORD_LENGTH * MAX_QUERY_WORDS + 1];
-	char matchedWords;
-	pthread_mutex_t query_lock;
+	char matchedWords[NUM_THREADS];
 	DNode_t ** segmentsData;
 	char numWords;
 	int matchType;

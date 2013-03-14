@@ -26,8 +26,6 @@
  */
 
 //#define CORE_DEBUG
-#define NUM_THREADS 6
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -37,69 +35,26 @@
 #include "trie.h"
 #include "document.h"
 #include "Hash_Table.h"
+#include "cir_queue.h"
+#include "threading.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
-//////////////// NAIVE THREADING STRUCTS //////////////////////////////////////////////////////
+//////////////// DOC THREADING STRUCTS //////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 pthread_t threads[NUM_THREADS];
-int wake_up;
-int done;
-pthread_cond_t done_cond;
-pthread_cond_t wake_up_cond;
-pthread_mutex_t thread_sync_lock;
-pthread_mutex_t doc_lock;
-pthread_mutex_t match_count_lock;
-pthread_mutex_t match_lock;
-
-char *cur_doc;
-int cur_doc_i;
-int cur_doc_match_count;
-
-void *matcher_thread(void *n) {
-	while (1) {
-		pthread_mutex_lock(&thread_sync_lock);
-		if (wake_up <= 0)
-			pthread_cond_wait(&wake_up_cond, &thread_sync_lock);
-		else {
-			wake_up--;
-		}
-		pthread_mutex_unlock(&thread_sync_lock);
-
-		while (1) {
-			pthread_mutex_lock(&doc_lock);
-			int i = cur_doc_i;
-			if (!cur_doc[i]) {
-				pthread_mutex_unlock(&doc_lock);
-				break;
-			}
-
-			while (cur_doc[i] == ' ')
-				i++;
-
-			int e = i;
-			while (cur_doc[e] != ' ' && cur_doc[e] != '\0')
-				e++;
-
-			cur_doc_i = e;
-
-			matchWord(&cur_doc[i], e - i, &cur_doc_match_count,
-					&match_count_lock);
-			pthread_mutex_unlock(&doc_lock);
-		}
-
-		pthread_mutex_lock(&thread_sync_lock);
-		done++;
-		pthread_cond_signal(&done_cond);
-		pthread_mutex_unlock(&thread_sync_lock);
-	}
-	return 0;
-}
-
+char documents[NUM_THREADS][MAX_DOC_LENGTH];
+CircularQueue cirq_free_docs;
+CircularQueue cirq_busy_docs;
+char *free_docs[NUM_THREADS];
+DocumentDescriptor *busy_docs[NUM_THREADS];
+pthread_mutex_t docList_lock;
+pthread_cond_t docList_avail;
 ///////////////////////////////////////////////////////////////////////////////////////////////
 Trie_t *trie;
 LinkedList_t *docList;
 LinkedList_t *queries;
+unsigned long docCount;
 
 /*QUERY DESCRIPTOR MAP GOES HERE*/
 //QueryDescriptor* qmap[1000000];
@@ -132,18 +87,69 @@ void init() {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
+pthread_mutex_t big_lock;
+
+void *matcher_thread(void *n) {
+	int tid = n;
+	while (1) {
+		DocumentDescriptor *doc_desc = cir_queue_remove(&cirq_busy_docs);
+		char *doc = doc_desc->document;
+		int i = 0, match_count = 0;
+		while (doc[i]) {
+			while (doc[i] == ' ')
+				i++;
+
+			int e = i;
+			while (doc[e] != ' ' && doc[e] != '\0')
+				e++;
+
+			matchWord(doc_desc->docId, tid, &doc[i], e - i, &match_count, &big_lock);
+			i = e;
+		}
+
+		doc_desc->matches = malloc(sizeof(QueryID) * match_count);
+		doc_desc->numResults = match_count;
+
+		int p = 0;
+
+		DNode_t* cur = queries->head.next;
+		while (cur != &(queries->tail)) {
+			QueryDescriptor * cqd = (QueryDescriptor *) cur->data;
+			if (cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
+				doc_desc->matches[p++] = cqd->queryId;
+			cqd->matchedWords[tid] = 0;
+			cur = cur->next;
+		}
+		//XXX could be moved above when we're using array instead of linkedlist
+		cir_queue_insert(&cirq_free_docs, doc_desc->document);
+
+		pthread_mutex_lock(&docList_lock);
+		append(docList, doc_desc);
+		pthread_cond_signal(&docList_avail);
+		pthread_mutex_unlock(&docList_lock);
+
+	}
+	return 0;
+}
+
 ErrorCode InitializeIndex() {
 	init();
-	pthread_cond_init(&wake_up_cond, NULL);
-	pthread_cond_init(&done_cond, NULL);
-	pthread_mutex_init(&thread_sync_lock, NULL);
-	pthread_mutex_init(&doc_lock, NULL);
-	pthread_mutex_init(&match_count_lock, NULL);
-	pthread_mutex_init(&match_lock, NULL);
+	docCount = 0;
+	cir_queue_init(&cirq_free_docs, &free_docs, NUM_THREADS);
+	cir_queue_init(&cirq_busy_docs, &busy_docs, NUM_THREADS);
+
+	pthread_mutex_init(&docList_lock, NULL);
+	pthread_mutex_init(&big_lock, NULL);
+	pthread_cond_init(&docList_avail, NULL);
 
 	int i;
 	for (i = 0; i < NUM_THREADS; i++) {
-		pthread_create(&threads[i], NULL, matcher_thread, NULL);
+		free_docs[i] = documents[i];
+	}
+	cirq_free_docs.size = NUM_THREADS;
+
+	for (i = 0; i < NUM_THREADS; i++) {
+		pthread_create(&threads[i], NULL, matcher_thread, i);
 	}
 	return EC_SUCCESS;
 }
@@ -171,6 +177,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 //#endif
 
 //TODO DNode_t ** segmentsData ;
+	waitTillFull(&cirq_free_docs);
 	int in = 0, i = 0, j = 0, wordLength = 0, k, first, second, iq = 0;
 
 	int wordSizes[6];
@@ -324,6 +331,7 @@ ErrorCode EndQuery(QueryID query_id) {
 #endif
 
 //	QueryDescriptor* queryDescriptor = getQueryDescriptor(query_id);
+	waitTillFull(&cirq_free_docs);
 	DNode_t* node = (DNode_t*) get(ht, query_id);
 	QueryDescriptor* queryDescriptor = (QueryDescriptor*) node->data;
 	delete(node);
@@ -392,63 +400,36 @@ ErrorCode EndQuery(QueryID query_id) {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
-	pthread_mutex_lock(&thread_sync_lock);
-	cur_doc = doc_str;
-	cur_doc_i = 0;
-	cur_doc_match_count = 0;
-	wake_up = NUM_THREADS;
-	done = 0;
-	pthread_cond_signal(&wake_up_cond);
-	while (done < NUM_THREADS) {
-		pthread_cond_wait(&done_cond, &thread_sync_lock);
-	}
-	pthread_mutex_unlock(&thread_sync_lock);
-
-	void *alloc = malloc(
-			sizeof(DocumentDescriptor) + sizeof(QueryID) * cur_doc_match_count);
-	DocumentDescriptor *doc_desc = alloc
-			+ sizeof(QueryID) * cur_doc_match_count;
-	doc_desc->docId = doc_id;
-	doc_desc->matches = alloc;
-
-	doc_desc->numResults = cur_doc_match_count;
-	int p = 0;
-
-	DNode_t* cur = queries->head.next;
-	while (cur != &(queries->tail)) {
-		QueryDescriptor * cqd = (QueryDescriptor *) cur->data;
-		if (cqd->matchedWords == (1 << (cqd->numWords)) - 1)
-			doc_desc->matches[p++] = cqd->queryId;
-		cqd->matchedWords = 0;
-		cur = cur->next;
-	}
-//	for (i = 0; i < 1000000; i++) {
-//		if (qmap[i]) {
-//			if (qmap[i]->matchedWords == (1 << (qmap[i]->numWords)) - 1) {
-//#ifdef CORE_DEBUG
-//				printf("doc %d matched query %d\n", doc_id, i);
-//#endif
-//				doc_desc->matches[p++] = i; //since qmap is a map, i is the QueryID
-//			}
-//			qmap[i]->matchedWords = 0;
-//		}
-//	}
-
-	append(docList, doc_desc);
+	docCount++;
+	char *doc_buf = cir_queue_remove(&cirq_free_docs);
+	strcpy(doc_buf, doc_str);
+	DocumentDescriptor *desc = malloc(sizeof(DocumentDescriptor));
+	desc->docId = doc_id;
+	desc->document = doc_buf;
+	cir_queue_insert(&cirq_busy_docs, desc);
 	return EC_SUCCESS;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 		QueryID** p_query_ids) {
-
+	if (docCount == 0)
+		return EC_NO_AVAIL_RES;
+	pthread_mutex_lock(&docList_lock);
+	while (isEmpty(docList))
+		pthread_cond_wait(&docList_avail, &docList_lock);
 	DNode_t *node = docList->head.next;
 	DocumentDescriptor* doc_desc = (DocumentDescriptor *) (node->data);
+	delete(node);
+	pthread_mutex_unlock(&docList_lock);
+
+	docCount--;
 	*p_query_ids = doc_desc->matches;
 	*p_doc_id = doc_desc->docId;
 	*p_num_res = doc_desc->numResults;
-	//TODO if numRes is zero, free doc_desc
-	delete(node);
+	if (doc_desc->numResults == 0)
+		free(doc_desc->matches);
+	free(doc_desc);
 	return EC_SUCCESS;
 }
 
@@ -481,7 +462,7 @@ void core_test() {
 	unsigned int numRes;
 	GetNextAvailRes(&did, &numRes, &qid);
 
-//	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
+	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
 //	GetNextAvailRes(&did, &numRes, &qid);
 //	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
 //	GetNextAvailRes(&did, &numRes, &qid);

@@ -1,4 +1,5 @@
 #include <pthread.h>
+#include "threading.h"
 #include "linked_list.h"
 #include "trie.h"
 #include "query.h"
@@ -31,10 +32,10 @@ inline int preCheck(int na, int nb, int dist) {
 	return 0;
 }
 
-int editDistance(char* a, int na, char* b, int nb, int dist) {
+int editDistance(int tid, char* a, int na, char* b, int nb, int dist) {
 	int oo = 0x7FFFFFFF;
 
-	static int T[2][100];
+	static int T[NUM_THREADS][2][100];
 
 	int ia, ib;
 
@@ -43,7 +44,7 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 	min = 1 << 30;
 
 	for (ib = 0; ib <= nb; ib++) {
-		T[cur][ib] = ib;
+		T[tid][cur][ib] = ib;
 		int tmp = ib + abs((na - ia) - (nb - ib));
 		if (tmp < min)
 			min = tmp;
@@ -59,7 +60,7 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 		int ib_en = nb;
 
 		ib = 0;
-		T[cur][ib] = ia;
+		T[tid][cur][ib] = ia;
 		ib_st++;
 
 		min = ia + abs(na - ia - nb + ib);
@@ -67,9 +68,9 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 		for (ib = ib_st; ib <= ib_en; ib++) {
 			int ret = oo;
 
-			int d1 = T[1 - cur][ib] + 1;
-			int d2 = T[cur][ib - 1] + 1;
-			int d3 = T[1 - cur][ib - 1];
+			int d1 = T[tid][1 - cur][ib] + 1;
+			int d2 = T[tid][cur][ib - 1] + 1;
+			int d3 = T[tid][1 - cur][ib - 1];
 			if (a[ia - 1] != b[ib - 1])
 				d3++;
 
@@ -80,7 +81,7 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 			if (d3 < ret)
 				ret = d3;
 
-			T[cur][ib] = ret;
+			T[tid][cur][ib] = ret;
 
 			/* XXX not tested */
 			int difa = na - ia, difb = nb - ib, totalMin = ret
@@ -96,13 +97,12 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 		cur = 1 - cur;
 	}
 
-	int ret = T[1 - cur][nb];
+	int ret = T[tid][1 - cur][nb];
 
 	return ret;
 }
 
-void matchWord(char *w, int l, int *count, pthread_mutex_t *count_lock) {
-
+void matchWord(int did, int tid, char *w, int l, int *count) {
 	if (l > 35)
 		return;
 
@@ -120,12 +120,14 @@ void matchWord(char *w, int l, int *count, pthread_mutex_t *count_lock) {
 					QueryDescriptor * queryData = segData->parentQuery;
 					int type = queryData->matchType;
 
-					if (((queryData->matchedWords) & (1 << (segData->wordIndex)))) {
+					if (((queryData->matchedWords[tid])
+							& (1 << (segData->wordIndex)))) {
 						cur = cur->next;
 						continue;
 					}
 
 					if (type == MT_EDIT_DIST) {
+
 						int d1;
 						if ((d1 = preCheck(i,
 								segData->startIndex
@@ -133,35 +135,26 @@ void matchWord(char *w, int l, int *count, pthread_mutex_t *count_lock) {
 								queryData->matchDistance))
 								<= queryData->matchDistance) {
 							d1 +=
-									editDistance(w, i,
+									editDistance(tid, w, i,
 											queryData->words[segData->wordIndex],
 											segData->startIndex
 													- queryData->words[segData->wordIndex],
 											queryData->matchDistance - d1);
 							if (d1 <= queryData->matchDistance) {
-								d1 += editDistance(w + j, l - j,
+								d1 += editDistance(tid, w + j, l - j,
 										segData->startIndex + j - i,
 										queryData->words[segData->wordIndex + 1]
 												- segData->startIndex - (j - i),
 										queryData->matchDistance - d1);
 							}
 							if (d1 <= queryData->matchDistance) {
+								queryData->matchedWords[tid] |= (1
+										<< (segData->wordIndex));
 
-								pthread_mutex_lock(&queryData->query_lock);
-								if (((queryData->matchedWords)
-										& (1 << (segData->wordIndex))) == 0) {
-									queryData->matchedWords |= (1
-											<< (segData->wordIndex));
-
-									if (queryData->matchedWords
-											== (1 << (queryData->numWords))
-													- 1) {
-										pthread_mutex_lock(count_lock);
-										(*count)++;
-										pthread_mutex_unlock(count_lock);
-									}
+								if (queryData->matchedWords[tid]
+										== (1 << (queryData->numWords)) - 1) {
+									(*count)++;
 								}
-								pthread_mutex_unlock(&queryData->query_lock);
 							}
 						}
 					} else if (type == MT_HAMMING_DIST) {
@@ -182,41 +175,25 @@ void matchWord(char *w, int l, int *count, pthread_mutex_t *count_lock) {
 										queryData->matchDistance - d1);
 
 								if (d1 <= queryData->matchDistance) {
-									pthread_mutex_lock(&queryData->query_lock);
-									if (((queryData->matchedWords)
-											& (1 << (segData->wordIndex)))
-											== 0) {
-										queryData->matchedWords |= (1
-												<< (segData->wordIndex));
+									queryData->matchedWords[tid] |= (1
+											<< (segData->wordIndex));
 
-										if (queryData->matchedWords
-												== (1 << (queryData->numWords))
-														- 1) {
-											pthread_mutex_lock(count_lock);
-											(*count)++;
-											pthread_mutex_unlock(count_lock);
-										}
+									if (queryData->matchedWords[tid]
+											== (1 << (queryData->numWords))
+													- 1) {
+										(*count)++;
 									}
-									pthread_mutex_unlock(
-											&queryData->query_lock);
 								}
 							}
 						}
 					} else if (i == 0 && j == l) { // Exact matching must be done from the start of the word only
-						pthread_mutex_lock(&queryData->query_lock);
-						if (((queryData->matchedWords)
-								& (1 << (segData->wordIndex))) == 0) {
-							queryData->matchedWords |= (1
-									<< (segData->wordIndex));
+						queryData->matchedWords[tid] |= (1
+								<< (segData->wordIndex));
 
-							if (queryData->matchedWords
-									== (1 << (queryData->numWords)) - 1) {
-								pthread_mutex_lock(count_lock);
-								(*count)++;
-								pthread_mutex_unlock(count_lock);
-							}
+						if (queryData->matchedWords[tid]
+								== (1 << (queryData->numWords)) - 1) {
+							(*count)++;
 						}
-						pthread_mutex_unlock(&queryData->query_lock);
 					}
 					cur = cur->next;
 				}
