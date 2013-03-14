@@ -45,7 +45,7 @@ LinkedList_t *queries;
 HashTable* ht;
 int * qres;
 int pos;
-int sizeOfPool=1000000;
+int sizeOfPool = 1000000;
 //inline QueryDescriptor * getQueryDescriptor(int queryId) {
 //	return qmap[queryId];
 //}
@@ -63,7 +63,7 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 
 void init() {
 	pos = 0;
-	qres = (int*) malloc(sizeof(int)*sizeOfPool);
+	qres = (int*) malloc(sizeof(int) * sizeOfPool);
 	queries = newLinkedList();
 	ht = new_Hash_Table();
 	trie = newTrie();
@@ -329,6 +329,9 @@ int cmpfunc(const QueryID * a, const QueryID * b) {
 }
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
+
+	Trie_t2 * dtrie = newTrie2();
+
 	int i = 0, e = 0;
 	int queryMatchCount = 0;
 
@@ -339,12 +342,15 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 		e = i;
 		while (doc_str[e] != ' ' && doc_str[e] != '\0')
 			e++;
-
-		matchWord(&doc_str[i], e - i, &queryMatchCount,doc_id);
-
+		if (!TriewordExist(dtrie, &doc_str[i], e - i)) {
+			TrieInsert2(dtrie, &doc_str[i], e - i);
+			matchWord(&doc_str[i], e - i, &queryMatchCount, doc_id);
+		}else{
+//			printf("!!");
+		}
 		i = e;
 	}
-
+	TrieDelete2(dtrie);
 	void *alloc = malloc(
 			sizeof(DocumentDescriptor) + sizeof(QueryID) * queryMatchCount);
 	DocumentDescriptor *doc_desc = alloc + sizeof(QueryID) * queryMatchCount;
