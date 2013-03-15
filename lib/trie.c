@@ -96,7 +96,8 @@ Trie_t2 * newTrie2() {
 	t->root.terminal = 0;
 	return t;
 }
-void TrieInsert2(Trie_t2* trie, char * str, int length,int docId) {
+
+void TrieInsert2(Trie_t2* trie, char * str, int length, int docId) {
 	TrieNode_t2 *cur = &(trie->root);
 	int i;
 	for (i = 0; i < length; i++) {
@@ -109,7 +110,8 @@ void TrieInsert2(Trie_t2* trie, char * str, int length,int docId) {
 		cur = cur->next[str[i] - BASE_CHAR];
 	}
 }
-char TriewordExist(Trie_t2* trie, char * str, int length,int docId) {
+
+char TriewordExist(Trie_t2* trie, char * str, int length, int docId) {
 	TrieNode_t2 *cur = &(trie->root);
 	int i;
 	for (i = 0; i < length; i++)
@@ -117,13 +119,14 @@ char TriewordExist(Trie_t2* trie, char * str, int length,int docId) {
 			cur = cur->next[str[i] - BASE_CHAR];
 		else
 			return 0;
-	if(cur->terminal){
-		if(cur->docId == docId)
+
+	if (cur->terminal) {
+		if (cur->docId == docId)
 			return 1;
-		cur->docId=docId;
-	}else{
-		cur->terminal=1;
-		cur->docId=docId;
+		cur->docId = docId;
+	} else {
+		cur->terminal = 1;
+		cur->docId = docId;
 	}
 	return 0;
 }

@@ -1,10 +1,10 @@
 #include "../include/core.h"
 
 typedef struct {
-  /* TODO of any use?
 	char *document;
-	char *nextWord;
-	*/
+	/* TODO of any use?
+	 char *nextWord;
+	 */
 	DocID docId;
 	QueryID *matches;
 	unsigned int numResults;

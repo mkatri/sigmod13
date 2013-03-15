@@ -1,4 +1,3 @@
-//#define CORE_DEBUG
 /*
  * core.cpp version 1.0
  * Copyright (c) 2013 KAUST - InfoCloud Group (All Rights Reserved)
@@ -26,52 +25,70 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+//#define CORE_DEBUG
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <math.h>
-//#include <core.h>
+#include <pthread.h>
+#include <core.h>
 #include "query.h"
 #include "trie.h"
 #include "document.h"
 #include "Hash_Table.h"
+#include "cir_queue.h"
+#include "submit_params.h"
+#include "dyn_array.h"
+#include "word.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
+//////////////// DOC THREADING STRUCTS //////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////
+
+pthread_t threads[NUM_THREADS];
+char documents[NUM_THREADS][MAX_DOC_LENGTH];
+CircularQueue cirq_free_docs;
+CircularQueue cirq_busy_docs;
+char *free_docs[NUM_THREADS];
+DocumentDescriptor *busy_docs[NUM_THREADS];
+pthread_mutex_t docList_lock;
+pthread_cond_t docList_avail;
+//DynamicArray matches[NUM_THREADS];
+int cmpfunc(const QueryID * a, const QueryID * b);
+///////////////////////////////////////////////////////////////////////////////////////////////
+
 Trie_t *trie;
 LinkedList_t *docList;
-LinkedList_t *queries;
+//LinkedList_t *queries;
+unsigned long docCount;
 
 /*QUERY DESCRIPTOR MAP GOES HERE*/
-//QueryDescriptor* qmap[1000000];
-HashTable* ht;
-int * qres;
-int pos;
-int sizeOfPool = 1000000;
-Trie_t2 * dtrie;
+
+#define QDESC_MAP_SIZE 20000
+QueryDescriptor qmap[QDESC_MAP_SIZE];
+//HashTable* ht;
+Trie_t2 *dtrie[NUM_THREADS];
 //inline QueryDescriptor * getQueryDescriptor(int queryId) {
 //	return qmap[queryId];
 //}
-inline void addQuery(int queryId, QueryDescriptor * qds) {
-//	qmap[queryId] = qds;
+/*
+ inline void addQuery(int queryId, QueryDescriptor * qds) {
+ //	qmap[queryId] = qds;
 
-	DNode_t* node = append(queries, qds);
-	insert(ht, queryId, node);
+ DNode_t* node = append(queries, qds);
+ insert(ht, queryId, node);
 
-}
+ }
+ */
 /*QUERY DESCRIPTOR MAP ENDS HERE*/
 
 void split(int length[6], QueryDescriptor *desc, const char* query_str,
 		int * idx);
 
-extern ed;
+Edit_Distance* ed[NUM_THREADS];
 void init() {
-	dtrie = newTrie2();
-	pos = 0;
-	qres = (int*) malloc(sizeof(int) * sizeOfPool);
-	queries = newLinkedList();
-	ht = new_Hash_Table();
 	trie = newTrie();
 	docList = newLinkedList();
-	ed = new_Edit_Distance();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -80,15 +97,97 @@ void init() {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
+void *matcher_thread(void *n) {
+	int tid = n;
+	while (1) {
+		DocumentDescriptor *doc_desc = cir_queue_remove(&cirq_busy_docs);
+		char *doc = doc_desc->document;
+		int i = 0;
+		int matchCount = 0;
+		while (doc[i]) {
+			while (doc[i] == ' ')
+				i++;
+
+			int e = i;
+			while (doc[e] != ' ' && doc[e] != '\0')
+				e++;
+
+			if (!TriewordExist(dtrie[tid], &doc[i], e - i, doc_desc->docId)) {
+				TrieInsert2(dtrie[tid], &doc[i], e - i, doc_desc->docId);
+				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount);
+			}
+			i = e;
+		}
+
+		doc_desc->matches = malloc(sizeof(QueryID) * matchCount);
+		doc_desc->numResults = matchCount;
+
+		/*
+		 memcpy(doc_desc->matches, qres, sizeof(QueryID) * matches[tid].tail);
+		 qsort(doc_desc->matches, matches[tid].tail, sizeof(QueryID), cmpfunc);
+		 */
+
+		i = 0;
+		int p = 0;
+		/*
+		 DNode_t* cur = queries->head.next;
+		 while (cur != &(queries->tail)) {
+		 QueryDescriptor * cqd = (QueryDescriptor *) cur->data;
+		 if (cqd->docId[tid] == doc_desc->docId
+		 && cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
+		 doc_desc->matches[p++] = cqd->queryId;
+		 if (p == matchCount)
+		 break;
+		 cur = cur->next;
+		 }
+		 */
+		while (i < QDESC_MAP_SIZE) {
+			QueryDescriptor * cqd = &qmap[i++];
+			if (cqd->docId[tid] == doc_desc->docId
+					&& cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
+				doc_desc->matches[p++] = cqd->queryId;
+			if (p == matchCount)
+				break;
+		}
+		//XXX could be moved above when we're using array instead of linkedlist
+		cir_queue_insert(&cirq_free_docs, doc_desc->document);
+
+		pthread_mutex_lock(&docList_lock);
+		append(docList, doc_desc);
+		pthread_cond_signal(&docList_avail);
+		pthread_mutex_unlock(&docList_lock);
+	}
+	return 0;
+}
+
 ErrorCode InitializeIndex() {
 	init();
+	docCount = 0;
+	cir_queue_init(&cirq_free_docs, &free_docs, NUM_THREADS);
+	cir_queue_init(&cirq_busy_docs, &busy_docs, NUM_THREADS);
+
+	pthread_mutex_init(&docList_lock, NULL);
+	pthread_cond_init(&docList_avail, NULL);
+
+	int i;
+	for (i = 0; i < NUM_THREADS; i++) {
+		free_docs[i] = documents[i];
+		//dyn_array_init(&matches[i], RES_POOL_INITSIZE);
+		dtrie[i] = newTrie2();
+		ed[i] = new_Edit_Distance();
+	}
+	cirq_free_docs.size = NUM_THREADS;
+
+	for (i = 0; i < NUM_THREADS; i++) {
+		pthread_create(&threads[i], NULL, matcher_thread, i);
+	}
 	return EC_SUCCESS;
 }
-int cnt = 0;
+
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode DestroyIndex() {
-	printf("%d\n", cnt);
+//	/printf("%d\n", cnt);
 	return EC_SUCCESS;
 }
 
@@ -109,19 +208,21 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 //#endif
 
 //TODO DNode_t ** segmentsData ;
+	waitTillFull(&cirq_free_docs);
 	int in = 0, i = 0, j = 0, wordLength = 0, k, first, second, iq = 0;
 
 	int wordSizes[6];
 	int numOfWords = 0;
 	int numOfSegments = match_dist + 1;
 	//get query descriptor for the query
-	QueryDescriptor * queryDescriptor = newQueryDescriptor();
+	QueryDescriptor * queryDescriptor = &qmap[query_id];
 	queryDescriptor->matchDistance = match_dist;
 	queryDescriptor->matchType = match_type;
 	queryDescriptor->queryId = query_id;
-	queryDescriptor->docId = -1;
+	for (in = 0; in < NUM_THREADS; in++)
+		queryDescriptor->docId[in] = -1;
 
-	addQuery(query_id, queryDescriptor);
+	//addQuery(query_id, queryDescriptor);
 
 	//as the query words are space separated so this method return the words and it's length
 	split(wordSizes, queryDescriptor, query_str, &numOfWords);
@@ -263,9 +364,8 @@ ErrorCode EndQuery(QueryID query_id) {
 #endif
 
 //	QueryDescriptor* queryDescriptor = getQueryDescriptor(query_id);
-	DNode_t* node = (DNode_t*) get(ht, query_id);
-	QueryDescriptor* queryDescriptor = (QueryDescriptor*) node->data;
-	delete(node);
+	waitTillFull(&cirq_free_docs);
+	QueryDescriptor* queryDescriptor = &qmap[query_id];
 	int i, j;
 	int in, iq, wordLength, numOfSegments = queryDescriptor->matchDistance + 1,
 			k, first, second;
@@ -321,9 +421,9 @@ ErrorCode EndQuery(QueryID query_id) {
 			TrieDelete(trie, segment, second, queryDescriptor->matchType);
 		}
 	}
-	freeQueryDescriptor(queryDescriptor);
-	delete_H(ht, query_id);
-	node = (DNode_t*) get(ht, query_id);
+//	freeQueryDescriptor(queryDescriptor);
+//	delete_H(ht, query_id);
+//	node = (DNode_t*) get(ht, query_id);
 //	qmap[query_id] = 0;
 	return EC_SUCCESS;
 }
@@ -334,77 +434,42 @@ int cmpfunc(const QueryID * a, const QueryID * b) {
 }
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
-
-	int i = 0, e = 0;
-	int queryMatchCount = 0;
-	while (doc_str[i]) {
-		while (doc_str[i] == ' ')
-			i++;
-
-		e = i;
-		while (doc_str[e] != ' ' && doc_str[e] != '\0')
-			e++;
-		if (!TriewordExist(dtrie, &doc_str[i], e - i, doc_id)) {
-			TrieInsert2(dtrie, &doc_str[i], e - i, doc_id);
-			matchWord(&doc_str[i], e - i, &queryMatchCount, doc_id);
-		} else {
-			cnt++;
-		}
-		i = e;
-	}
-
-//	TrieDelete2(dtrie);
-	void *alloc = malloc(
-			sizeof(DocumentDescriptor) + sizeof(QueryID) * queryMatchCount);
-	DocumentDescriptor *doc_desc = alloc + sizeof(QueryID) * queryMatchCount;
-	doc_desc->docId = doc_id;
-	doc_desc->matches = alloc;
-	doc_desc->numResults = queryMatchCount;
-	for (i = 0; i < pos; i++)
-		doc_desc->matches[i] = qres[i];
-	qsort(doc_desc->matches, pos, 4, cmpfunc);
-	pos = 0;
-//	DNode_t* cur = queries->head.next;
-//	while (cur != &(queries->tail)) {
-//		QueryDescriptor * cqd = (QueryDescriptor *) cur->data;
-//		if (cqd->matchedWords == (1 << (cqd->numWords)) - 1)
-//			doc_desc->matches[p++] = cqd->queryId;
-//		cqd->matchedWords = 0;
-//		cur = cur->next;
-//	}
-
-//	for (i = 0; i < 1000000; i++) {
-//		if (qmap[i]) {
-//			if (qmap[i]->matchedWords == (1 << (qmap[i]->numWords)) - 1) {
-//#ifdef CORE_DEBUG
-//				printf("doc %d matched query %d\n", doc_id, i);
-//#endif
-//				doc_desc->matches[p++] = i; //since qmap is a map, i is the QueryID
-//			}
-//			qmap[i]->matchedWords = 0;
-//		}
-//	}
-
-	append(docList, doc_desc);
+	docCount++;
+	char *doc_buf = cir_queue_remove(&cirq_free_docs);
+	strcpy(doc_buf, doc_str);
+	DocumentDescriptor *desc = malloc(sizeof(DocumentDescriptor));
+	desc->docId = doc_id;
+	desc->document = doc_buf;
+	cir_queue_insert(&cirq_busy_docs, desc);
 	return EC_SUCCESS;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 		QueryID** p_query_ids) {
-
+	if (docCount == 0)
+		return EC_NO_AVAIL_RES;
+	pthread_mutex_lock(&docList_lock);
+	while (isEmpty(docList))
+		pthread_cond_wait(&docList_avail, &docList_lock);
 	DNode_t *node = docList->head.next;
 	DocumentDescriptor* doc_desc = (DocumentDescriptor *) (node->data);
+	delete(node);
+	pthread_mutex_unlock(&docList_lock);
+
+	docCount--;
 	*p_query_ids = doc_desc->matches;
 	*p_doc_id = doc_desc->docId;
 	*p_num_res = doc_desc->numResults;
-	//TODO if numRes is zero, free doc_desc
-	delete(node);
+	if (doc_desc->numResults == 0)
+		free(doc_desc->matches);
+	free(doc_desc);
 	return EC_SUCCESS;
 }
 
 ///////////////////////////////////////////
 void core_test() {
+
 //	unsigned int t = 9113677439;
 //	printf("%llu",t); fflush(0);
 //	printf("%d\n\n", sizeof(HashCluster));
@@ -417,7 +482,7 @@ void core_test() {
 //	char f2[32] = "  ok no   fucker  ";
 //
 //	StartQuery(5, f, 0, 7);
-	StartQuery(7, f, MT_EDIT_DIST, 0);
+	StartQuery(7, f, MT_EXACT_MATCH, 0);
 //
 //	dfs(&(trie->root));
 //	EndQuery(7);

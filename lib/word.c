@@ -1,3 +1,5 @@
+#include <pthread.h>
+#include "submit_params.h"
 #include "linked_list.h"
 #include "trie.h"
 #include "query.h"
@@ -6,16 +8,8 @@
 
 //Time=2652[2s:652ms]
 
-Edit_Distance* ed;
+extern Edit_Distance* ed[];
 extern Trie_t *trie;
-extern int pos;
-extern int * qres;
-extern int sizeOfPool;
-
-void doubleSize() {
-	sizeOfPool <<= 1;
-	qres = (int*) realloc(qres, sizeof(int) * sizeOfPool);
-}
 
 int hammingDistance(char *a, char *b, int n, int max) {
 	int mismatch = 0;
@@ -43,16 +37,16 @@ inline int preCheck(int na, int nb, int dist) {
 	return 0;
 }
 
-int editDistance(char* a, int na, char* b, int nb, int dist) {
+int editDistance(int tid, char* a, int na, char* b, int nb, int dist) {
 	int oo = 0x7FFFFFFF;
 	int tmp;
 
-	if ((tmp = get_editDistance(a, na, b, nb, ed)) > -1)
+	if ((tmp = get_editDistance(tid, a, na, b, nb, ed[tid])) > -1)
 		return tmp;
 
-	static int T[2][100];
+	static int T[NUM_THREADS][2][100];
 
-	ED_Trie_Node* node = ed->trie->root;
+	ED_Trie_Node* node = ed[tid]->trie->root;
 
 	int ia, ib;
 
@@ -60,7 +54,7 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 	ia = 0;
 
 	for (ib = 0; ib <= nb; ib++)
-		T[cur][ib] = ib;
+		T[tid][cur][ib] = ib;
 
 	cur = 1 - cur;
 
@@ -69,15 +63,15 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 		int ib_en = nb;
 
 		ib = 0;
-		T[cur][ib] = ia;
+		T[tid][cur][ib] = ia;
 		ib_st++;
 
 		for (ib = ib_st; ib <= ib_en; ib++) {
 			int ret = oo;
 
-			int d1 = T[1 - cur][ib] + 1;
-			int d2 = T[cur][ib - 1] + 1;
-			int d3 = T[1 - cur][ib - 1];
+			int d1 = T[tid][1 - cur][ib] + 1;
+			int d2 = T[tid][cur][ib - 1] + 1;
+			int d3 = T[tid][1 - cur][ib - 1];
 			if (a[ia - 1] != b[ib - 1])
 				d3++;
 
@@ -88,29 +82,28 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 			if (d3 < ret)
 				ret = d3;
 
-			T[cur][ib] = ret;
+			T[tid][cur][ib] = ret;
 
 		}
 
-		node = add_editDistance(a, ia, b, nb, T[cur], node);
+		node = add_editDistance(a, ia, b, nb, T[tid][cur], ed[tid], node);
 		cur = 1 - cur;
 	}
-	currNode = node;
-	int ret = T[1 - cur][nb];
+
+	currNode[tid] = node;
+	int ret = T[tid][1 - cur][nb];
 
 	return ret;
 }
 
-void matchWord(char *w, int l, int *count, int doc_id) {
-
+void matchWord(int did, int tid, char *w, int l, int *count) {
 	if (l > 35)
 		return;
 
 	int i = 0;
 	for (i = 0; i < l; i++) {
 		int j = i;
-		TrieNode_t *n = trie;
-//		TrieNode_t *p = 0;
+		TrieNode_t *n = &trie->root;
 		while ((n = next_node(n, w[j])) && j < l) {
 
 			if (n->count[MT_EDIT_DIST] == 0 && n->count[MT_HAMMING_DIST] == 0
@@ -125,16 +118,20 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 					SegmentData * segData = (SegmentData *) (cur->data);
 					QueryDescriptor * queryData = segData->parentQuery;
 					int type = queryData->matchType;
-					if (queryData->docId != doc_id) {
-						queryData->docId = doc_id;
-						queryData->matchedWords = 0;
+
+					if (queryData->docId[tid] != did) {
+						queryData->docId[tid] = did;
+						queryData->matchedWords[tid] = 0;
 					}
-					if (((queryData->matchedWords) & (1 << (segData->wordIndex)))) {
+
+					if (((queryData->matchedWords[tid])
+							& (1 << (segData->wordIndex)))) {
 						cur = cur->next;
 						continue;
 					}
 
 					if (type == MT_EDIT_DIST) {
+
 						int d1;
 						if ((d1 = preCheck(i,
 								segData->startIndex
@@ -143,36 +140,32 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 								<= queryData->matchDistance) {
 
 							d1 +=
-									editDistance(w, i,
+									editDistance(tid, w, i,
 											queryData->words[segData->wordIndex],
 											segData->startIndex
 													- queryData->words[segData->wordIndex],
 											queryData->matchDistance - d1);
 
-							ED_Trie_Node* tmpnode = currNode;
-							currNode = 0;
+							ED_Trie_Node* tmpnode = currNode[tid];
+							currNode[tid] = 0;
 
 							if (d1 <= queryData->matchDistance) {
-								d1 += editDistance(w + j, l - j,
+								d1 += editDistance(tid, w + j, l - j,
 										segData->startIndex + j - i,
 										queryData->words[segData->wordIndex + 1]
 												- segData->startIndex - (j - i),
 										queryData->matchDistance - d1);
+							}
+							if (d1 <= queryData->matchDistance) {
+								queryData->matchedWords[tid] |= (1
+										<< (segData->wordIndex));
 
-								if (d1 <= queryData->matchDistance) {
-									queryData->matchedWords |= (1
-											<< (segData->wordIndex));
-									if (queryData->matchedWords
-											== (1 << (queryData->numWords))
-													- 1) {
-										(*count)++;
-										if (pos == sizeOfPool)
-											doubleSize();
-										qres[pos++] = queryData->queryId;
-									}
+								if (queryData->matchedWords[tid]
+										== (1 << (queryData->numWords)) - 1) {
+									(*count)++;
 								}
 							}
-							currNode = tmpnode;
+							currNode[tid] = tmpnode;
 						}
 					} else if (type == MT_HAMMING_DIST) {
 						if (i
@@ -192,35 +185,30 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 										queryData->matchDistance - d1);
 
 								if (d1 <= queryData->matchDistance) {
-									queryData->matchedWords |= (1
+									queryData->matchedWords[tid] |= (1
 											<< (segData->wordIndex));
-									if (queryData->matchedWords
+
+									if (queryData->matchedWords[tid]
 											== (1 << (queryData->numWords))
 													- 1) {
 										(*count)++;
-										if (pos == sizeOfPool)
-											doubleSize();
-										qres[pos++] = queryData->queryId;
-
 									}
 								}
 							}
 						}
 					} else if (i == 0 && j == l) { // Exact matching must be done from the start of the word only
-						queryData->matchedWords |= (1 << (segData->wordIndex));
-						if (queryData->matchedWords
+						queryData->matchedWords[tid] |= (1
+								<< (segData->wordIndex));
+
+						if (queryData->matchedWords[tid]
 								== (1 << (queryData->numWords)) - 1) {
 							(*count)++;
-							if (pos == sizeOfPool)
-								doubleSize();
-							qres[pos++] = queryData->queryId;
 						}
 					}
 					cur = cur->next;
 				}
 			}
-//			p = n;
 		}
-		currNode = 0;
+		currNode[tid] = 0;
 	}
 }

@@ -15,13 +15,16 @@ typedef struct {
 
 typedef struct {
 	ED_Trie* trie;
+	ED_Trie_Node** node_pool;
+	ED_Trie_Node** next_pool;
 } Edit_Distance;
 
 Edit_Distance* new_Edit_Distance();
 
-int get_editDistance(char*a, int na, char*b, int nb, Edit_Distance* sh);
+int get_editDistance(int tid, char*a, int na, char*b, int nb,
+		Edit_Distance* sh);
 
 ED_Trie_Node* add_editDistance(char*a, int ia, char*b, int nb, int* T,
-		ED_Trie_Node* node);
+		Edit_Distance *ed, ED_Trie_Node* node);
 
 #endif
