@@ -65,7 +65,7 @@ unsigned long docCount;
 #define QDESC_MAP_SIZE 20000
 QueryDescriptor qmap[QDESC_MAP_SIZE];
 //HashTable* ht;
-Trie_t2 *dtrie[NUM_THREADS];
+//Trie_t2 *dtrie;
 //inline QueryDescriptor * getQueryDescriptor(int queryId) {
 //	return qmap[queryId];
 //}
@@ -87,6 +87,7 @@ void init() {
 //	queries = newLinkedList();
 //	ht = new_Hash_Table();
 	trie = newTrie();
+//	dtrie = newTrie2();
 	docList = newLinkedList();
 }
 
@@ -111,7 +112,7 @@ void *matcher_thread(void *n) {
 			while (doc[e] != ' ' && doc[e] != '\0')
 				e++;
 
-			if (!TriewordExist(dtrie[tid], &doc[i], e - i, doc_desc->docId,tid)) {
+			if (!TriewordExist(trie, &doc[i], e - i, doc_desc->docId,tid)) {
 //				TrieInsert2(dtrie[tid], &doc[i], e - i, doc_desc->docId,tid);
 				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount);
 			}else cnt++;
@@ -172,7 +173,7 @@ ErrorCode InitializeIndex() {
 	for (i = 0; i < NUM_THREADS; i++) {
 		free_docs[i] = documents[i];
 		//dyn_array_init(&matches[i], RES_POOL_INITSIZE);
-		dtrie[i] = newTrie2();
+//		dtrie[i] = newTrie2();
 	}
 	cirq_free_docs.size = NUM_THREADS;
 

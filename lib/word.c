@@ -107,7 +107,7 @@ inline int min(int a, int b){
 	return b;
 }
 void matchWord(int did, int tid, char *w, int l, int *count) {
-	if (l > 35)
+	if (l > 34)
 		return;
 
 	int i = 0;
@@ -116,7 +116,7 @@ void matchWord(int did, int tid, char *w, int l, int *count) {
 		TrieNode_t *n = &trie->root;
 		while ((n = next_node(n, w[j])) && j < l) {
 			if (n->count[MT_EDIT_DIST] == 0 && n->count[MT_HAMMING_DIST] == 0
-					&& i > 0)
+					&& (i > 0||n->count[MT_EXACT_MATCH]==0))
 				break;
 			j++;
 			if (!isEmpty(n->list)) {

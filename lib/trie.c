@@ -8,12 +8,14 @@ TrieNode_t * newTrieNode() {
 	memset(ret->next, 0, sizeof(ret->next));
 	ret->list = 0;
 	memset(ret->count, 0, sizeof(ret->count));
+	memset(ret->docIds, 0, sizeof(ret->docIds));
 	return ret;
 }
 Trie_t * newTrie() {
 	Trie_t* t = (Trie_t *) malloc(sizeof(Trie_t));
 	memset(t->root.count, 0, sizeof(t->root.count));
 	t->root.list = 0;
+	memset(t->root.docIds, 0, sizeof(t->root.docIds));
 	memset(t->root.next, 0, sizeof(t->root.next));
 	return t;
 }
@@ -78,26 +80,37 @@ void TrieDelete(Trie_t* trie, char*str, int length, int type) {
 //		deleteTrieNode(current);
 //	}
 }
-
+//int poolSize = 10000;
+//int leftNodes ;
+//int first=1;
+//TrieNode_t2 ** pool;
 // NEW TRIE !
 //--------------------------------------------------------------------------------------------------------------
-TrieNode_t2 * newTrieNode2() {
-	TrieNode_t2* ret = (TrieNode_t2*) (malloc(sizeof(TrieNode_t2)));
-	memset(ret->next, 0, sizeof(ret->next));
-	ret->c = 0;
-	ret->terminal = 0;
-	return ret;
-}
-
-Trie_t2 * newTrie2() {
-	Trie_t2* t = (Trie_t2 *) malloc(sizeof(Trie_t2));
-	memset(t->root.next, 0, sizeof(t->root.next));
-	t->root.c = 0;
-	t->root.terminal = 0;
-	return t;
-}
-char TriewordExist(Trie_t2* trie, char * str, int length, int docId, int tid) {
-	TrieNode_t2 *cur = &(trie->root);
+//TrieNode_t2 * newTrieNode2() {
+//	TrieNode_t2 * ret;
+////	if(leftNodes == 0||first){
+////		pool = (TrieNode_t2**) malloc(sizeof(TrieNode_t2*));
+////		*pool = (TrieNode_t2*) (malloc(sizeof(TrieNode_t2)*poolSize));
+////		leftNodes = poolSize-1;
+////		first=0;
+////	}
+//	TrieNode_t2* ret = (TrieNode_t2*) (malloc(sizeof(TrieNode_t2)));
+////	ret = pool[leftNodes--];
+//	memset(ret->next, 0, sizeof(ret->next));
+//	ret->c = 0;
+//	ret->terminal = 0;
+//	return ret;
+//}
+//
+//Trie_t2 * newTrie2() {
+//	Trie_t2* t = (Trie_t2 *) malloc(sizeof(Trie_t2));
+//	memset(t->root.next, 0, sizeof(t->root.next));
+//	t->root.c = 0;
+//	t->root.terminal = 0;
+//	return t;
+//}
+char TriewordExist(Trie_t* trie, char * str, int length, int docId, int tid) {
+	TrieNode_t *cur = &(trie->root);
 	int i;
 	for (i = 0; i < length; i++)
 		if (cur->next[str[i] - BASE_CHAR] != 0)
@@ -105,7 +118,7 @@ char TriewordExist(Trie_t2* trie, char * str, int length, int docId, int tid) {
 		else {
 			for (; i < length; i++) {
 				if (cur->next[str[i] - BASE_CHAR] == 0) {
-					cur->next[str[i] - BASE_CHAR] = newTrieNode2();
+					cur->next[str[i] - BASE_CHAR] = newTrieNode();
 					cur->next[str[i] - BASE_CHAR]->c = str[i] - BASE_CHAR;
 					cur->next[str[i] - BASE_CHAR]->terminal |=
 							(i == length - 1);
