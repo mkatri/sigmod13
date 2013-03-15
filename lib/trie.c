@@ -2,9 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include "trie.h"
+#include <core.h>
 
 TrieNode_t * newTrieNode() {
-	TrieNode_t* ret = (TrieNode_t*) (malloc(sizeof(TrieNode_t)));
+	int tmp;
+	TrieNode_t* ret = (TrieNode_t*) (malloc(tmp = sizeof(TrieNode_t)));
+	trie_size += tmp;
 	memset(ret->next, 0, sizeof(ret->next));
 	ret->list = 0;
 	memset(ret->count, 0, sizeof(ret->count));

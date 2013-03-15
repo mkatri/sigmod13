@@ -84,6 +84,7 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 		int * idx);
 
 void init() {
+	doc_size = trie_size = 0;
 //	queries = newLinkedList();
 //	ht = new_Hash_Table();
 	trie = newTrie();
@@ -112,10 +113,11 @@ void *matcher_thread(void *n) {
 			while (doc[e] != ' ' && doc[e] != '\0')
 				e++;
 
-			if (!TriewordExist(trie, &doc[i], e - i, doc_desc->docId,tid)) {
+			if (!TriewordExist(trie, &doc[i], e - i, doc_desc->docId, tid)) {
 //				TrieInsert2(dtrie[tid], &doc[i], e - i, doc_desc->docId,tid);
 				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount);
-			}else cnt++;
+			} else
+				cnt++;
 			i = e;
 		}
 
@@ -185,7 +187,8 @@ ErrorCode InitializeIndex() {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode DestroyIndex() {
-	printf("%d\n", cnt);
+	printf("trie size = %lld bytes.\n", trie_size);
+	printf("doc size = %lld chars.\n", doc_size);
 	return EC_SUCCESS;
 }
 
@@ -432,6 +435,7 @@ int cmpfunc(const QueryID * a, const QueryID * b) {
 }
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
+	doc_size+=strlen(doc_str);
 	docCount++;
 	char *doc_buf = cir_queue_remove(&cirq_free_docs);
 	strcpy(doc_buf, doc_str);
