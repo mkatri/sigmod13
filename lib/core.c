@@ -26,6 +26,7 @@
  */
 
 //#define CORE_DEBUG
+#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -62,8 +63,7 @@ LinkedList_t *docList;
 unsigned long docCount;
 
 /*QUERY DESCRIPTOR MAP GOES HERE*/
-#define QDESC_MAP_SIZE 20000
-QueryDescriptor qmap[QDESC_MAP_SIZE];
+QueryDescriptor *qmap;
 //HashTable* ht;
 Trie_t2 *dtrie[NUM_THREADS];
 //inline QueryDescriptor * getQueryDescriptor(int queryId) {
@@ -86,6 +86,8 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 void init() {
 //	queries = newLinkedList();
 //	ht = new_Hash_Table();
+
+	qmap = malloc(QDESC_MAP_SIZE * sizeof(QueryDescriptor));
 	trie = newTrie();
 	docList = newLinkedList();
 }
@@ -143,8 +145,11 @@ void *matcher_thread(void *n) {
 		while (i < QDESC_MAP_SIZE) {
 			QueryDescriptor * cqd = &qmap[i++];
 			if (cqd->docId[tid] == doc_desc->docId
-					&& cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
-				doc_desc->matches[p++] = cqd->queryId;
+					&& cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1) {
+				if (cqd->queryId == i - 1)
+					printf("it really is fucked up\n");
+				doc_desc->matches[p++] = i - 1;
+			}
 			if (p == matchCount)
 				break;
 		}
@@ -165,8 +170,8 @@ ErrorCode InitializeIndex() {
 	cir_queue_init(&cirq_free_docs, &free_docs, NUM_THREADS);
 	cir_queue_init(&cirq_busy_docs, &busy_docs, NUM_THREADS);
 
-	pthread_mutex_init(&docList_lock, NULL);
-	pthread_cond_init(&docList_avail, NULL);
+	pthread_mutex_init(&docList_lock, NULL );
+	pthread_cond_init(&docList_avail, NULL );
 
 	int i;
 	for (i = 0; i < NUM_THREADS; i++) {
@@ -216,6 +221,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	queryDescriptor->matchDistance = match_dist;
 	queryDescriptor->matchType = match_type;
 	queryDescriptor->queryId = query_id;
+	assert(queryDescriptor->queryId == query_id);
 	for (in = 0; in < NUM_THREADS; in++)
 		queryDescriptor->docId[in] = -1;
 
@@ -229,10 +235,14 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	char segment[32];
 	/*initialize the DNode array here*/
 	int top = 0;
-	queryDescriptor->segmentsData = (DNode_t**) malloc(
-			numOfSegments * numOfWords * sizeof(DNode_t *));
-	for (top = 0; top < numOfSegments * numOfWords; top++)
-		queryDescriptor->segmentsData[top] = 0;
+	/*
+	 * XXX
+
+	 queryDescriptor->segmentsData = (DNode_t**) malloc(
+	 numOfSegments * numOfWords * sizeof(DNode_t *));
+	 for (top = 0; top < numOfSegments * numOfWords; top++)
+	 queryDescriptor->segmentsData[top] = 0;
+	 */
 	top = 0;
 	//printf("num of words %d\n",numOfWords);
 	for (in = 0; in < numOfWords; in++) {
@@ -258,6 +268,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			SegmentData *sd = newSegmentdata();
 			sd->parentQuery = queryDescriptor;
 			sd->startIndex = queryDescriptor->words[in] + iq;
+			sd->segmentIndex = i;
 			for (j = 0; j < first; j++) {
 				segment[j] = *(queryDescriptor->words[in] + iq);
 				iq++;
@@ -271,9 +282,8 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 
 			//insert in trie
 			//	printf("segment >>>> %s\n", segment);
-			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
-					first, match_type, sd);
-
+			sd->trieNode = TrieInsert(trie, segment, first, match_type, sd);
+			queryDescriptor->segmentsData[top++][i] = sd;
 		}
 
 		// loop on the word to get the segments
@@ -281,6 +291,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			SegmentData *sd = newSegmentdata();
 			sd->parentQuery = queryDescriptor;
 			sd->startIndex = queryDescriptor->words[in] + iq;
+			sd->segmentIndex = i + k;
 			for (j = 0; j < second; j++) {
 				segment[j] = *(queryDescriptor->words[in] + iq);
 				iq++;
@@ -292,8 +303,8 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			sd->wordIndex = in;
 			//insert in trie
 			//	printf("segment >>>> %s\n", segment);
-			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
-					second, match_type, sd);
+			sd->trieNode = TrieInsert(trie, segment, second, match_type, sd);
+			queryDescriptor->segmentsData[top++][i] = sd;
 		}
 	}
 
@@ -399,7 +410,9 @@ ErrorCode EndQuery(QueryID query_id) {
 			segment[j] = '\0';
 
 			//Delete from the linked list in trie nodes
-			delete(queryDescriptor->segmentsData[top++]); //TODO ALSO DELETE SEGMENT DATA inside the node
+			delete(queryDescriptor->segmentsData[top][k]->trieNode); //TODO ALSO DELETE SEGMENT DATA inside the node
+			free(queryDescriptor->segmentsData[top][k]);
+			top++;
 			//Delete from the trie
 			TrieDelete(trie, segment, first, queryDescriptor->matchType);
 		}
@@ -413,7 +426,9 @@ ErrorCode EndQuery(QueryID query_id) {
 			segment[j] = '\0';
 
 			//Delete from the linked list in trie nodes
-			delete(queryDescriptor->segmentsData[top++]); //TODO ALSO DELETE SEGMENT DATA inside the node
+			delete(queryDescriptor->segmentsData[top][k]->trieNode); //TODO ALSO DELETE SEGMENT DATA inside the node
+			free(queryDescriptor->segmentsData[top][k]);
+			top++;
 			//Delete from the trie
 			TrieDelete(trie, segment, second, queryDescriptor->matchType);
 		}
@@ -476,19 +491,21 @@ void core_test() {
 //	char output[32][32];
 //
 
-	char f[32] = " cook  ";
+	char f[32] = "diocese pgdma";
 //	char f2[32] = "  ok no   fucker  ";
 //
 //	StartQuery(5, f, 0, 7);
-	StartQuery(7, f, MT_EXACT_MATCH, 0);
+	StartQuery(7, f, MT_HAMMING_DIST, 2);
 //
 //	dfs(&(trie->root));
 //	EndQuery(7);
-////	dfs(&(trie->root));
+//	dfs(&(trie->root));
+//	return;
 //	printf("done\n");
 
 	//hashTest();
-	MatchDocument(10, " cook     ");
+	MatchDocument(10,
+			"http dbpedia resource list women national basketball association players http dbpedia ontology abstract this list women national basketball association players active former current players bold also list national basketball association players basketball contents edit tajama abraham svetlana abrosimova jessica adair danielle adams jordan adams elisa aguilar matee ajavon marcie alberts markita aldridge erin alexander tawona alhaleem charel allen mactabene amachree monique ambers ambrosia anderson chantelle anderson jolene anderson keisha anderson mery andrade yvette angel nicky anosike jayne appel janeth arcain katasha artis marlies askamp tangela atkinson morenike atunrase seimone augustus angela aycock miranda ayim leigh aziz jennifer azzi edit sherill baker alison bales elena baranova adia barnes mistie bass suzy batkovic brown jacqueline batteast ashley battle cass bauer bilodeau alana beard tully bevilaqua jessica bibby agnieszka bibrzycka bird abby bishop nina bjedov angie bjorklund tera bjorklund chante black debbie black rhonda blades cindy blodgett nikki blue octavia blue shannon bobbitt whitney boddie ruthie bolton latoya bond dewanna bonner jenny boucek lindsay bowen carla boyd janice braxton kara braxton angie braziel jessica breland michelle brogan sandy brondello cindy brown kiesha brown jessica brungo rebekkah brunson vicky bullett heather burge heidi burge alisa burras janell burse tasha butts latasha byears edit elizabeth cambage edna campbell michelle campbell dominique canty monique cardenas jamie carey essence carson amisha carter deborah carter swin cash jamie cassidy iziane castro marques tamika catchings laneishea caufield elisabeth cebrian keri chaconas cori chambers quianna chaney jill chapman daily daedra charles tina charles sonia chase cheek felicia chester kaayla chones kayte christensen karima chritmas shameka christon kristi cirone margold clark michelle cleary stacy clinesmith claire coggins monique coker courtney coleman marissa coleman katrina colleton sydney colson megan compain andrea congreaves cara consuegra camille cooper cynthia cooper sylvia crawley willnett crockett danielle crockrom katie cronin shanna crossley cassandra crumpton moorer beth cunningham davalyn cunningham monique currie edniesha curry edit stacey dales schuman grace daley helen darling jessica davenport brandi davis davis clarissa davis wrightsil anna deforge jennifer derevjanik erika souza keitha dickerson dillard tamecka dixon nadine domond bethany donaphin shay doron cintia santos katie douglas megan duffy victoria dunlap candice dupree margo dydek edit michelle edwards simone edwards teresa edwards tonya edwards shyra shalonda enis summer lauren ervin edit trisha fallon barbara farris allison feaster sung marie ferdinand harris marta fernandez marina ferragut ukari figgs isabelle fijalkowski olga firsova milena flores fluker kristin folkl cheryl ford kisha ford stacey ford toni foster sylvia fowles desiree francis quonesia franklin megan frazee stacy frese keshia frett trina frierson linda frohlich candace futrell edit katryna gaither travesa gant begona garcia kerri gardin andrea gardner andrea garner pietra cornelia gayden katie gearlds gessig kelley gibson jennifer gillom usha gilmore kamela gissendanner chrissy givens emile gomis adrienne goodson bridgette gordon gillian goring shaunzinski gortman margo graham erin grant denique graves alexis gray lawson michelle greco kalana greene cisti greenwalt vedrana grgin fonseca yolanda griffith kelsey griffin lady grooms gordana grubin sandrine gruda wanda guyton edit mikiko hagiwara kamesha hairston amber hall vicki hall angie hamblin becky hammon hampton romana hamzova lindsey harding laura harper donna harrington amber harris fran harris lisa harrison kristi harrower vanessa hayden kristin haynie dena head nekeshia henderson tracy henderson sonja henning herrig katrina hibbert jessie hicks allison hightower hill korie hlede roneeka hodges ebony hoffman chamique holdsclaw kedra holland corn quanitra hollingsworth sequoia holmes holmes harris amber holt hope susie hopson shelton alexis hornbuckle charde houston ashley houts jennifer howard tasha humphrey edit ibekwe sandora irvin dalma ivanyi niele ivey edit angela jackson deanna jackson gwen jackson lauren jackson tamicha jackson tammy jackson jackson tiffany jackson amber jacobs tamara james briann january anete jekabsone zogota cathy joens pollyanna johns kimbrough adrienne johnson chandra johnson jaclyn johnson latonya johnson leslie johnson niesa johnson shannon johnson temeka johnson tiffani johnson vickie johnson kellie jolly harper asjha jones chandi jones jameka jones larecha jones marion jones merlakia jones pauline jordan edit aneta kausaite crystal kelly susan king borchardt kingi cross zuzi klimesova ewelina kobryn laurie koehn ilona korstin greta koss anastasia kostaki tanja kostic cathrine kraayeveld nicole kubik andrea kuklova edit alison lacey jennifer lacy natasha lacy venus lacy monica lamb sheila lambert merlelynn lange harris crystal langhorne krystyna lara erlana larkins amanda lassiter ivory latta jantel lavender kara lawson edwige lawson wade katarina lazic shalee lehning betty lennox lisa leslie yelena leuchanka nicole levandusky nicole levesque doneeka lewis takeisha lewis tynesha lewis nancy lieberman cline miao lijie taylor lilley camille little andrea lloyd curry rebecca lobo stacey lovelace luckey helen sancho lyttle edit mwadi mabika laura macchi clarisse machanguana megan mahoney shea mahoney hamchetou maiga nadine malcolm sonja mallory evanthia maltsi kristen mann sharon manning rhonda mapp michelle marciniak gabriela marginean maylana martin nuria martinez raffaella masciadri caity matter katie mattera anita maxwell monica maxwell kelly mazzante brandi mccain tiffany mccain rashanda mccants stephanie mccarty janel mccarville suzie mcconnell serio angel mccoughtry danielle mccray nikki mccray nicky mccrimmon danielle mcculley pamela mcgee carla mcghee mcwilliams franklin chasity melvin giuliana mendiola coco miller kelly miller teana miller tausha mills delisha milton jones leilani mitchell moeggenberg adriana moises jacinta monroe anna montanana alex montgomery renee montgomery jackie moore jessica moore loree moore maya moore navonda moore penny moore tamara moore yolanda moore carolyn moos jene morris bernice mosby judy mosley mcafee jenny mowe naomi mulitauaopele eshaya murphy edit chen christelle garsanet andrea nagy astou ndiaye diatta emmeline ndongue nemcova claudia neves chelsea newton bernadette ngoyisa tina nicholson marlous nieuwveen mila nikolich chioma nnamaka deanna nolan vanessa nygaard edit jenna kristen neill yuko nicole ohlde olajuwon irina osipova heather owen shantia owens josephine owino edit danielle page murriel page yolanda paige sabrina palie wendy palmer daniel courtney paris candace parker florina pascalau paschal michaela pavlickova kate paye kayla pedersen ticha penicheiro jocelyn penn jasmina perazic gipe perkins erin perperoglou perrot bridget pettis erin phillips porsha phillips tari phillips shia phillips plenette pierson jeanette pohlen catarina pollini cappie pondexter angie potthoff elaine powell nicole powell armintie price franthea price lynn pride epiphanny prince latoya pringle edit brooke queenan allie quigley noelle quinn texlin quinney edit hajdana radunovic felicia ragland semeka randall kristen rasmussen brittainey raven stephanie raymond tamika williams raymond jamie redd brandy reed chastity reed michelle reed tracy reid tammi reiss kathrin ress andrea riley ruth riley jennifer rizzotti nyree roberts ashley robinson crystal robinson danielle robinson renee robinson scholanda robinson jannon roland adrienne ross leah rush eugenia rycraw edit nykesha sales sheri charisse sampson isabel sanchez sanders nakia sanford olayinka sanni kelly santos alessandra santos oliveira rankica sarenac paige sauer jaynetta saunders audrey sauret laure savasta kelly schumacher georgia schweitzer olympia scott raegan scott elena shakirova sharp kristen sharp ashley shields adrienne shuler madinah slaise gwen slaughter gergana slavtcheva aiysha smith brooke smith charlotte smith charmin smith christy smith crystal smith jennifer smith katie smith smith lacharlotte smith tangela smith tyresa smith wanisha smith belinda snell michelle snow leila sobral sidney spencer rachael sporn trisha stafford odom dawn staley tiffany stansbury kate starbird katy steding maria stepanova rehema stephens stacy stephens mandisa stevenson jackie stiles valerie still andrea stinson shanele stires tamara stocks jurgita streimikyte strother tora suber laura summerton jung tammy sutton brown ketia swanier sheryl swoopes carolyn swords edit sonja tate diana taurasi lindsay taylor penny taylor nikki teasley zane teilane kasha terry carla thomas christi thomas jasmine thomas krystal thomas latoya thomas stacey thomas alicia thompson amanda thompson tina thompson shona thorburn erin thorn robin threatt iciss tillis michele timms penny toler kristi toliver elena tornikidou levys torres tiffany travis chantel tremitiere trena trice barbara turner molly tuter slobodanka tuvic polina tzekova edit mfon udoka petra ujhelyi itoro umoh coleman edit amaya valdemoro michele gorp courtney vandersloot alexandra vanembricqs vaughn krystal vaughn kristen veal jana vesela danielle viglione dalivorka vilipic kamila vodichkova natalia vodopyanova milica vukadinovic edit ashley walker ayana walker demya walker marcedes walker maren walseth coquese washington tonya washington wauters teresa weatherspoon umeki webb martina weber kendra wecker lindsay whalen detrina white erica white stephanie white white whiting raymond tamika whitmore khadijah whittington jennifer whittle wicks jamila wideman candice wiggins brittany wilkins angelina williams beverly williams debra williams williams natalie williams rita williams shaquala williams tara williams toccara williams adrian williams strong willingham lisa willis wendi willits amanda wilson christina wirth lindsay wisdom hylton sophia witherspoon kara wolters angelina wolvert lynette woodard tiffany woosley monica wright tanisha wright shereka wright brooke wyckoff dana wynne edit edit lindsey yamasaki corissa yasen nevriye yilmaz carolyn young sophia young tamera young edit oksana zakaluzhnaya francesca zara shavonte zellous haixia zheng zuzana zirkova http wikipedia wiki list women national basketball association players");
 //	MatchDocument(10, "yomother fucker");
 //	MatchDocument(20, "fuck you oknofutcher");
 //	MatchDocument(30, "fuck mother you oknofucker father");
