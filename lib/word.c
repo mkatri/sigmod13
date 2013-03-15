@@ -106,10 +106,10 @@ int editDistance(int tid, char* a, int na, char* b, int nb, int dist) {
 void matchWord(int did, int tid, char *w, int l, int *count) {
 	QueryDescriptor head;
 	QueryDescriptor tail;
-	/*
+
 	head.next[tid] = &tail, tail.prev[tid] = &head;
 	head.prev[tid] = 0, tail.next[tid] = 0;
-	*/
+
 	int i = 0;
 	for (i = 0; i < l; i++) {
 		int j = i;
@@ -129,7 +129,7 @@ void matchWord(int did, int tid, char *w, int l, int *count) {
 
 					if (queryData->docId[tid] != did) {
 						queryData->docId[tid] = did;
-						//queryData->docWord[tid] = 0;
+						queryData->docWord[tid] = 0;
 						queryData->matchedWords[tid] = 0;
 					}
 
@@ -173,7 +173,6 @@ void matchWord(int did, int tid, char *w, int l, int *count) {
 							}
 						}
 					} else if (type == MT_HAMMING_DIST) {
-						/*
 						if (i
 								== segData->startIndex
 										- queryData->words[segData->wordIndex]
@@ -184,7 +183,7 @@ void matchWord(int did, int tid, char *w, int l, int *count) {
 							if (queryData->next_seg[tid][segData->wordIndex]
 									< segData->segmentIndex) {
 								SegmentData *begin_match =
-										&queryData->segmentsData[segData->wordIndex][queryData->next_seg[tid][segData->wordIndex]];
+										queryData->segmentsData[segData->wordIndex][queryData->next_seg[tid][segData->wordIndex]];
 								queryData->cur_dist[tid][segData->wordIndex] +=
 										hammingDistance(
 												w
@@ -204,9 +203,8 @@ void matchWord(int did, int tid, char *w, int l, int *count) {
 							queryData->part_matchedWords[tid] |= 1
 									<< segData->wordIndex;
 
-							if (queryData->docWord[tid] != w
-									&& queryData->cur_dist[tid][segData->wordIndex]
-											<= queryData->matchDistance) {
+							if (queryData->docWord[tid] != w) {
+								//&& queryData->cur_dist[tid][segData->wordIndex] <= queryData->matchDistance
 								queryData->docWord[tid] = w;
 								queryData->prev[tid] = tail.prev[tid];
 								queryData->next[tid] = &tail;
@@ -214,7 +212,7 @@ void matchWord(int did, int tid, char *w, int l, int *count) {
 								queryData->prev[tid]->next[tid] = queryData;
 							}
 						}
-						*/
+
 					} else if (i == 0 && j == l) { // Exact matching must be done from the start of the word only
 						queryData->matchedWords[tid] |= (1
 								<< (segData->wordIndex));
@@ -230,13 +228,8 @@ void matchWord(int did, int tid, char *w, int l, int *count) {
 		}
 	}
 
-	/*
 	QueryDescriptor *curr = head.next[tid];
 	while (curr != &tail) {
-		if (curr->queryId == 32) {
-
-			printf("here's the problem\n");
-		}
 		int i;
 		for (i = 0; i < curr->numWords; i++) {
 			if ((curr->part_matchedWords[tid] & (1 << i)) != 0) {
@@ -249,7 +242,7 @@ void matchWord(int did, int tid, char *w, int l, int *count) {
 						}
 					} else {
 						SegmentData *begin_match =
-								&curr->segmentsData[i][curr->next_seg[tid][i]];
+								curr->segmentsData[i][curr->next_seg[tid][i]];
 						curr->cur_dist[tid][i] += hammingDistance(
 								w + (begin_match->startIndex - curr->words[i]),
 								begin_match->startIndex,
@@ -273,6 +266,6 @@ void matchWord(int did, int tid, char *w, int l, int *count) {
 		curr->part_matchedWords[tid] = 0;
 		curr = curr->next[tid];
 	}
-	*/
+
 	/*TODO reset query descriptors */
 }
