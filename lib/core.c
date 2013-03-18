@@ -332,7 +332,6 @@ int cmpfunc(const QueryID * a, const QueryID * b) {
 }
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
-
 	int i = 0, e = 0;
 	int queryMatchCount = 0;
 	while (doc_str[i]) {
@@ -353,12 +352,15 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 				res = global_time;
 				newWord = 1;
 			} else {
+//				puts("==========");
 				cnt++;
 				DNode_t* cur = node->list->head.next;
+//				printf("\t\t%d\n",(cur != &(node->list->tail)));fflush(0);
 				while (cur != &(node->list->tail)) {
-					byte ok = 1;
 					doc_list_entry* entry = cur->data;
-					if (qtimer[entry->query_id] == res) {
+
+					if (qtimer[entry->query_id] <= res) {
+
 						SegmentData * segData = (SegmentData *) entry->segData;
 						QueryDescriptor * queryData = segData->parentQuery;
 
@@ -367,16 +369,20 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 							queryData->matchedWords = 0;
 						}
 
-						if (queryData->curr_time)
-							if (queryData->docId && node->curr_time)
-								queryData->matchedWords |= (1
-										<< (segData->wordIndex));
-						if (queryData->matchedWords == (1
-								<< (queryData->numWords)) - 1) {
-							queryMatchCount++;
-							if (pos == sizeOfPool)
-								doubleSize();
-							qres[pos++] = queryData->queryId;
+						if (!(queryData->matchedWords
+								& (1 << (segData->wordIndex)))) {
+							queryData->matchedWords |= (1
+									<< (segData->wordIndex));
+
+							if (queryData->matchedWords
+									== (1 << (queryData->numWords)) - 1) {
+								queryMatchCount++;
+								if (pos == sizeOfPool)
+									doubleSize();
+								qres[pos++] = queryData->queryId;
+							}
+
+						} else {
 
 						}
 
@@ -447,49 +453,19 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 
 ///////////////////////////////////////////
 void core_test() {
-	//	unsigned int t = 9113677439;
-	//	printf("%llu",t); fflush(0);
-	//	printf("%d\n\n", sizeof(HashCluster));
-	//	printf("%d\n\n", sizeof(int));
-	//	printf("%d\n\n", sizeof(HashCluster*));
 	InitializeIndex();
-	//	char output[32][32];
-	//
-	char f[32] = " cook  ";
-	//	char f2[32] = "  ok no   fucker  ";
-	//
-	//	StartQuery(5, f, 0, 7);
+	char f[32] = " cook  took book";
 	StartQuery(7, f, MT_EDIT_DIST, 0);
-	//
-	//	dfs(&(trie->root));
-	//	EndQuery(7);
-	////	dfs(&(trie->root));
-	//	printf("done\n");
-
-	//hashTest();
-	MatchDocument(10, " cook     ");
-	//	MatchDocument(10, "yomother fucker");
-	//	MatchDocument(20, "fuck you oknofutcher");
-	//	MatchDocument(30, "fuck mother you oknofucker father");
+	MatchDocument(1, "cook");
+	MatchDocument(2, "took");
+	MatchDocument(3, "cook   took book");
 	DocID did;
 	QueryID *qid;
 	unsigned int numRes;
 	GetNextAvailRes(&did, &numRes, &qid);
-
-	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
-	//	GetNextAvailRes(&did, &numRes, &qid);
-	//	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
-	//	GetNextAvailRes(&did, &numRes, &qid);
-	//	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
-	////	EndQuery(0);
-	////	puts("---------------------------");
-	////	puts("---------------------------");
-	////	puts("---------------------------");
-	//
-	////	dfs(&(trie->root));
-	//	//	printo(f);
-	//	//	int num = 0;
-	//	//	getSegments(output, f, 11, 3, &num);
-	//	//	puts(output[3]);
-	//	//	printf("done %d", num);
+	printf("doc = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
+	GetNextAvailRes(&did, &numRes, &qid);
+	printf("doc = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
+	GetNextAvailRes(&did, &numRes, &qid);
+	printf("doc = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
 }

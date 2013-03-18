@@ -27,9 +27,6 @@ inline TrieNode_t2* next_node2(TrieNode_t2 *current, char c) {
 }
 DNode_t* TrieInsert(Trie_t * trie, char * str, int length, int type,
 		void* queryData) {
-#ifdef CORE_DEBUG
-	puts(str);
-#endif
 	TrieNode_t* current = &(trie->root);
 	current->count[type]++;
 	current->curr_time = global_time;
@@ -110,6 +107,8 @@ TrieNode_t2* TrieInsert2(Trie_t2* trie, char * str, int length, int docId) {
 		}
 		cur = cur->next[str[i] - BASE_CHAR];
 	}
+	cur->docId = docId;
+	cur->curr_time = global_time;
 	return cur;
 }
 
@@ -156,7 +155,6 @@ ll TriewordExist(Trie_t2* trie, char * str, int length, int docId, ll* res) {
 //	return 0;
 //}
 
-
 void dfs(TrieNode_t * node) {
 	int i;
 #ifdef CORE_DEBUG
@@ -183,4 +181,4 @@ void dfs(TrieNode_t * node) {
 //	dfs(&(t->root));
 //	return 0;
 //}
-
+//
