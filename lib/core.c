@@ -41,7 +41,8 @@ LinkedList_t *queries;
 
 /*QUERY DESCRIPTOR MAP GOES HERE*/
 //QueryDescriptor* qmap[1000000];
-void* ht[100000];
+void* qmap[100000];
+ll qtimer[100000];
 int * qres;
 int pos;
 int sizeOfPool = 1000000;
@@ -50,10 +51,9 @@ Trie_t2 * dtrie;
 //	return qmap[queryId];
 //}
 inline void addQuery(int queryId, QueryDescriptor * qds) {
-	//	qmap[queryId] = qds;
-
 	DNode_t* node = append(queries, qds);
-	ht[queryId] = node;
+	qmap[queryId] = node;
+	qtimer[queryId] = global_time;
 
 }
 /*QUERY DESCRIPTOR MAP ENDS HERE*/
@@ -68,6 +68,7 @@ void init() {
 	queries = newLinkedList();
 	trie = newTrie();
 	docList = newLinkedList();
+	global_time = 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -100,6 +101,8 @@ void printWords(char out[6][32], int num) {
 
 ErrorCode StartQuery(QueryID query_id, const char* query_str,
 		MatchType match_type, unsigned int match_dist) {
+	global_time++;
+	doc_time = 0;
 	//#ifdef CORE_DEBUG
 	//	printf("query: %d --> %s\n", query_id, query_str);
 	//#endif
@@ -257,9 +260,9 @@ ErrorCode EndQuery(QueryID query_id) {
 #ifdef CORE_DEBUG
 	puts("inside here");
 #endif
-
+	global_time++;
 	//	QueryDescriptor* queryDescriptor = getQueryDescriptor(query_id);
-	DNode_t* node = (DNode_t*) ht[query_id];
+	DNode_t* node = (DNode_t*) qmap[query_id];
 	QueryDescriptor* queryDescriptor = (QueryDescriptor*) node->data;
 	delete(node);
 	int i, j;
@@ -318,9 +321,8 @@ ErrorCode EndQuery(QueryID query_id) {
 		}
 	}
 	freeQueryDescriptor(queryDescriptor);
-	ht[query_id] = 0;
-	node = (DNode_t*) ht[query_id];
-	//	qmap[query_id] = 0;
+	qmap[query_id] = 0;
+	qtimer[query_id] = global_time;
 	return EC_SUCCESS;
 }
 
@@ -340,11 +342,55 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 		e = i;
 		while (doc_str[e] != ' ' && doc_str[e] != '\0')
 			e++;
-		if (!TriewordExist(dtrie, &doc_str[i], e - i, doc_id)) {
-			TrieInsert2(dtrie, &doc_str[i], e - i, doc_id);
-			matchWord(&doc_str[i], e - i, &queryMatchCount, doc_id);
+		ll res;
+		TrieNode_t2* node = TriewordExist(dtrie, &doc_str[i], e - i, doc_id,
+				&res);
+		byte newWord = 0;
+
+		if (res > -1) {
+			if (!res) {
+				node = TrieInsert2(dtrie, &doc_str[i], e - i, doc_id);
+				res = global_time;
+				newWord = 1;
+			} else {
+				cnt++;
+				DNode_t* cur = node->list->head.next;
+				while (cur != &(node->list->tail)) {
+					byte ok = 1;
+					doc_list_entry* entry = cur->data;
+					if (qtimer[entry->query_id] == res) {
+						SegmentData * segData = (SegmentData *) entry->segData;
+						QueryDescriptor * queryData = segData->parentQuery;
+
+						if (queryData->docId != doc_id) {
+							queryData->docId = doc_id;
+							queryData->matchedWords = 0;
+						}
+
+						if (queryData->curr_time)
+							if (queryData->docId && node->curr_time)
+								queryData->matchedWords |= (1
+										<< (segData->wordIndex));
+						if (queryData->matchedWords == (1
+								<< (queryData->numWords)) - 1) {
+							queryMatchCount++;
+							if (pos == sizeOfPool)
+								doubleSize();
+							qres[pos++] = queryData->queryId;
+
+						}
+
+					} else {
+						cur->prev->next = cur->next;
+						cur->next->prev = cur->prev;
+					}
+					cur = cur->next;
+				}
+			}
+			matchWord(&doc_str[i], e - i, &queryMatchCount, doc_id, node,
+					newWord);
 		} else {
-			cnt++;
+			//			cnt++;
 		}
 		i = e;
 	}

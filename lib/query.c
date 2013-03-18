@@ -12,6 +12,7 @@ SegmentData * newSegmentdata() {
 QueryDescriptor * newQueryDescriptor() {
 	QueryDescriptor * ret = (QueryDescriptor*) malloc(sizeof(QueryDescriptor));
 	memset(ret, 0, sizeof(QueryDescriptor));
+	ret->curr_time = global_time;
 	return ret;
 }
 

@@ -20,6 +20,7 @@ typedef struct {
 	int matchDistance;
 	int queryId;
 	int docId;
+	int curr_time;
 } QueryDescriptor;
 
 typedef struct {
