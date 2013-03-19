@@ -112,27 +112,27 @@ TrieNode_t2* TrieInsert2(Trie_t2* trie, char * str, int length, int docId) {
 	return cur;
 }
 
-ll TriewordExist(Trie_t2* trie, char * str, int length, int docId, ll* res) {
+ll TriewordExist(Trie_t2* trie, char * str, int length, int docId, ll* docTime) {
 	TrieNode_t2 *cur = &(trie->root);
 	int i;
 	for (i = 0; i < length; i++)
 		if (cur->next[str[i] - BASE_CHAR] != 0)
 			cur = cur->next[str[i] - BASE_CHAR];
 		else {
-			*res = 0;
+			*docTime = 0;
 			return 0;
 		}
 	if (cur->terminal) {
-		*res = cur->curr_time;
+		*docTime = cur->curr_time;
 		if (cur->docId == docId)
-			*res = -1;
+			*docTime = -1;
 		cur->docId = docId;
 		return cur;
 	} else {
 		cur->terminal = 1;
 		cur->docId = docId;
 	}
-	*res = 0;
+	*docTime = 0;
 	return 0;
 }
 

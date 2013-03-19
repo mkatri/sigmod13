@@ -54,7 +54,8 @@ inline void addQuery(int queryId, QueryDescriptor * qds) {
 	DNode_t* node = append(queries, qds);
 	qmap[queryId] = node;
 	qtimer[queryId] = global_time;
-
+	//	printf("%lld\n", qtimer[24]);
+	//	fflush(0);
 }
 /*QUERY DESCRIPTOR MAP ENDS HERE*/
 
@@ -341,26 +342,23 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 		e = i;
 		while (doc_str[e] != ' ' && doc_str[e] != '\0')
 			e++;
-		ll res;
+		ll word_time;
 		TrieNode_t2* node = TriewordExist(dtrie, &doc_str[i], e - i, doc_id,
-				&res);
+				&word_time);
 		byte newWord = 0;
 
-		if (res > -1) {
-			if (!res) {
+		if (word_time > -1) {
+			if (!word_time) {
 				node = TrieInsert2(dtrie, &doc_str[i], e - i, doc_id);
-				res = global_time;
+				word_time = global_time;
 				newWord = 1;
 			} else {
-//				puts("==========");
 				cnt++;
 				DNode_t* cur = node->list->head.next;
-//				printf("\t\t%d\n",(cur != &(node->list->tail)));fflush(0);
 				while (cur != &(node->list->tail)) {
 					doc_list_entry* entry = cur->data;
 
-					if (qtimer[entry->query_id] <= res) {
-
+					if (qtimer[entry->query_id] <= word_time) {
 						SegmentData * segData = (SegmentData *) entry->segData;
 						QueryDescriptor * queryData = segData->parentQuery;
 
@@ -369,23 +367,19 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 							queryData->matchedWords = 0;
 						}
 
-						if (!(queryData->matchedWords
-								& (1 << (segData->wordIndex)))) {
+						if (!(queryData->matchedWords & (1
+								<< (segData->wordIndex)))) {
 							queryData->matchedWords |= (1
 									<< (segData->wordIndex));
 
-							if (queryData->matchedWords
-									== (1 << (queryData->numWords)) - 1) {
+							if (queryData->matchedWords == (1
+									<< (queryData->numWords)) - 1) {
 								queryMatchCount++;
 								if (pos == sizeOfPool)
 									doubleSize();
 								qres[pos++] = queryData->queryId;
 							}
-
-						} else {
-
 						}
-
 					} else {
 						cur->prev->next = cur->next;
 						cur->next->prev = cur->prev;
@@ -395,8 +389,7 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 			}
 			matchWord(&doc_str[i], e - i, &queryMatchCount, doc_id, node,
 					newWord);
-		} else {
-			//			cnt++;
+
 		}
 		i = e;
 	}
