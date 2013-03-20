@@ -98,7 +98,9 @@ void init() {
 
 void *matcher_thread(void *n) {
 	int tid = n;
+#ifdef THREAD_ENABLE
 	while (1) {
+#endif
 		DocumentDescriptor *doc_desc = cir_queue_remove(&cirq_busy_docs);
 		char *doc = doc_desc->document;
 		int i = 0;
@@ -155,7 +157,9 @@ void *matcher_thread(void *n) {
 		append(docList, doc_desc);
 		pthread_cond_signal(&docList_avail);
 		pthread_mutex_unlock(&docList_lock);
+#ifdef THREAD_ENABLE
 	}
+#endif
 	return 0;
 }
 
@@ -176,9 +180,11 @@ ErrorCode InitializeIndex() {
 	}
 	cirq_free_docs.size = NUM_THREADS;
 
+#ifdef THREAD_ENABLE
 	for (i = 0; i < NUM_THREADS; i++) {
 		pthread_create(&threads[i], NULL, matcher_thread, i);
 	}
+#endif
 	return EC_SUCCESS;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -438,6 +444,9 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 	desc->docId = doc_id;
 	desc->document = doc_buf;
 	cir_queue_insert(&cirq_busy_docs, desc);
+#ifndef THREAD_ENABLE
+	matcher_thread(1);
+#endif
 	return EC_SUCCESS;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////
