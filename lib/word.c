@@ -5,8 +5,6 @@
 #include "query.h"
 #include "dyn_array.h"
 
-extern Trie_t *trie;
-
 int hammingDistance(char *a, char *b, int n, int max) {
 	int mismatch = 0;
 	int i;
@@ -102,11 +100,12 @@ int editDistance(int tid, char* a, int na, char* b, int nb, int dist) {
 
 	return ret;
 }
-inline int min(int a, int b){
-	if(a<=b)return a;
+inline int min(int a, int b) {
+	if (a <= b)
+		return a;
 	return b;
 }
-void matchWord(int did, int tid, char *w, int l, int *count) {
+void matchWord(int did, int tid, char *w, int l, int *count, Trie_t * trie) {
 	if (l > 34)
 		return;
 
@@ -116,7 +115,7 @@ void matchWord(int did, int tid, char *w, int l, int *count) {
 		TrieNode_t *n = &trie->root;
 		while ((n = next_node(n, w[j])) && j < l) {
 			if (n->count[MT_EDIT_DIST] == 0 && n->count[MT_HAMMING_DIST] == 0
-					&& (i > 0||n->count[MT_EXACT_MATCH]==0))
+					&& (i > 0 || n->count[MT_EXACT_MATCH] == 0))
 				break;
 			j++;
 			if (!isEmpty(n->list)) {
