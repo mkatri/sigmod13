@@ -20,7 +20,7 @@ DNode_t* delete(DNode_t * node) {
 	node->next->prev = node->prev;
 	node->prev->next = node->next;
 	DNode_t* nxt = node->next;
-	free(node);
+//	free(node);
 	return nxt;
 }
 inline char isEmpty(LinkedList_t * list) {

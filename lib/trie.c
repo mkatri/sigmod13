@@ -66,17 +66,17 @@ void TrieDelete(Trie_t* trie, char*str, int length, int type) {
 		if (next->count[0] + next->count[1] + next->count[2] == 0) {
 			current->next[str[i] - BASE_CHAR] = 0;
 		}
-		if (current->count[0] + current->count[1] + current->count[2] == 0
-				&& current != &(trie->root)) {
-			deleteTrieNode(current);
-		}
+		//		if (current->count[0] + current->count[1] + current->count[2] == 0
+		//				&& current != &(trie->root)) {
+		//			deleteTrieNode(current);
+		//		}
 		current = next;
 	}
 //Alternative Implementation:Delete LinkedList node here (note:full traversal is required)
-	if (current->count[0] + current->count[1] + current->count[2] == 0
-			&& current != &(trie->root)) { //Note the check if current!=&(trie.root) is not really required unless we are kidding (LOL)
-		deleteTrieNode(current);
-	}
+	//	if (current->count[0] + current->count[1] + current->count[2] == 0
+	//			&& current != &(trie->root)) { //Note the check if current!=&(trie.root) is not really required unless we are kidding (LOL)
+	//		deleteTrieNode(current);
+	//	}
 }
 
 // NEW TRIE !
