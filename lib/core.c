@@ -115,10 +115,16 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	char segment[32];
 	/*initialize the DNode array here*/
 	int top = 0;
-	queryDescriptor->segmentsData = (DNode_t**) malloc(
+	queryDescriptor->segmentsDataL = (DNode_t**) malloc(
 			numOfSegments * numOfWords * sizeof(DNode_t *));
 	for (top = 0; top < numOfSegments * numOfWords; top++)
-		queryDescriptor->segmentsData[top] = 0;
+		queryDescriptor->segmentsDataL[top] = 0;
+
+	queryDescriptor->segmentsDataR = (DNode_t**) malloc(
+			numOfSegments * numOfWords * sizeof(DNode_t *));
+	for (top = 0; top < numOfSegments * numOfWords; top++)
+		queryDescriptor->segmentsDataR[top] = 0;
+
 	top = 0;
 
 	for (in = 0; in < numOfWords; in++) {
@@ -155,8 +161,11 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			sd->wordIndex = in;
 
 			//insert in trie
-			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
-					first, match_type, 0, sd->startIndex, iq, wordLength, sd);
+
+			DNode_t ** ret = TrieInsert(trie, segment, first, match_type,
+					match_dist, 0, sd->startIndex, iq, wordLength, sd);
+			queryDescriptor->segmentsDataL[top++] = ret[0];
+			queryDescriptor->segmentsDataR[top++] = ret[1];
 		}
 
 		// loop on the word to get the segments
@@ -174,8 +183,10 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			//sd->startIndex = iq - second;
 			sd->wordIndex = in;
 			//insert in trie
-			queryDescriptor ->segmentsData[top++] = TrieInsert(trie, segment,
-					second, match_type, 0, sd->startIndex, iq, wordLength, sd);
+			DNode_t ** ret = TrieInsert(trie, segment, second, match_type,
+					match_dist, 0, sd->startIndex, iq, wordLength, sd);
+			queryDescriptor->segmentsDataL[top++] = ret[0];
+			queryDescriptor->segmentsDataR[top++] = ret[1];
 		}
 	}
 
@@ -282,7 +293,8 @@ ErrorCode EndQuery(QueryID query_id) {
 			segment[j] = '\0';
 
 			//Delete from the linked list in trie nodes
-			delete(queryDescriptor->segmentsData[top++]); //TODO ALSO DELETE SEGMENT DATA inside the node
+			delete(queryDescriptor->segmentsDataL[top++]); //TODO ALSO DELETE SEGMENT DATA inside the node
+			delete(queryDescriptor->segmentsDataR[top++]);
 			//Delete from the trie
 			TrieDelete(trie, segment, first, queryDescriptor->matchType);
 		}
@@ -296,7 +308,8 @@ ErrorCode EndQuery(QueryID query_id) {
 			segment[j] = '\0';
 
 			//Delete from the linked list in trie nodes
-			delete(queryDescriptor->segmentsData[top++]); //TODO ALSO DELETE SEGMENT DATA inside the node
+			delete(queryDescriptor->segmentsDataL[top++]); //TODO ALSO DELETE SEGMENT DATA inside the node
+			delete(queryDescriptor->segmentsDataR[top++]); //TODO ALSO DELETE SEGMENT DATA inside the node
 			//Delete from the trie
 			TrieDelete(trie, segment, second, queryDescriptor->matchType);
 		}

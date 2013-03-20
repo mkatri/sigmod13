@@ -121,108 +121,241 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 				break;
 			j++;
 			if (n->isTerminal) {
-				DNode_t *cur = n->list->head.next;
 
-				while (cur->data && cur != &(n->list->tail)) {
-					/*XXX somewhere you set the data of the list tail, this is not cool*/
-					SegmentData * segData = (SegmentData *) (cur->data);
-					QueryDescriptor * queryData = segData->parentQuery;
-					int type = queryData->matchType;
-					if (queryData->docId != doc_id) {
-						queryData->docId = doc_id;
-						queryData->matchedWords = 0;
-					}
-					if (((queryData->matchedWords)
-							& (1 << (segData->wordIndex)))) {
-						cur = cur->next;
-						continue;
-					}
+				DNode_t *cur = &(n->partsNodesList->head);
+				while (cur != &(n->partsNodesList->tail)) {//each cur is group of equal segments (not equal in match parameters)
+					TrieNode_t* node = (TrieNode_t*) cur->data;//all with equal segment strings
+					DNode_t* segmentsItr = node->SegmentDataList->head.next;
+					int minHammingDist[2];
+					minHammingDist[0] = minHammingDist[1] = 50;
+					int minEditDist[2];
+					minEditDist[0] = minEditDist[1] = 50;
+					char ok;
+					while (segmentsItr != &(node->SegmentDataList->tail)) {//each one maybe with different match parameters
+						ok = 0;
+						partsNode* partData = (partsNode *) (segmentsItr->data);
+						SegmentData * segData =
+								(SegmentData*) partData->queryData;
+						QueryDescriptor * queryData = segData->parentQuery;
+						int type = queryData->matchType;
 
-					if (type == MT_EDIT_DIST) {
-						int d1;
-						if ((d1 = preCheck(
-								i,
-								segData->startIndex
-										- queryData->words[segData->wordIndex],
-								queryData->matchDistance))
-								<= queryData->matchDistance) {
-							d1
-									+= editDistance(
-											w,
-											i,
-											queryData->words[segData->wordIndex],
-											segData->startIndex
-													- queryData->words[segData->wordIndex],
-											queryData->matchDistance - d1);
-							if (d1 <= queryData->matchDistance) {
-								d1
-										+= editDistance(
-												w + j,
-												l - j,
-												segData->startIndex + j - i,
-												queryData->words[segData->wordIndex
-														+ 1]
-														- segData->startIndex
-														- (j - i),
-												queryData->matchDistance - d1);
+						if (queryData->docId != doc_id) {
+							queryData->docId = doc_id;
+							queryData->matchedWords = 0;
+						}
 
-								if (d1 <= queryData->matchDistance) {
-									queryData->matchedWords |= (1
-											<< (segData->wordIndex));
-									if (queryData->matchedWords == (1
-											<< (queryData->numWords)) - 1) {
-										(*count)++;
-										if (pos == sizeOfPool)
-											doubleSize();
-										qres[pos++] = queryData->queryId;
+						if (segData->docId != doc_id) {
+							segData->leftMatched = 0;
+							segData->rightMatched = 0;
+							segData->reminderDistance
+									= queryData->matchDistance;
+						}
+
+						if (type == MT_HAMMING_DIST) {
+							if (segData->reminderDistance
+									> minHammingDist[partData->isRight]) {
+								segData->reminderDistance
+										-= minHammingDist[partData->isRight];
+								//								if (partData->isRight)
+								//									segData->rightMatched = 1;
+								//								else
+								//									segData->rightMatched = 1;
+								ok = 1;
+							} else if (minHammingDist[partData->isRight] == 50) {
+
+								if (!partData->isRight) {//left
+									if (i == partData->len) {
+										minHammingDist[partData->isRight]
+												= hammingDistance(
+														partData->startChar, w,
+														i, 3);
+									} else {
+										minHammingDist[partData->isRight] = 60;
+									}
+								} else {//right
+
+									if (l - j == partData->len) {
+										minHammingDist[partData->isRight]
+												= hammingDistance(
+														partData->startChar,
+														w + j, l - j, 3);
+									} else {
+										minHammingDist[partData->isRight] = 60;
 									}
 								}
-							}
-						}
-					} else if (type == MT_HAMMING_DIST) {
-						if (i == segData->startIndex
-								- queryData->words[segData->wordIndex] && (l
-								- j)
-								== queryData->words[segData->wordIndex + 1]
-										- segData->startIndex - (j - i)) {
-							int d1 = hammingDistance(w,
-									queryData->words[segData->wordIndex], i,
-									queryData->matchDistance);
-							if (d1 <= queryData->matchDistance) {
-								d1 += hammingDistance(
-										w + j,
-										queryData->words[segData->wordIndex]
-												+ j, l - j,
-										queryData->matchDistance - d1);
 
-								if (d1 <= queryData->matchDistance) {
-									queryData->matchedWords |= (1
-											<< (segData->wordIndex));
-									if (queryData->matchedWords == (1
-											<< (queryData->numWords)) - 1) {
-										(*count)++;
-										if (pos == sizeOfPool)
-											doubleSize();
-										qres[pos++] = queryData->queryId;
-
-									}
+								if (segData->reminderDistance
+										> minHammingDist[partData->isRight]) {
+									segData->reminderDistance
+											-= minHammingDist[partData->isRight];
+									//								if (partData->isRight)
+									//									segData->rightMatched = 1;
+									//								else
+									//									segData->rightMatched = 1;
+									ok = 1;
 								}
+
+							}
+
+						} else if (type == MT_EDIT_DIST) {
+
+							if (minEditDist[partData->isRight]
+									<= segData->reminderDistance) {
+								ok = 1;
+								segData->reminderDistance
+										-= minEditDist[partData->isRight];
+							} else if (minEditDist[partData->isRight] == 50) {
+								if (!partData->isRight) {//left
+									minEditDist[partData->isRight]
+											= editDistance(w, i,
+													partData->startChar,
+													partData->len, 3);
+								} else {
+									minEditDist[partData->isRight]
+											= editDistance(w + j, l - j,
+													partData->startChar,
+													partData->len, 3);
+								}
+
+								if (minEditDist[partData->isRight]
+										<= segData->reminderDistance) {
+									ok = 1;
+									segData->reminderDistance
+											-= minEditDist[partData->isRight];
+								}
+
+							}
+
+						} else if (/*type == MT_EXACT_MATCH &&*/i == 0 && j
+								== l) { // Exact matching must be done from the start of the word only
+							ok = 1;
+							segData->rightMatched = segData->leftMatched = 1;
+						}
+
+						if (ok) {
+							if (segData->rightMatched && segData->leftMatched) {
+								queryData->matchedWords |= (1
+										<< (segData->wordIndex));
+								if (queryData->matchedWords == (1
+										<< (queryData->numWords)) - 1) {
+									(*count)++;
+									if (pos == sizeOfPool)
+										doubleSize();
+									qres[pos++] = queryData->queryId;
+								}
+							} else if (partData->isRight) {
+								segData->rightMatched = 1;
+							} else {
+								segData->leftMatched = 1;
 							}
 						}
-					} else if (i == 0 && j == l) { // Exact matching must be done from the start of the word only
-						queryData->matchedWords |= (1 << (segData->wordIndex));
-						if (queryData->matchedWords == (1
-								<< (queryData->numWords)) - 1) {
-							(*count)++;
-							if (pos == sizeOfPool)
-								doubleSize();
-							qres[pos++] = queryData->queryId;
-						}
+						segmentsItr = segmentsItr->next;
 					}
+
 					cur = cur->next;
 				}
 			}
-			//			p = n;
 		}
 	}
 }
+
+//DNode_t *cur = n->list->head.next;
+//
+//while (cur != &(n->list->tail)) {
+//	/*XXX somewhere you set the data of the list tail, this is not cool*/
+//	SegmentData * segData = (SegmentData *) (cur->data);
+//	QueryDescriptor * queryData = segData->parentQuery;
+//	int type = queryData->matchType;
+//	if (queryData->docId != doc_id) {
+//		queryData->docId = doc_id;
+//		queryData->matchedWords = 0;
+//	}
+//	if (((queryData->matchedWords)
+//			& (1 << (segData->wordIndex)))) {
+//		cur = cur->next;
+//		continue;
+//	}
+//
+//	if (type == MT_EDIT_DIST) {
+//		int d1;
+//		if ((d1 = preCheck(
+//				i,
+//				segData->startIndex
+//						- queryData->words[segData->wordIndex],
+//				queryData->matchDistance))
+//				<= queryData->matchDistance) {
+//			d1
+//					+= editDistance(
+//							w,
+//							i,
+//							queryData->words[segData->wordIndex],
+//							segData->startIndex
+//									- queryData->words[segData->wordIndex],
+//							queryData->matchDistance - d1);
+//			if (d1 <= queryData->matchDistance) {
+//				d1
+//						+= editDistance(
+//								w + j,
+//								l - j,
+//								segData->startIndex + j - i,
+//								queryData->words[segData->wordIndex
+//										+ 1]
+//										- segData->startIndex
+//										- (j - i),
+//								queryData->matchDistance - d1);
+//
+//				if (d1 <= queryData->matchDistance) {
+//					queryData->matchedWords |= (1
+//							<< (segData->wordIndex));
+//					if (queryData->matchedWords == (1
+//							<< (queryData->numWords)) - 1) {
+//						(*count)++;
+//						if (pos == sizeOfPool)
+//							doubleSize();
+//						qres[pos++] = queryData->queryId;
+//					}
+//				}
+//			}
+//		}
+//	} else if (type == MT_HAMMING_DIST) {
+//		if (i == segData->startIndex
+//				- queryData->words[segData->wordIndex] && (l
+//				- j)
+//				== queryData->words[segData->wordIndex + 1]
+//						- segData->startIndex - (j - i)) {
+//			int d1 = hammingDistance(w,
+//					queryData->words[segData->wordIndex], i,
+//					queryData->matchDistance);
+//			if (d1 <= queryData->matchDistance) {
+//				d1 += hammingDistance(
+//						w + j,
+//						queryData->words[segData->wordIndex]
+//								+ j, l - j,
+//						queryData->matchDistance - d1);
+//
+//				if (d1 <= queryData->matchDistance) {
+//					queryData->matchedWords |= (1
+//							<< (segData->wordIndex));
+//					if (queryData->matchedWords == (1
+//							<< (queryData->numWords)) - 1) {
+//						(*count)++;
+//						if (pos == sizeOfPool)
+//							doubleSize();
+//						qres[pos++] = queryData->queryId;
+//
+//					}
+//				}
+//			}
+//		}
+//	} else if (i == 0 && j == l) { // Exact matching must be done from the start of the word only
+//		queryData->matchedWords |= (1 << (segData->wordIndex));
+//		if (queryData->matchedWords == (1
+//				<< (queryData->numWords)) - 1) {
+//			(*count)++;
+//			if (pos == sizeOfPool)
+//				doubleSize();
+//			qres[pos++] = queryData->queryId;
+//		}
+//	}
+//	cur = cur->next;
+//}

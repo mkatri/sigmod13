@@ -14,7 +14,8 @@ typedef struct {
 	char *words[6];
 	char queryString[MAX_WORD_LENGTH * MAX_QUERY_WORDS + 1];
 	char matchedWords;
-	DNode_t ** segmentsData;
+	DNode_t ** segmentsDataL;
+	DNode_t ** segmentsDataR;
 	char numWords;
 	int matchType;
 	int matchDistance;
@@ -26,6 +27,10 @@ typedef struct {
 	int queryId;
 	QueryDescriptor* parentQuery;
 	char wordIndex;
+	char rightMatched;
+	char leftMatched;
+	char reminderDistance;
+	int docId;
 	char* startIndex;
 } SegmentData;
 

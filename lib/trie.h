@@ -8,18 +8,26 @@
 #ifndef TRIE_H_
 #define TRIE_H_
 #include "linked_list.h"
+#include "query.h"
 #include <core.h>
 #define CHAR_SET_SIZE 26
 #define BASE_CHAR 'a'
 
 typedef struct TrieNode {
 	struct TrieNode* next[CHAR_SET_SIZE];
-	LinkedList_t* list;
-	struct TrieNode* leftTrie;
-	struct TrieNode* rightTrie;
+	LinkedList_t* SegmentDataList;//important in parts trie only
+	LinkedList_t* partsNodesList;//important in global segments trie only
+	struct TrieNode* PartsTrie;//important in global segments trie only
 	byte isTerminal;
 	int count[3];
 } TrieNode_t;
+
+typedef struct partsNode {
+	void* queryData;
+	char isRight;
+	char* startChar;
+	char len;
+} partsNode;
 
 typedef struct Trie {
 	TrieNode_t root;
@@ -35,7 +43,7 @@ typedef struct Trie2 {
 	TrieNode_t2 root;
 } Trie_t2;
 
-DNode_t* TrieInsert(Trie_t * trie, char * str, int length, int type,
+DNode_t** TrieInsert(Trie_t * trie, char * str, int length, int type, int dist,
 		int lstart, int lend, int rstart, int rend, void* queryData);
 inline TrieNode_t* next_node(TrieNode_t *current, char c);
 TrieNode_t * newTrieNode();

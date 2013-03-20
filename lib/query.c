@@ -6,6 +6,9 @@ SegmentData * newSegmentdata() {
 	ret->parentQuery = 0;
 	ret->wordIndex = 0;
 	ret->startIndex = 0;
+	ret->leftMatched = 0;
+	ret->rightMatched = 0;
+	ret->docId = -1;
 	return ret;
 }
 
