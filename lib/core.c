@@ -33,14 +33,14 @@
 #include "query.h"
 #include "trie.h"
 #include "document.h"
-
+#define HASH_SIZE 1000000
 ///////////////////////////////////////////////////////////////////////////////////////////////
 Trie_t *trie;
 LinkedList_t *docList;
 LinkedList_t *queries;
 
 /*QUERY DESCRIPTOR MAP GOES HERE*/
-QueryDescriptor* ht[1000000];
+QueryDescriptor* qmap[HASH_SIZE];
 int * qres;
 int pos;
 int sizeOfPool = 1000000;
@@ -52,8 +52,7 @@ inline void addQuery(int queryId, QueryDescriptor * qds) {
 	//	qmap[queryId] = qds;
 
 	DNode_t* node = append(queries, qds);
-	ht[queryId] = node;
-
+	qmap[queryId] = node;
 }
 /*QUERY DESCRIPTOR MAP ENDS HERE*/
 
@@ -65,7 +64,7 @@ void init() {
 	pos = 0;
 	qres = (int*) malloc(sizeof(int) * sizeOfPool);
 	queries = newLinkedList();
-	memset(ht, 0, 1000000 * sizeof(DNode_t*));
+	memset(qmap, 0, HASH_SIZE * sizeof(DNode_t*));
 	trie = newTrie();
 	docList = newLinkedList();
 }
@@ -121,12 +120,11 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	for (top = 0; top < numOfSegments * numOfWords; top++)
 		queryDescriptor->segmentsData[top] = 0;
 	top = 0;
-	//printf("num of words %d\n",numOfWords);
+
 	for (in = 0; in < numOfWords; in++) {
 		//get the word length
 		iq = 0;
 		wordLength = wordSizes[in];
-		//printf("word >> %s\n", queryDescriptor->words[in]);
 		//here (wordSizes[in]+1 to add the null at the end of char array
 
 		/*
@@ -157,10 +155,8 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			sd->wordIndex = in;
 
 			//insert in trie
-			//	printf("segment >>>> %s\n", segment);
 			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
-					first, match_type, sd);
-
+					first, match_type, 0, sd->startIndex, iq, wordLength, sd);
 		}
 
 		// loop on the word to get the segments
@@ -178,9 +174,8 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			//sd->startIndex = iq - second;
 			sd->wordIndex = in;
 			//insert in trie
-			//	printf("segment >>>> %s\n", segment);
-			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
-					second, match_type, sd);
+			queryDescriptor ->segmentsData[top++] = TrieInsert(trie, segment,
+					second, match_type, 0, sd->startIndex, iq, wordLength, sd);
 		}
 	}
 
@@ -248,7 +243,7 @@ ErrorCode EndQuery(QueryID query_id) {
 #endif
 
 	//	QueryDescriptor* queryDescriptor = getQueryDescriptor(query_id);
-	DNode_t* node = (DNode_t*) ht[query_id];
+	DNode_t* node = (DNode_t*) qmap[query_id];
 	QueryDescriptor* queryDescriptor = (QueryDescriptor*) node->data;
 	delete(node);
 	int i, j;
@@ -307,7 +302,7 @@ ErrorCode EndQuery(QueryID query_id) {
 		}
 	}
 	freeQueryDescriptor(queryDescriptor);
-	ht[query_id] = 0;
+	qmap[query_id] = 0;
 	return EC_SUCCESS;
 }
 
