@@ -102,69 +102,68 @@ void *matcher_thread(void *n) {
 #ifdef THREAD_ENABLE
 	while (1) {
 #endif
-		DocumentDescriptor *doc_desc = cir_queue_remove(&cirq_busy_docs);
-		char *doc = doc_desc->document;
-		int i = 0;
-		int matchCount = 0;
-		while (doc[i]) {
-			while (doc[i] == ' ')
-				i++;
-			int e = i;
-			while (doc[e] != ' ' && doc[e] != '\0')
-				e++;
+	DocumentDescriptor *doc_desc = cir_queue_remove(&cirq_busy_docs);
+	char *doc = doc_desc->document;
+	int i = 0;
+	int matchCount = 0;
+	while (doc[i]) {
+		while (doc[i] == ' ')
+			i++;
+		int e = i;
+		while (doc[e] != ' ' && doc[e] != '\0')
+			e++;
 //			puts(doc + e);
-			int en, st, z;
-			if (!TriewordExist(dtrie[tid], &doc[i], e - i, doc_desc->docId)) {
+		int en, st, z;
+		if (!TriewordExist(dtrie[tid], &doc[i], e - i, doc_desc->docId)) {
 //				TrieInsert2(dtrie[tid], &doc[i], e - i, doc_desc->docId,tid);
-				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
-						trie);
+			matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount, trie);
 //				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
 //						trie2[e - i]);
 //				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount);
-			} else
-				cnt++;
-			i = e;
-		}
-
-		doc_desc->matches = malloc(sizeof(QueryID) * matchCount);
-		doc_desc->numResults = matchCount;
-
-		/*
-		 memcpy(doc_desc->matches, qres, sizeof(QueryID) * matches[tid].tail);
-		 qsort(doc_desc->matches, matches[tid].tail, sizeof(QueryID), cmpfunc);
-		 */
-
-		i = 0;
-		int p = 0;
-		/*
-		 DNode_t* cur = queries->head.next;
-		 while (cur != &(queries->tail)) {
-		 QueryDescriptor * cqd = (QueryDescriptor *) cur->data;
-		 if (cqd->docId[tid] == doc_desc->docId
-		 && cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
-		 doc_desc->matches[p++] = cqd->queryId;
-		 if (p == matchCount)
-		 break;
-		 cur = cur->next;
-		 }
-		 */
-		while (i < QDESC_MAP_SIZE) {
-			QueryDescriptor * cqd = &qmap[i++];
-			if (cqd->docId[tid] == doc_desc->docId
-					&& cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
-				doc_desc->matches[p++] = cqd->queryId;
-			if (p == matchCount)
-				break;
-		}
-		//XXX could be moved above when we're using array instead of linkedlist
-		cir_queue_insert(&cirq_free_docs, doc_desc->document);
-
-		pthread_mutex_lock(&docList_lock);
-		append(docList, doc_desc);
-		pthread_cond_signal(&docList_avail);
-		pthread_mutex_unlock(&docList_lock);
-#ifdef THREAD_ENABLE
+		} else
+			cnt++;
+		i = e;
 	}
+
+	doc_desc->matches = malloc(sizeof(QueryID) * matchCount);
+	doc_desc->numResults = matchCount;
+
+	/*
+	 memcpy(doc_desc->matches, qres, sizeof(QueryID) * matches[tid].tail);
+	 qsort(doc_desc->matches, matches[tid].tail, sizeof(QueryID), cmpfunc);
+	 */
+
+	i = 0;
+	int p = 0;
+	/*
+	 DNode_t* cur = queries->head.next;
+	 while (cur != &(queries->tail)) {
+	 QueryDescriptor * cqd = (QueryDescriptor *) cur->data;
+	 if (cqd->docId[tid] == doc_desc->docId
+	 && cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
+	 doc_desc->matches[p++] = cqd->queryId;
+	 if (p == matchCount)
+	 break;
+	 cur = cur->next;
+	 }
+	 */
+	while (i < QDESC_MAP_SIZE) {
+		QueryDescriptor * cqd = &qmap[i++];
+		if (cqd->docId[tid] == doc_desc->docId
+				&& cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
+			doc_desc->matches[p++] = cqd->queryId;
+		if (p == matchCount)
+			break;
+	}
+	//XXX could be moved above when we're using array instead of linkedlist
+	cir_queue_insert(&cirq_free_docs, doc_desc->document);
+
+	pthread_mutex_lock(&docList_lock);
+	append(docList, doc_desc);
+	pthread_cond_signal(&docList_avail);
+	pthread_mutex_unlock(&docList_lock);
+#ifdef THREAD_ENABLE
+}
 #endif
 	return 0;
 }
@@ -242,7 +241,8 @@ inline void optimal_segmentation(char * str, int len, int* start, int t) {
 			for (k = j; k < len; k++) {
 				if (ptr)
 					ptr = next_node(ptr, str[k]);
-				ccst = (ptr) ? ptr->count[0] + ptr->count[1] + ptr->count[2] : 0;
+				ccst = (ptr) ?
+						ptr->count[0] + ptr->count[1] + ptr->count[2] : 0;
 //				ccst = (ptr) ? ptr->counter : 0;
 				l = ccst > dp[i - 1][k + 1] ? ccst : dp[i - 1][k + 1];
 				m = ccst + dp[i - 1][k + 1];
@@ -351,7 +351,8 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			//						trie2[wordLength], segment, first, match_type, sd);
 			//			}
 			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
-					segLen, match_type, sd, wordLength);
+					queryDescriptor->words[in], segLen, wordLength, match_type,
+					sd, wordLength);
 		}
 
 		//printf("word >> %s\n", queryDescriptor->words[in]);

@@ -33,8 +33,8 @@ inline TrieNode_t* next_node(TrieNode_t *current, char c) {
 inline TrieNode_t2* next_node2(TrieNode_t2 *current, char c) {
 	return current->next[c - BASE_CHAR];
 }
-DNode_t* TrieInsert(Trie_t * trie, char * str, int length, int type,
-		void* queryData, int wordLength) {
+DNode_t* TrieInsert(Trie_t * trie, char * str,char* word, int length,int wordLen, int type,
+		SegmentData* queryData, int wordLength) {
 #ifdef CORE_DEBUG
 	puts(str);
 #endif

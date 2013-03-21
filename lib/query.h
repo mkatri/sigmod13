@@ -11,6 +11,7 @@
 #include "linked_list.h"
 #include "../include/core.h"
 
+
 typedef struct {
 	char *words[6];
 	char segmentSizes[6][6];
