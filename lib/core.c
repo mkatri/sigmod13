@@ -351,8 +351,8 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			//						trie2[wordLength], segment, first, match_type, sd);
 			//			}
 			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
-					queryDescriptor->words[in], segLen, wordLength, match_type,
-					sd, wordLength);
+					queryDescriptor->words[in], segLen, match_type, sd,
+					wordLength);
 		}
 
 		//printf("word >> %s\n", queryDescriptor->words[in]);

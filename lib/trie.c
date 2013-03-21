@@ -6,8 +6,10 @@
 TrieNode_t * newTrieNode() {
 	TrieNode_t* ret = (TrieNode_t*) (malloc(sizeof(TrieNode_t)));
 	memset(ret->next, 0, sizeof(ret->next));
-	memset(ret->list1, 0, sizeof(ret->list1));
-	memset(ret->list2, 0, sizeof(ret->list2));
+	int tmp = sizeof(ret->list1);
+	memset(ret->list1, 0, tmp);
+	memset(ret->list2, 0, tmp);
+	memset(ret->edit_dist_list, 0, tmp);
 //		ret->list = 0;
 	memset(ret->count, 0, sizeof(ret->count));
 	ret->counter = 0;
@@ -33,7 +35,27 @@ inline TrieNode_t* next_node(TrieNode_t *current, char c) {
 inline TrieNode_t2* next_node2(TrieNode_t2 *current, char c) {
 	return current->next[c - BASE_CHAR];
 }
-DNode_t* TrieInsert(Trie_t * trie, char * str,char* word, int length,int wordLen, int type,
+
+DNode_t* insertParts(TrieNode_t** n, int type, int dist, int l, int r,
+		char* str, void* queryData) {
+	TrieNode_t* node = n[0];
+	int i;
+	for (i = l; i < r; i++) {
+		if (node->next[str[i] - BASE_CHAR] == 0)
+			node->next[str[i] - BASE_CHAR] = newTrieNode();
+		node = node->next[str[i] - BASE_CHAR];
+	}
+
+	if (node->edit_dist_list[r - l] == 0) {
+		node->edit_dist_list[r - l] = newLinkedList();
+		n[0] = node;
+	} else
+		n[0] = 0;
+
+	return append(node->edit_dist_list[r - l], queryData);
+}
+
+DNode_t* TrieInsert(Trie_t * trie, char * str, char* word, int length, int type,
 		SegmentData* queryData, int wordLength) {
 #ifdef CORE_DEBUG
 	puts(str);
@@ -54,6 +76,7 @@ DNode_t* TrieInsert(Trie_t * trie, char * str,char* word, int length,int wordLen
 	if (type == MT_EDIT_DIST) {
 		if (current->list1[wordLength] == 0)
 			current->list1[wordLength] = newLinkedList();
+
 		return append(current->list1[wordLength], queryData);
 	} else {
 		if (current->list2[wordLength] == 0)

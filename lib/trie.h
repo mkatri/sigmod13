@@ -15,6 +15,8 @@ typedef struct TrieNode {
 	struct TrieNode* next[CHAR_SET_SIZE];
 	LinkedList_t* list1[32];
 	LinkedList_t* list2[32];
+	LinkedList_t* edit_dist_list[32];
+	struct TrieNode* edit_dist_Trie;
 	int count[3];
 	int counter;
 } TrieNode_t;
@@ -30,8 +32,8 @@ typedef struct Trie2 {
 	TrieNode_t2 root;
 } Trie_t2;
 
-DNode_t* TrieInsert(Trie_t * trie, char * str, char* word, int length,
-		int wordLen, int type, SegmentData* queryData, int wordLength);
+DNode_t* TrieInsert(Trie_t * trie, char * str, char* word, int length, int type,
+		SegmentData* queryData, int wordLength);
 
 inline TrieNode_t* next_node(TrieNode_t *current, char c);
 TrieNode_t * newTrieNode();
