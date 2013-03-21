@@ -58,7 +58,7 @@ int cmpfunc(const QueryID * a, const QueryID * b);
 
 Trie_t *trie1[32];
 Trie_t *trie2[32];
-Trie_t * dtrie;
+Trie_t * dtrie[NUM_THREADS];
 LinkedList_t *docList;
 //LinkedList_t *queries;
 unsigned long docCount;
@@ -95,7 +95,7 @@ void init() {
 		trie2[i] = newTrie();
 	}
 
-	dtrie = newTrie();
+//	dtrie = newTrie();
 	docList = newLinkedList();
 }
 
@@ -120,17 +120,17 @@ void *matcher_thread(void *n) {
 			while (doc[e] != ' ' && doc[e] != '\0')
 				e++;
 			int en, st, z;
-			if (!TriewordExist(dtrie, &doc[i], e - i, doc_desc->docId, tid)) {
+			if (!TriewordExist(dtrie[tid], &doc[i], e - i, doc_desc->docId)) {
 //				TrieInsert2(dtrie[tid], &doc[i], e - i, doc_desc->docId,tid);
 				st = e - i - 3;
-							en = e - i + 3;
-							st = st >= 1 ? st : 1;
-							en = en <= 31 ? en : (e - i);
-							for (z = st; z <= en; z++)
-								matchWord(doc_desc->docId, tid,&doc[i], e - i, &matchCount,
-										trie1[z]);
-							matchWord(doc_desc->docId, tid,&doc[i], e - i, &matchCount,
-									trie2[e - i]);
+				en = e - i + 3;
+				st = st >= 1 ? st : 1;
+				en = en <= 31 ? en : (e - i);
+				for (z = st; z <= en; z++)
+					matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
+							trie1[z]);
+				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
+						trie2[e - i]);
 //				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount);
 			} else
 				cnt++;
@@ -191,7 +191,7 @@ ErrorCode InitializeIndex() {
 	for (i = 0; i < NUM_THREADS; i++) {
 		free_docs[i] = documents[i];
 		//dyn_array_init(&matches[i], RES_POOL_INITSIZE);
-//		dtrie[i] = newTrie2();
+		dtrie[i] = newTrie();
 	}
 	cirq_free_docs.size = NUM_THREADS;
 
@@ -291,12 +291,12 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			//insert in trie
 			//	printf("segment >>>> %s\n", segment);
 			if (match_type == MT_EDIT_DIST) {
-							queryDescriptor->segmentsData[top++] = TrieInsert(
-									trie1[wordLength], segment, first, match_type, sd);
-						} else {
-							queryDescriptor->segmentsData[top++] = TrieInsert(
-									trie2[wordLength], segment, first, match_type, sd);
-						}
+				queryDescriptor->segmentsData[top++] = TrieInsert(
+						trie1[wordLength], segment, first, match_type, sd);
+			} else {
+				queryDescriptor->segmentsData[top++] = TrieInsert(
+						trie2[wordLength], segment, first, match_type, sd);
+			}
 
 		}
 
@@ -317,12 +317,12 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			//insert in trie
 			//	printf("segment >>>> %s\n", segment);
 			if (match_type == MT_EDIT_DIST) {
-							queryDescriptor->segmentsData[top++] = TrieInsert(
-									trie1[wordLength], segment, second, match_type, sd);
-						} else {
-							queryDescriptor->segmentsData[top++] = TrieInsert(
-									trie2[wordLength], segment, second, match_type, sd);
-						}
+				queryDescriptor->segmentsData[top++] = TrieInsert(
+						trie1[wordLength], segment, second, match_type, sd);
+			} else {
+				queryDescriptor->segmentsData[top++] = TrieInsert(
+						trie2[wordLength], segment, second, match_type, sd);
+			}
 		}
 	}
 
@@ -431,12 +431,12 @@ ErrorCode EndQuery(QueryID query_id) {
 			delete(queryDescriptor->segmentsData[top++]); //TODO ALSO DELETE SEGMENT DATA inside the node
 			//Delete from the trie
 			if (queryDescriptor->matchType == MT_EDIT_DIST) {
-							TrieDelete(trie1[wordLength], segment, first,
-									queryDescriptor->matchType);
-						} else {
-							TrieDelete(trie2[wordLength], segment, first,
-									queryDescriptor->matchType);
-						}
+				TrieDelete(trie1[wordLength], segment, first,
+						queryDescriptor->matchType);
+			} else {
+				TrieDelete(trie2[wordLength], segment, first,
+						queryDescriptor->matchType);
+			}
 		}
 
 		// loop on the word to get the segments
@@ -451,12 +451,12 @@ ErrorCode EndQuery(QueryID query_id) {
 			delete(queryDescriptor->segmentsData[top++]); //TODO ALSO DELETE SEGMENT DATA inside the node
 			//Delete from the trie
 			if (queryDescriptor->matchType == MT_EDIT_DIST) {
-							TrieDelete(trie1[wordLength], segment, second,
-									queryDescriptor->matchType);
-						} else {
-							TrieDelete(trie2[wordLength], segment, second,
-									queryDescriptor->matchType);
-						}
+				TrieDelete(trie1[wordLength], segment, second,
+						queryDescriptor->matchType);
+			} else {
+				TrieDelete(trie2[wordLength], segment, second,
+						queryDescriptor->matchType);
+			}
 		}
 	}
 //	freeQueryDescriptor(queryDescriptor);
@@ -507,32 +507,22 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 
 ///////////////////////////////////////////
 void core_test() {
-
-//	unsigned int t = 9113677439;
-//	printf("%llu",t); fflush(0);
-//	printf("%d\n\n", sizeof(HashCluster));
-//	printf("%d\n\n", sizeof(int));
-//	printf("%d\n\n", sizeof(HashCluster*));
 	InitializeIndex();
-//	char output[32][32];
-//
+	char f[32] = " ecookr  ";
 
-	char f[32] = " cook  ";
-//	char f2[32] = "  ok no   fucker  ";
-//
-//	StartQuery(5, f, 0, 7);
-	StartQuery(7, f, MT_EXACT_MATCH, 0);
-//
-//	dfs(&(trie->root));
-//	EndQuery(7);
-////	dfs(&(trie->root));
-//	printf("done\n");
+	StartQuery(5, f, MT_EDIT_DIST, 3);
+	//StartQuery(7, f2, MT_EXACT_MATCH, 0);
+	//
+	//	dfs(&(trie->root));
+	//	EndQuery(7);
+	////	dfs(&(trie->root));
+	//	printf("done\n");
 
 	//hashTest();
-	MatchDocument(10, " cook     ");
-//	MatchDocument(10, "yomother fucker");
-//	MatchDocument(20, "fuck you oknofutcher");
-//	MatchDocument(30, "fuck mother you oknofucker father");
+	MatchDocument(10, " ecooks     ");
+	//	MatchDocument(11, "ok no fucker");
+	//	MatchDocument(20, "fuck you oknofutcher");
+	//	MatchDocument(30, "fuck mother you oknofucker father");
 	DocID did;
 	QueryID *qid;
 	unsigned int numRes;
@@ -540,18 +530,4 @@ void core_test() {
 
 	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
 //	GetNextAvailRes(&did, &numRes, &qid);
-//	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
-//	GetNextAvailRes(&did, &numRes, &qid);
-//	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
-////	EndQuery(0);
-////	puts("---------------------------");
-////	puts("---------------------------");
-////	puts("---------------------------");
-//
-////	dfs(&(trie->root));
-//	//	printo(f);
-//	//	int num = 0;
-//	//	getSegments(output, f, 11, 3, &num);
-//	//	puts(output[3]);
-//	//	printf("done %d", num);
 }
