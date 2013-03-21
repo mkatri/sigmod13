@@ -60,6 +60,7 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 		int * idx);
 
 void init() {
+	el_Fashee5_fel_address = 0;
 	dtrie = newTrie2();
 	pos = 0;
 	qres = (int*) malloc(sizeof(int) * sizeOfPool);
@@ -162,8 +163,10 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 
 			//insert in trie
 
-			DNode_t ** ret = TrieInsert(trie, segment, first, match_type,
-					match_dist, 0, sd->startIndex, iq, wordLength, sd);
+			DNode_t ** ret = TrieInsert(trie, queryDescriptor->words[in], first,
+					match_type, match_dist, 0,
+					sd->startIndex - queryDescriptor->words[in], iq, wordLength,
+					sd);
 			queryDescriptor->segmentsDataL[top++] = ret[0];
 			queryDescriptor->segmentsDataR[top++] = ret[1];
 		}
@@ -183,8 +186,13 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			//sd->startIndex = iq - second;
 			sd->wordIndex = in;
 			//insert in trie
-			DNode_t ** ret = TrieInsert(trie, segment, second, match_type,
-					match_dist, 0, sd->startIndex, iq, wordLength, sd);
+//			printf("%d %d %d %d\n", in,
+//					sd->startIndex - queryDescriptor->words[in], iq);
+			fflush(0);
+			DNode_t ** ret = TrieInsert(trie, queryDescriptor->words[in],
+					second, match_type, match_dist, 0,
+					sd->startIndex - queryDescriptor->words[in], iq, wordLength,
+					sd);
 			queryDescriptor->segmentsDataL[top++] = ret[0];
 			queryDescriptor->segmentsDataR[top++] = ret[1];
 		}

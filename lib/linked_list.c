@@ -9,6 +9,7 @@ LinkedList_t* newLinkedList() {
 	ret->head.prev = 0, ret->tail.next = 0;
 	return ret;
 }
+
 DNode_t* append(LinkedList_t* list, void * data) {
 	DNode_t* node = (DNode_t *) (malloc(sizeof(DNode_t)));
 	node->prev = list->tail.prev, node->next = &(list->tail);

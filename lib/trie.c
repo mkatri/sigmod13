@@ -6,10 +6,11 @@
 TrieNode_t * newTrieNode() {
 	TrieNode_t* ret = (TrieNode_t*) (malloc(sizeof(TrieNode_t)));
 	memset(ret->next, 0, sizeof(ret->next));
-	int i, j;
-
 	memset(ret->count, 0, sizeof(ret->count));
 	ret->isTerminal = 0;
+	ret->PartsTrie = 0;
+	ret->SegmentDataList = 0;
+	ret->partsNodesList = 0;
 	return ret;
 }
 Trie_t * newTrie() {
@@ -34,51 +35,59 @@ DNode_t* insertParts(TrieNode_t** n, int type, int dist, int l, int r,
 	int i;
 	*newPart = 0;
 	for (i = l; i < r; i++) {
-		if (node->next[str[i] - BASE_CHAR] == 0) {
-			if (i == r - 1)
-				*newPart = 1;
+		if (node->next[str[i] - BASE_CHAR] == 0)
 			node->next[str[i] - BASE_CHAR] = newTrieNode();
-		}
 		node = node->next[str[i] - BASE_CHAR];
+	}
+
+	if (node->SegmentDataList == 0) {
+		node->SegmentDataList = newLinkedList();
+		*newPart = 1;
 	}
 
 	n[0] = node;
 
-	if (node->SegmentDataList == 0)
-		node->SegmentDataList = newLinkedList();
-
 	DNode_t* itr = node->SegmentDataList->head.next;
 	while (itr != &(node->SegmentDataList->tail)) {
-		SegmentData* segdata = itr->data;
+		partsNode* data = itr->data;
+		SegmentData* segdata = data->queryData;
 		if (type < segdata->parentQuery->matchType)
 			break;
-		if (type == segdata->parentQuery->matchType && dist
-				< segdata ->parentQuery->matchDistance)
+		if (type == segdata->parentQuery->matchType
+				&& dist < segdata->parentQuery->matchDistance)
 			break;
+		itr = itr->next;
 	}
 
 	itr = itr->prev;
 	DNode_t* Listnode = (DNode_t *) (malloc(sizeof(DNode_t)));
 	Listnode->data = queryData;
 
+	itr->next->prev = Listnode;
 	Listnode->next = itr->next;
+
 	Listnode->prev = itr;
 	itr->next = Listnode;
-	itr->next->prev = Listnode;
 
 	return Listnode;
 }
 
 DNode_t** TrieInsert(Trie_t * trie, char * str, int length, int type, int dist,
-		int lstart, int lend, int rstart, int rend, void* queryData) {
+		int lstart, int lend, int rstart, int rend, SegmentData* queryData) {
+
 	TrieNode_t* current = &(trie->root);
 	current->count[type]++;
 	int i;
-	for (i = 0; i < length; i++) {
+	for (i = lend; i < rstart; i++) {
 		if (current->next[str[i] - BASE_CHAR] == 0)
 			current->next[str[i] - BASE_CHAR] = newTrieNode();
 		current = current->next[str[i] - BASE_CHAR];
 		current->count[type]++;
+		if (!strncmp(str, "ra", 2) && i == 1) {
+//			puts("---");
+//			puts(str);
+			el_Fashee5_fel_address = &(current->next['p' - 'a']);
+		}
 	}
 
 	current->isTerminal = 1;
@@ -86,31 +95,36 @@ DNode_t** TrieInsert(Trie_t * trie, char * str, int length, int type, int dist,
 	if (!current->PartsTrie)
 		current->PartsTrie = newTrieNode();
 
-	TrieNode_t* node = current->PartsTrie;
+	if (!current->partsNodesList)
+		current->partsNodesList = newLinkedList();
+
 	int newPart = 0;
 	DNode_t** ret = malloc(2 * sizeof(DNode_t*));
 
 	//===============================================
+	TrieNode_t* node = current->PartsTrie;
 	partsNode* data = malloc(sizeof(partsNode));
 	data->isRight = 0;
 	data->len = lend - lstart;
 	data->queryData = queryData;
-	data->startChar = str[0];
+	data->startChar = &str[0];
 	//insert leftPart
 	ret[0] = insertParts(&node, type, dist, lstart, lend, str, data, &newPart);
+
 	if (newPart)
-		append(node->partsNodesList, node);
-	node = current->PartsTrie;
+		append(current->partsNodesList, node);
+
 	//===============================================
+	node = current->PartsTrie;
 	data = malloc(sizeof(partsNode));
 	data->isRight = 1;
 	data->len = rend - rstart;
 	data->queryData = queryData;
-	data->startChar = str[rstart];
+	data->startChar = &str[rstart];
 	//insert rightPart
 	ret[1] = insertParts(&node, type, dist, rstart, rend, str, data, &newPart);
 	if (newPart)
-		append(node->partsNodesList, node);
+		append(current->partsNodesList, node);
 	//===============================================
 	return ret;
 }

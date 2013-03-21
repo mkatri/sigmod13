@@ -229,6 +229,7 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 		QueryID** p_query_ids);
 
 void core_test();
+long long el_Fashee5_fel_address;
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //*********************************************************************************************
 

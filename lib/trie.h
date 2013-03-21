@@ -15,11 +15,11 @@
 
 typedef struct TrieNode {
 	struct TrieNode* next[CHAR_SET_SIZE];
-	LinkedList_t* SegmentDataList;//important in parts trie only
-	LinkedList_t* partsNodesList;//important in global segments trie only
-	struct TrieNode* PartsTrie;//important in global segments trie only
-	byte isTerminal;
 	int count[3];
+	LinkedList_t* SegmentDataList; //important in parts trie only
+	LinkedList_t* partsNodesList; //important in global segments trie only
+	struct TrieNode* PartsTrie; //important in global segments trie only
+	byte isTerminal;
 } TrieNode_t;
 
 typedef struct partsNode {
@@ -44,7 +44,7 @@ typedef struct Trie2 {
 } Trie_t2;
 
 DNode_t** TrieInsert(Trie_t * trie, char * str, int length, int type, int dist,
-		int lstart, int lend, int rstart, int rend, void* queryData);
+		int lstart, int lend, int rstart, int rend, SegmentData* queryData);
 inline TrieNode_t* next_node(TrieNode_t *current, char c);
 TrieNode_t * newTrieNode();
 Trie_t * newTrie();
