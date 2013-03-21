@@ -1,18 +1,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../include/core.h"
 #include "trie.h"
 TrieNode_t * newTrieNode() {
 	TrieNode_t* ret = (TrieNode_t*) (malloc(sizeof(TrieNode_t)));
 	memset(ret->next, 0, sizeof(ret->next));
-	ret->list = 0;
+	memset(ret->list1, 0, sizeof(ret->list1));
+	memset(ret->list2, 0, sizeof(ret->list2));
+//		ret->list = 0;
 	memset(ret->count, 0, sizeof(ret->count));
 	return ret;
 }
 Trie_t * newTrie() {
 	Trie_t* t = (Trie_t *) malloc(sizeof(Trie_t));
 	memset(t->root.count, 0, sizeof(t->root.count));
-	t->root.list = 0;
+//	t->root.list = 0;
+	memset(t->root.list1, 0, sizeof(t->root.list1));
+	memset(t->root.list2, 0, sizeof(t->root.list2));
 	memset(t->root.next, 0, sizeof(t->root.next));
 	return t;
 }
@@ -28,7 +33,7 @@ inline TrieNode_t2* next_node2(TrieNode_t2 *current, char c) {
 	return current->next[c - BASE_CHAR];
 }
 DNode_t* TrieInsert(Trie_t * trie, char * str, int length, int type,
-		void* queryData) {
+		void* queryData, int wordLength) {
 #ifdef CORE_DEBUG
 	puts(str);
 #endif
@@ -43,20 +48,25 @@ DNode_t* TrieInsert(Trie_t * trie, char * str, int length, int type,
 		current->count[type]++;
 		p = current;
 	}
-	if (current->list == 0)
-		current->list = newLinkedList();
-
-	return append(current->list, queryData);
+	if (type == MT_EDIT_DIST) {
+		if (current->list1[wordLength] == 0)
+			current->list1[wordLength] = newLinkedList();
+		return append(current->list1[wordLength], queryData);
+	} else {
+		if (current->list2[wordLength] == 0)
+			current->list2[wordLength] = newLinkedList();
+		return append(current->list2[wordLength], queryData);
+	}
 }
 
-void deleteTrieNode(TrieNode_t* node) {
-#ifdef CORE_DEBUG
-	printf("DELETING NODE\n");
-#endif
-	if (node->list != 0)
-		free(node->list);
-	free(node);
-}
+//void deleteTrieNode(TrieNode_t* node) {
+//#ifdef CORE_DEBUG
+//	printf("DELETING NODE\n");
+//#endif
+//	if (node->list != 0)
+//		free(node->list);
+//	free(node);
+//}
 
 //NODE END QUERY BEFORE CALLING THIS FUNCTION MUST DELETE ALL LINKEDLIST NODES BELONGING TO SUCH QUERY
 void TrieDelete(Trie_t* trie, char*str, int length, int type) {
