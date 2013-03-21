@@ -119,7 +119,7 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 	long long* tmp = el_Fashee5_fel_address;
 
 	if (el_Fashee5_fel_address) {
-		printf("%lld\n", el_Fashee5_fel_address);
+		printf("%lld\n", *tmp);
 //		el_Fashee5_fel_address = 0;
 	}
 	int i = 0;
