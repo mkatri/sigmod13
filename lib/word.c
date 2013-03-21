@@ -108,39 +108,24 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 
 	return ret;
 }
+long long match_counter = 0;
 
 void matchWord(char *w, int l, int *count, int doc_id) {
-//	if (!strncmp(w, "rap", 3)) {
-//		printf("%d\n", doc_id);
-//		fflush(0);
-//		puts(w);
-//		puts("=====");
-//	}
-	long long* tmp = el_Fashee5_fel_address;
 
-	if (el_Fashee5_fel_address) {
-		printf("%lld\n", *tmp);
-//		el_Fashee5_fel_address = 0;
-	}
 	int i = 0;
 	for (i = 0; i < l; i++) {
 		int j = i;
 		TrieNode_t *n = &(trie->root);
 
 		while (j < l && (n = next_node(n, w[j]))) {
-			if (j > 0 && w[j - 1] == 'r' && w[j] == 'a' && w[j + 1] == 'p') {
 
-				printf("==> %d %d %lld\n", i, doc_id, n->next['p' - 'a']);
-				fflush(0);
-			}
-//			printf("==> %d\n", doc_id, w);fflush(0);
 			if (n->count[MT_EDIT_DIST] == 0 && n->count[MT_HAMMING_DIST] == 0
 					&& i > 0)
 				break;
 			j++;
 
 			if (n->isTerminal) {
-
+				match_counter++;
 				DNode_t *cur = n->partsNodesList->head.next;
 
 				while (cur != &(n->partsNodesList->tail)) { //each cur is group of equal segments (not equal in match parameters)
@@ -167,17 +152,23 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 							queryData->matchedWords = 0;
 						}
 
-						if (segData->docId != doc_id) {
+						if (queryData->matchedWords
+								& (1 << segData->wordIndex)) {
+							segmentsItr = segmentsItr->next;
+							continue;
+						}
+
+						if (segData->stamp != match_counter) {
 							segData->leftMatched = 0;
 							segData->rightMatched = 0;
 							segData->reminderDistance =
 									queryData->matchDistance;
-							segData->docId = doc_id;
+							segData->stamp = match_counter;
 						}
 
 						if (type == MT_HAMMING_DIST) {
 							if (segData->reminderDistance
-									> minHammingDist[partData->isRight]) {
+									>= minHammingDist[partData->isRight]) {
 								segData->reminderDistance -=
 										minHammingDist[partData->isRight];
 								ok = 1;
@@ -206,7 +197,7 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 								}
 
 								if (segData->reminderDistance
-										> minHammingDist[partData->isRight]) {
+										>= minHammingDist[partData->isRight]) {
 									segData->reminderDistance -=
 											minHammingDist[partData->isRight];
 									ok = 1;
@@ -250,6 +241,11 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 						}
 
 						if (ok) {
+							if (partData->isRight) {
+								segData->rightMatched = 1;
+							} else {
+								segData->leftMatched = 1;
+							}
 							if (segData->rightMatched && segData->leftMatched) {
 								queryData->matchedWords |= (1
 										<< (segData->wordIndex));
@@ -260,12 +256,9 @@ void matchWord(char *w, int l, int *count, int doc_id) {
 										doubleSize();
 									qres[pos++] = queryData->queryId;
 								}
-							} else if (partData->isRight) {
-								segData->rightMatched = 1;
-							} else {
-								segData->leftMatched = 1;
 							}
 						}
+
 						segmentsItr = segmentsItr->next;
 					}
 

@@ -8,7 +8,7 @@ SegmentData * newSegmentdata() {
 	ret->startIndex = 0;
 	ret->leftMatched = 0;
 	ret->rightMatched = 0;
-	ret->docId = -1;
+	ret->stamp = 0;
 	return ret;
 }
 

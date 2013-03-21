@@ -30,7 +30,7 @@ typedef struct {
 	char rightMatched;
 	char leftMatched;
 	char reminderDistance;
-	int docId;
+	long long stamp;
 	char* startIndex;
 } SegmentData;
 
