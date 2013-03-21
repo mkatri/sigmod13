@@ -110,7 +110,7 @@ inline int min(int a, int b) {
 void handleQuery(int tid, int did, DNode_t *cur, int i, int j, char *w, int l,
 		int *count)
 #else
-__attribute__((always_inline)) inline void handleQuery(int tid, int did,
+inline void __attribute__((always_inline)) handleQuery(int tid, int did,
 		DNode_t *cur, int i, int j, char *w, int l, int *count)
 #endif
 {

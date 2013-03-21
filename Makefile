@@ -59,7 +59,7 @@ testdriver: lib $(TEST_O)
 	$(CXX) $(CXXFLAGS) -o bin/testdriver $(TEST_O) ./bin/lib$(LIBRARY).so
 
 bin/obj/lib/%.o: $(LIB_OBJ_DIR) lib/%.c
-	$(CC) $(CFLAGS) -pg -c -o $@ $^
+	$(CC) $(CFLAGS) -c -o $@ $^
 
 bin/obj/test.o: $(LIB_OBJ_DIR) test_ours/test.c
 	$(CC) $(CFLAGS) -c -o $@ $^
