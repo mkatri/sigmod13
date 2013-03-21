@@ -85,6 +85,7 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 void init() {
 //	queries = newLinkedList();
 //	ht = new_Hash_Table();
+	//THREAD_ENABLE=1;
 	trie = newTrie();
 //	dtrie = newTrie();
 	docList = newLinkedList();
@@ -111,6 +112,7 @@ void *matcher_thread(void *n) {
 			int e = i;
 			while (doc[e] != ' ' && doc[e] != '\0')
 				e++;
+//			puts(doc + e);
 			int en, st, z;
 			if (!TriewordExist(dtrie[tid], &doc[i], e - i, doc_desc->docId)) {
 //				TrieInsert2(dtrie[tid], &doc[i], e - i, doc_desc->docId,tid);
@@ -208,12 +210,77 @@ void printWords(char out[6][32], int num) {
 #endif
 }
 
+///////////////////////decrease query frequency//////////
+inline void optimal_segmentation(char * str, int len, int* start, int t) {
+//	char even = 1;
+
+	int i, j, k, ccst, l, m;
+	for (i = 0; i <= t; i++)
+		start[i] = len;
+//	/*EVEN*/
+//	k = len - (len / t) * (t);
+//	int first = (len + t - 1) / t;
+//	int second = len / t;
+//
+//	start[0] = 0;
+//	for (i = 1; i <= k; i++)
+//		start[i] = start[i - 1] + first;
+//	for (; i < t + 1; i++)
+//		start[i] = start[i - 1] + second;
+//	/*EVEN*/
+//	if(even)return;
+	int dp[5][32];
+	int choice[5][32];
+	for (i = 0; i < len; i++)
+		dp[0][i] = 1e6;
+	dp[0][len] = 0;
+	dp[1][len] = dp[2][len] = dp[3][len] = dp[4][len] = 1e6;
+	for (i = 1; i <= t; i++) {
+		for (j = 0; j < len; j++) {
+			dp[i][j] = 1e6;
+			TrieNode_t * ptr = &(trie->root);
+			for (k = j; k < len; k++) {
+				if (ptr)
+					ptr = next_node(ptr, str[k]);
+				ccst = (ptr) ? ptr->count[0] + ptr->count[1] + ptr->count[2] : 0;
+//				ccst = (ptr) ? ptr->counter : 0;
+				l = ccst > dp[i - 1][k + 1] ? ccst : dp[i - 1][k + 1];
+				m = ccst + dp[i - 1][k + 1];
+//				if(str[k]=='f'&&ptr)
+//					printf("%d\n",ptr->counter);
+				if (l < dp[i][j]) {
+					dp[i][j] = l;
+					choice[i][j] = k;
+				}
+
+			}
+		}
+	}
+
+//	printf("----->%d\n", dp[t][0]);
+//	if (dp[0][t] == 1000000) {
+//		for (i = 0; i <= t; putchar('\n'), i++) {
+//			for (j = 0; j < len; j++)
+//				printf("%8d ", dp[i][j]);
+//		}
+////		exit(0);
+//	}
+	int used = 0;
+	int index = 0;
+	while (index < len) {
+		start[used] = index;
+		index = choice[t - used][index] + 1;
+		used++;
+	}
+}
+/////////////////////////////////
+
 ErrorCode StartQuery(QueryID query_id, const char* query_str,
 		MatchType match_type, unsigned int match_dist) {
-//#ifdef CORE_DEBUG
-//	printf("query: %d --> %s\n", query_id, query_str);
-//#endif
 
+#ifdef CORE_DEBUG
+	printf("query: %d --> %s\n", query_id, query_str);
+#endif
 //TODO DNode_t ** segmentsData ;
 	waitTillFull(&cirq_free_docs);
 	int in = 0, i = 0, j = 0, wordLength = 0, k, first, second, iq = 0;
@@ -245,30 +312,26 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 		queryDescriptor->segmentsData[top] = 0;
 	top = 0;
 	//printf("num of words %d\n",numOfWords);
+
+	int segmentStart[6];
+	int segLen = 0;
 	for (in = 0; in < numOfWords; in++) {
 		//get the word length
 		iq = 0;
 		wordLength = wordSizes[in];
-		//printf("word >> %s\n", queryDescriptor->words[in]);
-		//here (wordSizes[in]+1 to add the null at the end of char array
 
-		/*
-		 * k here as teste paper mention to get good partition with hamming 1
-		 * example : assume word length =10 and distance=3
-		 * so we partition the word to 4  segments with length(3,3,2,2)
-		 * so first =3;
-		 * and second =2;
-		 */
-		/*how do we prove this*/
-		k = wordLength - (wordLength / numOfSegments) * (numOfSegments);
-		first = (wordLength + numOfSegments - 1) / numOfSegments;
-		second = wordLength / numOfSegments;
-		// loop on the word to get the segments
-		for (i = 0; i < k; i++) {
+		optimal_segmentation(queryDescriptor->words[in], wordLength,
+				segmentStart, numOfSegments);
+
+		for (i = 0; i < numOfSegments; i++) {
+
+			segLen = segmentStart[i + 1] - segmentStart[i];
+			queryDescriptor->segmentSizes[in][i] = segLen;
 			SegmentData *sd = newSegmentdata();
 			sd->parentQuery = queryDescriptor;
-			sd->startIndex = queryDescriptor->words[in] + iq;
-			for (j = 0; j < first; j++) {
+			sd->startIndex = queryDescriptor->words[in] + segmentStart[i];
+
+			for (j = 0; j < segLen; j++) {
 				segment[j] = *(queryDescriptor->words[in] + iq);
 				iq++;
 			}
@@ -280,44 +343,86 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			sd->wordIndex = in;
 
 			//insert in trie
-			//	printf("segment >>>> %s\n", segment);
-//			if (match_type == MT_EDIT_DIST) {
-//				queryDescriptor->segmentsData[top++] = TrieInsert(
-//						trie1[wordLength], segment, first, match_type, sd);
-//			} else {
-//				queryDescriptor->segmentsData[top++] = TrieInsert(
-//						trie2[wordLength], segment, first, match_type, sd);
-//			}
+			//			if (match_type == MT_EDIT_DIST) {
+			//				queryDescriptor->segmentsData[top++] = TrieInsert(
+			//						trie1[wordLength], segment, first, match_type, sd);
+			//			} else {
+			//				queryDescriptor->segmentsData[top++] = TrieInsert(
+			//						trie2[wordLength], segment, first, match_type, sd);
+			//			}
 			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
-					first, match_type, sd, wordLength);
+					segLen, match_type, sd, wordLength);
 		}
 
+		//printf("word >> %s\n", queryDescriptor->words[in]);
+		//here (wordSizes[in]+1 to add the null at the end of char array
+
+		/*
+		 * k here as teste paper mention to get good partition with hamming 1
+		 * example : assume word length =10 and distance=3
+		 * so we partition the word to 4  segments with length(3,3,2,2)
+		 * so first =3;
+		 * and second =2;
+		 */
+		/*how do we prove this*/
+//		k = wordLength - (wordLength / numOfSegments) * (numOfSegments);
+//		first = (wordLength + numOfSegments - 1) / numOfSegments;
+//		second = wordLength / numOfSegments;
 		// loop on the word to get the segments
-		for (i = 0; (i < numOfSegments - k) && second; i++) {
-			SegmentData *sd = newSegmentdata();
-			sd->parentQuery = queryDescriptor;
-			sd->startIndex = queryDescriptor->words[in] + iq;
-			for (j = 0; j < second; j++) {
-				segment[j] = *(queryDescriptor->words[in] + iq);
-				iq++;
-			}
-			segment[j] = '\0';
-			//load segments data
-			sd->queryId = query_id;
-			//sd->startIndex = iq - second;
-			sd->wordIndex = in;
-			//insert in trie
-			//	printf("segment >>>> %s\n", segment);
-//			if (match_type == MT_EDIT_DIST) {
-//				queryDescriptor->segmentsData[top++] = TrieInsert(
-//						trie1[wordLength], segment, second, match_type, sd);
-//			} else {
-//				queryDescriptor->segmentsData[top++] = TrieInsert(
-//						trie2[wordLength], segment, second, match_type, sd);
+//		for (i = 0; i < k; i++) {
+//			SegmentData *sd = newSegmentdata();
+//			sd->parentQuery = queryDescriptor;
+//			sd->startIndex = queryDescriptor->words[in] + iq;
+//			for (j = 0; j < first; j++) {
+//				segment[j] = *(queryDescriptor->words[in] + iq);
+//				iq++;
 //			}
-			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
-					second, match_type, sd, wordLength);
-		}
+//
+//			segment[j] = '\0';
+//			//load the segment data
+//			sd->queryId = query_id;
+//			//sd->startIndex = iq - first;
+//			sd->wordIndex = in;
+//
+//			//insert in trie
+//			//	printf("segment >>>> %s\n", segment);
+////			if (match_type == MT_EDIT_DIST) {
+////				queryDescriptor->segmentsData[top++] = TrieInsert(
+////						trie1[wordLength], segment, first, match_type, sd);
+////			} else {
+////				queryDescriptor->segmentsData[top++] = TrieInsert(
+////						trie2[wordLength], segment, first, match_type, sd);
+////			}
+//			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
+//					first, match_type, sd, wordLength);
+//		}
+//
+//		// loop on the word to get the segments
+//		for (i = 0; (i < numOfSegments - k) && second; i++) {
+//			SegmentData *sd = newSegmentdata();
+//			sd->parentQuery = queryDescriptor;
+//			sd->startIndex = queryDescriptor->words[in] + iq;
+//			for (j = 0; j < second; j++) {
+//				segment[j] = *(queryDescriptor->words[in] + iq);
+//				iq++;
+//			}
+//			segment[j] = '\0';
+//			//load segments data
+//			sd->queryId = query_id;
+//			//sd->startIndex = iq - second;
+//			sd->wordIndex = in;
+//			//insert in trie
+//			//	printf("segment >>>> %s\n", segment);
+////			if (match_type == MT_EDIT_DIST) {
+////				queryDescriptor->segmentsData[top++] = TrieInsert(
+////						trie1[wordLength], segment, second, match_type, sd);
+////			} else {
+////				queryDescriptor->segmentsData[top++] = TrieInsert(
+////						trie2[wordLength], segment, second, match_type, sd);
+////			}
+//			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
+//					second, match_type, sd, wordLength);
+//		}
 	}
 
 	return EC_SUCCESS;
@@ -382,7 +487,6 @@ ErrorCode EndQuery(QueryID query_id) {
 #ifdef CORE_DEBUG
 	puts("inside here");
 #endif
-
 //	QueryDescriptor* queryDescriptor = getQueryDescriptor(query_id);
 	waitTillFull(&cirq_free_docs);
 	QueryDescriptor* queryDescriptor = &qmap[query_id];
@@ -391,12 +495,41 @@ ErrorCode EndQuery(QueryID query_id) {
 			k, first, second;
 	char segment[32];
 	int top = 0;
+	int segmentStart[6];
+	int segLen = 0;
+
 	for (in = 0; in < 5 && queryDescriptor->words[in + 1]; in++) {
 
 		//get the word length
 		iq = 0;
 		wordLength = queryDescriptor->words[in + 1]
 				- queryDescriptor->words[in];
+
+		for (i = 0; i < numOfSegments; i++) {
+
+			segLen = queryDescriptor->segmentSizes[in][i];
+
+			for (j = 0; j < segLen; j++) {
+				segment[j] = *(queryDescriptor->words[in] + iq);
+				iq++;
+			}
+
+			segment[j] = '\0';
+
+			//insert in trie
+//			printf("segment >>>> %s\n", segment);
+			//			if (match_type == MT_EDIT_DIST) {
+			//				queryDescriptor->segmentsData[top++] = TrieInsert(
+			//						trie1[wordLength], segment, first, match_type, sd);
+			//			} else {
+			//				queryDescriptor->segmentsData[top++] = TrieInsert(
+			//						trie2[wordLength], segment, first, match_type, sd);
+			//			}
+			delete(queryDescriptor->segmentsData[top++]);
+			TrieDelete(trie, segment, segLen, queryDescriptor->matchType);
+		}
+
+		//get the word length
 		//here (wordSizes[in]+1 to add the null at the end of char array
 		/*
 		 * k here as teste paper mention to get good partition with hamming 1
@@ -410,60 +543,61 @@ ErrorCode EndQuery(QueryID query_id) {
 		printf(">>>>>     %d %d\n", wordLength, numOfSegments);
 #endif
 
-		k = wordLength - (wordLength / numOfSegments) * (numOfSegments);
-		first = (wordLength + numOfSegments - 1) / numOfSegments;
-		second = wordLength / numOfSegments;
-		// loop on the word to get the segments
-		for (i = 0; i < k; i++) {
-			for (j = 0; j < first; j++) {
-				segment[j] = queryDescriptor->words[in][iq];
-				iq++;
-			}
-			segment[j] = '\0';
-
-			//Delete from the linked list in trie nodes
-			delete(queryDescriptor->segmentsData[top++]); //TODO ALSO DELETE SEGMENT DATA inside the node
-			//Delete from the trie
-//			if (queryDescriptor->matchType == MT_EDIT_DIST) {
-//				TrieDelete(trie1[wordLength], segment, first,
-//						queryDescriptor->matchType);
-//			} else {
-//				TrieDelete(trie2[wordLength], segment, first,
-//						queryDescriptor->matchType);
+//		k = wordLength - (wordLength / numOfSegments) * (numOfSegments);
+//		first = (wordLength + numOfSegments - 1) / numOfSegments;
+//		second = wordLength / numOfSegments;
+//		// loop on the word to get the segments
+//		for (i = 0; i < k; i++) {
+//			for (j = 0; j < first; j++) {
+//				segment[j] = queryDescriptor->words[in][iq];
+//				iq++;
 //			}
-			TrieDelete(trie, segment, first, queryDescriptor->matchType);
-
-		}
-
-		// loop on the word to get the segments
-		for (i = 0; (i < numOfSegments - k) && second; i++) {
-			for (j = 0; j < second; j++) {
-				segment[j] = queryDescriptor->words[in][iq];
-				iq++;
-			}
-			segment[j] = '\0';
-
-			//Delete from the linked list in trie nodes
-			delete(queryDescriptor->segmentsData[top++]); //TODO ALSO DELETE SEGMENT DATA inside the node
-			//Delete from the trie
-//			if (queryDescriptor->matchType == MT_EDIT_DIST) {
-//				TrieDelete(trie1[wordLength], segment, second,
-//						queryDescriptor->matchType);
-//			} else {
-//				TrieDelete(trie2[wordLength], segment, second,
-//						queryDescriptor->matchType);
+//			segment[j] = '\0';
+//
+//			//Delete from the linked list in trie nodes
+//			delete(queryDescriptor->segmentsData[top++]); //TODO ALSO DELETE SEGMENT DATA inside the node
+//			//Delete from the trie
+////			if (queryDescriptor->matchType == MT_EDIT_DIST) {
+////				TrieDelete(trie1[wordLength], segment, first,
+////						queryDescriptor->matchType);
+////			} else {
+////				TrieDelete(trie2[wordLength], segment, first,
+////						queryDescriptor->matchType);
+////			}
+//			TrieDelete(trie, segment, first, queryDescriptor->matchType);
+//
+//		}
+//
+//		// loop on the word to get the segments
+//		for (i = 0; (i < numOfSegments - k) && second; i++) {
+//			for (j = 0; j < second; j++) {
+//				segment[j] = queryDescriptor->words[in][iq];
+//				iq++;
 //			}
-			TrieDelete(trie, segment, second, queryDescriptor->matchType);
+//			segment[j] = '\0';
+//
+//			//Delete from the linked list in trie nodes
+//			delete(queryDescriptor->segmentsData[top++]); //TODO ALSO DELETE SEGMENT DATA inside the node
+//			//Delete from the trie
+////			if (queryDescriptor->matchType == MT_EDIT_DIST) {
+////				TrieDelete(trie1[wordLength], segment, second,
+////						queryDescriptor->matchType);
+////			} else {
+////				TrieDelete(trie2[wordLength], segment, second,
+////						queryDescriptor->matchType);
+////			}
+//			TrieDelete(trie, segment, second, queryDescriptor->matchType);
+//
+//		}
+//	}
+////	freeQueryDescriptor(queryDescriptor);
+////	delete_H(ht, query_id);
+////	node = (DNode_t*) get(ht, query_id);
+////	qmap[query_id] = 0;
 
-		}
 	}
-//	freeQueryDescriptor(queryDescriptor);
-//	delete_H(ht, query_id);
-//	node = (DNode_t*) get(ht, query_id);
-//	qmap[query_id] = 0;
 	return EC_SUCCESS;
 }
-
 ///////////////////////////////////////////////////////////////////////////////////////////////
 int cmpfunc(const QueryID * a, const QueryID * b) {
 	return (*a - *b);
@@ -509,9 +643,10 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 ///////////////////////////////////////////
 void core_test() {
 	InitializeIndex();
-	char f[32] = " ecookr  ";
+	char f[32] = "airprt deicing zirlines";
 
-	StartQuery(5, f, MT_EDIT_DIST, 3);
+	StartQuery(5, f, MT_EDIT_DIST, 1);
+
 	//StartQuery(7, f2, MT_EXACT_MATCH, 0);
 	//
 	//	dfs(&(trie->root));
@@ -520,7 +655,7 @@ void core_test() {
 	//	printf("done\n");
 
 	//hashTest();
-	MatchDocument(10, " ecooks     ");
+	MatchDocument(10, "irlines deicing airport");
 	//	MatchDocument(11, "ok no fucker");
 	//	MatchDocument(20, "fuck you oknofutcher");
 	//	MatchDocument(30, "fuck mother you oknofucker father");
@@ -528,7 +663,9 @@ void core_test() {
 	QueryID *qid;
 	unsigned int numRes;
 	GetNextAvailRes(&did, &numRes, &qid);
-
+	int i;
+	for (i = 0; i < numRes; i++)
+		printf("---->%d\n", qid[i]);
 	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
 //	GetNextAvailRes(&did, &numRes, &qid);
 }

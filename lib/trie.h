@@ -15,6 +15,7 @@ typedef struct TrieNode {
 	LinkedList_t* list1[32];
 	LinkedList_t* list2[32];
 	int count[3];
+	int counter;
 } TrieNode_t;
 typedef struct Trie {
 	TrieNode_t root;
@@ -29,7 +30,7 @@ typedef struct Trie2 {
 } Trie_t2;
 
 DNode_t* TrieInsert(Trie_t * trie, char * str, int length, int type,
-		void* queryData,int wordLength);
+		void* queryData, int wordLength);
 inline TrieNode_t* next_node(TrieNode_t *current, char c);
 TrieNode_t * newTrieNode();
 Trie_t * newTrie();

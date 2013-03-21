@@ -15,7 +15,7 @@
 //#define PROFILER
 #define THREAD_ENABLE
 #define RES_POOL_INITSIZE 10000
-#define NUM_THREADS 2 
+#define NUM_THREADS 24
 #define HT_SIZE  5000011
 
 #else

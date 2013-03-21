@@ -10,6 +10,7 @@ TrieNode_t * newTrieNode() {
 	memset(ret->list2, 0, sizeof(ret->list2));
 //		ret->list = 0;
 	memset(ret->count, 0, sizeof(ret->count));
+	ret->counter = 0;
 	return ret;
 }
 Trie_t * newTrie() {
@@ -48,6 +49,8 @@ DNode_t* TrieInsert(Trie_t * trie, char * str, int length, int type,
 		current->count[type]++;
 		p = current;
 	}
+
+	current->counter++;
 	if (type == MT_EDIT_DIST) {
 		if (current->list1[wordLength] == 0)
 			current->list1[wordLength] = newLinkedList();
@@ -55,6 +58,7 @@ DNode_t* TrieInsert(Trie_t * trie, char * str, int length, int type,
 	} else {
 		if (current->list2[wordLength] == 0)
 			current->list2[wordLength] = newLinkedList();
+
 		return append(current->list2[wordLength], queryData);
 	}
 }
@@ -88,6 +92,7 @@ void TrieDelete(Trie_t* trie, char*str, int length, int type) {
 //		}
 		current = next;
 	}
+	current->counter++;
 //Alternative Implementation:Delete LinkedList node here (note:full traversal is required)
 //	if (current->count[0] + current->count[1] + current->count[2] == 0
 //			&& current != &(trie->root)) { //Note the check if current!=&(trie.root) is not really required unless we are kidding (LOL)
