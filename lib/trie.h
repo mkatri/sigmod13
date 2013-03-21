@@ -4,7 +4,6 @@
  *  Created on: Mar 10, 2013
  *      Author: me2amet
  */
-
 #ifndef TRIE_H_
 #define TRIE_H_
 #include "linked_list.h"
@@ -13,7 +12,8 @@
 
 typedef struct TrieNode {
 	struct TrieNode* next[CHAR_SET_SIZE];
-	LinkedList_t* list;
+	LinkedList_t* list1[32];
+	LinkedList_t* list2[32];
 	int count[3];
 } TrieNode_t;
 typedef struct Trie {
@@ -29,7 +29,7 @@ typedef struct Trie2 {
 } Trie_t2;
 
 DNode_t* TrieInsert(Trie_t * trie, char * str, int length, int type,
-		void* queryData);
+		void* queryData,int wordLength);
 inline TrieNode_t* next_node(TrieNode_t *current, char c);
 TrieNode_t * newTrieNode();
 Trie_t * newTrie();

@@ -9,7 +9,7 @@
 #define THREADING_H_
 
 
-#define HOME
+//#define HOME
 
 #ifdef HOME
 #define THREAD_ENABLE
@@ -19,8 +19,9 @@
 
 #else
 
+#define THREAD_ENABLE
 #define RES_POOL_INITSIZE 10000000
-#define NUM_THREADS 4
+#define NUM_THREADS 23
 #define HT_SIZE 100000007
 
 #endif
