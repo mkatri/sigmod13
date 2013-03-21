@@ -108,10 +108,11 @@ inline int min(int a, int b) {
 
 #ifdef PROFILER
 void handleQuery(int tid, int did, DNode_t *cur, int i, int j, char *w, int l,
-		int *count)
+		int *count, LinkedList_t *matchList)
 #else
 inline void __attribute__((always_inline)) handleQuery(int tid, int did,
-		DNode_t *cur, int i, int j, char *w, int l, int *count)
+		DNode_t *cur, int i, int j, char *w, int l, int *count,
+		LinkedList_t *matchList)
 #endif
 {
 	/*XXX somewhere you set the data of the list tail, this is not cool*/
@@ -158,6 +159,10 @@ inline void __attribute__((always_inline)) handleQuery(int tid, int did,
 			}
 			if (d1 <= queryData->matchDistance) {
 				queryData->matchedWords[tid] |= (1 << (segData->wordIndex));
+				MatchedWord *mw = malloc(sizeof(MatchedWord));
+				mw->desc = queryData;
+				mw->wordIndex = segData->wordIndex;
+				append(matchList, mw);
 
 				if (queryData->matchedWords[tid]
 						== (1 << (queryData->numWords)) - 1) {
@@ -179,6 +184,18 @@ inline void __attribute__((always_inline)) handleQuery(int tid, int did,
 
 				if (d1 <= queryData->matchDistance) {
 					queryData->matchedWords[tid] |= (1 << (segData->wordIndex));
+					/*
+					if(queryData->queryId == 24 && did == 32){
+						char ma7shi[32];
+						strncpy(ma7shi, w, l);
+						ma7shi[l] = 0;
+						printf("karsen is %s", ma7shi);
+					}
+					*/
+					MatchedWord *mw = malloc(sizeof(MatchedWord));
+					mw->desc = queryData;
+					mw->wordIndex = segData->wordIndex;
+					append(matchList, mw);
 
 					if (queryData->matchedWords[tid]
 							== (1 << (queryData->numWords)) - 1) {
@@ -189,6 +206,10 @@ inline void __attribute__((always_inline)) handleQuery(int tid, int did,
 		}
 	} else if (i == 0 && j == l) { // Exact matching must be done from the start of the word only
 		queryData->matchedWords[tid] |= (1 << (segData->wordIndex));
+		MatchedWord *mw = malloc(sizeof(MatchedWord));
+		mw->desc = queryData;
+		mw->wordIndex = segData->wordIndex;
+		append(matchList, mw);
 
 		if (queryData->matchedWords[tid] == (1 << (queryData->numWords)) - 1) {
 			(*count)++;
@@ -196,7 +217,8 @@ inline void __attribute__((always_inline)) handleQuery(int tid, int did,
 	}
 }
 
-void matchWord(int did, int tid, char *w, int l, int *count, Trie_t * trie) {
+void matchWord(int did, int tid, char *w, int l, int *count, Trie_t * trie,
+		LinkedList_t *matchList) {
 	if (l > 34)
 		return;
 	int i = 0;
@@ -222,7 +244,8 @@ void matchWord(int did, int tid, char *w, int l, int *count, Trie_t * trie) {
 				if (!isEmpty(list)) {
 					DNode_t *cur = list->head.next;
 					while (cur->data && cur != &(list->tail)) {
-						handleQuery(tid, did, cur, i, j, w, l, count);
+						handleQuery(tid, did, cur, i, j, w, l, count,
+								matchList);
 						cur = cur->next;
 					}
 				}

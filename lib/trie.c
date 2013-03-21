@@ -103,7 +103,8 @@ TrieNode_t2 * newTrieNode2() {
 	ret->terminal = 0;
 	return ret;
 }
-char TriewordExist(Trie_t* trie, char * str, int length, int docId) {
+char TriewordExist(Trie_t2* trie, char * str, int length, int docId,
+		LinkedList_t **matchList) {
 	TrieNode_t2 *cur = &(trie->root);
 	int i;
 	for (i = 0; i < length; i++)
@@ -121,16 +122,24 @@ char TriewordExist(Trie_t* trie, char * str, int length, int docId) {
 			}
 			cur->terminal = 1;
 			cur->docId = docId;
+			//TODO this is never freed, stupidly :D
+			cur->matchList = newLinkedList();
+			*matchList = cur->matchList;
 			return 0;
 		}
 	if (cur->terminal) {
-		if (cur->docId == docId)
+		if (cur->docId == docId) {
+			*matchList = cur->matchList;
 			return 1;
+		}
 		cur->docId = docId;
 	} else {
 		cur->terminal = 1;
 		cur->docId = docId;
 	}
+	//TODO this is never freed, stupidly :D
+	cur->matchList = newLinkedList();
+	*matchList = cur->matchList;
 	return 0;
 }
 

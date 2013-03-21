@@ -30,6 +30,11 @@ typedef struct {
 	char* startIndex;
 } SegmentData;
 
+typedef struct {
+	QueryDescriptor *desc;
+	char wordIndex;
+} MatchedWord;
+
 SegmentData * newSegmentdata();
 QueryDescriptor * newQueryDescriptor();
 void freeQueryDescriptor(QueryDescriptor * qds);
