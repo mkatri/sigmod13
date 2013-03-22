@@ -120,14 +120,12 @@ void handleQuery(int tid, int did, DNode_t *cur, int i, int j, char *w, int l,
 		int *count)
 #else
 inline void __attribute__((always_inline)) handleQuery(int tid, int did,
-		DNode_t *cur, TrieNode_t* similar_node, int i, int j, char *w, int l,
-		int *count)
+		DNode_t *cur, int type, int i, int j, char *w, int l, int *count)
 #endif
 {
 	/*XXX somewhere you set the data of the list tail, this is not cool*/
 	SegmentData * segData = (SegmentData *) (cur->data);
 	QueryDescriptor * queryData = segData->parentQuery;
-	int type = queryData->matchType;
 
 	if (queryData->docId[tid] != did) {
 		queryData->docId[tid] = did;
@@ -238,8 +236,8 @@ void matchWord(int did, int tid, char *w, int l, int *count, Trie_t * trie) {
 								DNode_t* cur2 = _2nd_lvl_list->head.next;
 
 								while (cur2 != &(_2nd_lvl_list->tail)) {
-									handleQuery(tid, did, cur2, 0, i, j, w, l,
-											count);
+									handleQuery(tid, did, cur2, MT_EDIT_DIST, i,
+											j, w, l, count);
 									cur2 = cur2->next;
 								}
 
@@ -256,7 +254,9 @@ void matchWord(int did, int tid, char *w, int l, int *count, Trie_t * trie) {
 						DNode_t *cur = list->head.next;
 						while (/*cur->data &&*/cur != &(list->tail)) {
 
-							handleQuery(tid, did, cur, 0, i, j, w, l, count);
+							handleQuery(tid, did, cur,
+									((SegmentData*) cur->data)->parentQuery->matchType,
+									i, j, w, l, count);
 							cur = cur->next;
 						}
 					}
