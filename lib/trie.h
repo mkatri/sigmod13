@@ -7,7 +7,7 @@
 #ifndef TRIE_H_
 #define TRIE_H_
 #include "linked_list.h"
-#define CHAR_SET_SIZE 26
+#define CHAR_SET_SIZE 35
 #define BASE_CHAR 'a'
 #include "query.h"
 
@@ -34,7 +34,7 @@ typedef struct Trie2 {
 } Trie_t2;
 
 DNode_t* TrieInsert(Trie_t * trie, char * str, char* word, int length, int type,
-		SegmentData* queryData, int wordLength);
+		SegmentData* queryData, int wordLength, int s, int e);
 
 inline TrieNode_t* next_node(TrieNode_t *current, char c);
 TrieNode_t * newTrieNode();

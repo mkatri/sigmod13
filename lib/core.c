@@ -283,7 +283,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 #endif
 //TODO DNode_t ** segmentsData ;
 	waitTillFull(&cirq_free_docs);
-	int in = 0, i = 0, j = 0, wordLength = 0, k, first, second, iq = 0;
+	int in = 0, i = 0, j = 0, wordLength = 0, k, first, second, iq = 0, s;
 
 	int wordSizes[6];
 	int numOfWords = 0;
@@ -330,7 +330,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			SegmentData *sd = newSegmentdata();
 			sd->parentQuery = queryDescriptor;
 			sd->startIndex = queryDescriptor->words[in] + segmentStart[i];
-
+			s = iq;
 			for (j = 0; j < segLen; j++) {
 				segment[j] = *(queryDescriptor->words[in] + iq);
 				iq++;
@@ -352,7 +352,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			//			}
 			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
 					queryDescriptor->words[in], segLen, match_type, sd,
-					wordLength);
+					wordLength, s, iq);
 		}
 
 		//printf("word >> %s\n", queryDescriptor->words[in]);
