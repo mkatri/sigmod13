@@ -137,34 +137,30 @@ inline void __attribute__((always_inline)) handleQuery(int tid, int did,
 			SegmentData * segData = (SegmentData *) (cur2->data);
 			QueryDescriptor * queryData = segData->parentQuery;
 
-			int tmp = queryData->matchDistance;
-			queryData->matchDistance = trie_node->max_dist[z];
-
 			int d1;
 			if (!(d1 = preCheck(i,
 					segData->startIndex - queryData->words[segData->wordIndex],
-					queryData->matchDistance))) {
+					trie_node->max_dist))) {
 				d1 += editDistance(tid, w, i,
 						queryData->words[segData->wordIndex],
 						segData->startIndex
 								- queryData->words[segData->wordIndex],
-						queryData->matchDistance - d1);
+						trie_node->max_dist - d1);
 			}
-			if (d1 <= queryData->matchDistance) {
+			if (d1 <= trie_node->max_dist) {
 				int tmp = 0;
 				if (!(tmp = preCheck(l - j,
 						queryData->words[segData->wordIndex + 1]
 								- segData->startIndex - (j - i),
-						queryData->matchDistance - d1))) {
+						trie_node->max_dist - d1))) {
 					d1 += editDistance(tid, w + j, l - j,
 							segData->startIndex + j - i,
 							queryData->words[segData->wordIndex + 1]
 									- segData->startIndex - (j - i),
-							queryData->matchDistance - d1);
+							trie_node->max_dist - d1);
 				} else
 					d1 += tmp;
 			}
-			queryData->matchDistance = tmp;
 
 			while (cur2 != &(_2nd_lvl_list->tail)) {
 
@@ -188,8 +184,8 @@ inline void __attribute__((always_inline)) handleQuery(int tid, int did,
 
 				cur2 = cur2->next;
 			}
-
 		}
+
 	} else {
 		SegmentData * segData = (SegmentData *) (cur->data);
 		QueryDescriptor * queryData = segData->parentQuery;
@@ -201,6 +197,7 @@ inline void __attribute__((always_inline)) handleQuery(int tid, int did,
 
 		if (((queryData->matchedWords[tid]) & (1 << (segData->wordIndex)))) {
 			cur = cur->next;
+
 			return;
 		}
 

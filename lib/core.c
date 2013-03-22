@@ -102,68 +102,70 @@ void *matcher_thread(void *n) {
 #ifdef THREAD_ENABLE
 	while (1) {
 #endif
-	DocumentDescriptor *doc_desc = cir_queue_remove(&cirq_busy_docs);
-	char *doc = doc_desc->document;
-	int i = 0;
-	int matchCount = 0;
-	while (doc[i]) {
-		while (doc[i] == ' ')
-			i++;
-		int e = i;
-		while (doc[e] != ' ' && doc[e] != '\0')
-			e++;
+		DocumentDescriptor *doc_desc = cir_queue_remove(&cirq_busy_docs);
+		char *doc = doc_desc->document;
+		int i = 0;
+		int matchCount = 0;
+		while (doc[i]) {
+			while (doc[i] == ' ')
+				i++;
+			int e = i;
+			while (doc[e] != ' ' && doc[e] != '\0')
+				e++;
 //			puts(doc + e);
-		int en, st, z;
-		if (!TriewordExist(dtrie[tid], &doc[i], e - i, doc_desc->docId)) {
+			int en, st, z;
+			if (!TriewordExist(dtrie[tid], &doc[i], e - i, doc_desc->docId)) {
 //				TrieInsert2(dtrie[tid], &doc[i], e - i, doc_desc->docId,tid);
-			matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount, trie);
+				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
+						trie);
+
 //				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
 //						trie2[e - i]);
 //				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount);
-		} else
-			cnt++;
-		i = e;
-	}
+			} else
+				cnt++;
+			i = e;
+		}
 
-	doc_desc->matches = malloc(sizeof(QueryID) * matchCount);
-	doc_desc->numResults = matchCount;
+		doc_desc->matches = malloc(sizeof(QueryID) * matchCount);
+		doc_desc->numResults = matchCount;
 
-	/*
-	 memcpy(doc_desc->matches, qres, sizeof(QueryID) * matches[tid].tail);
-	 qsort(doc_desc->matches, matches[tid].tail, sizeof(QueryID), cmpfunc);
-	 */
+		/*
+		 memcpy(doc_desc->matches, qres, sizeof(QueryID) * matches[tid].tail);
+		 qsort(doc_desc->matches, matches[tid].tail, sizeof(QueryID), cmpfunc);
+		 */
 
-	i = 0;
-	int p = 0;
-	/*
-	 DNode_t* cur = queries->head.next;
-	 while (cur != &(queries->tail)) {
-	 QueryDescriptor * cqd = (QueryDescriptor *) cur->data;
-	 if (cqd->docId[tid] == doc_desc->docId
-	 && cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
-	 doc_desc->matches[p++] = cqd->queryId;
-	 if (p == matchCount)
-	 break;
-	 cur = cur->next;
-	 }
-	 */
-	while (i < QDESC_MAP_SIZE) {
-		QueryDescriptor * cqd = &qmap[i++];
-		if (cqd->docId[tid] == doc_desc->docId
-				&& cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
-			doc_desc->matches[p++] = cqd->queryId;
-		if (p == matchCount)
-			break;
-	}
-	//XXX could be moved above when we're using array instead of linkedlist
-	cir_queue_insert(&cirq_free_docs, doc_desc->document);
+		i = 0;
+		int p = 0;
+		/*
+		 DNode_t* cur = queries->head.next;
+		 while (cur != &(queries->tail)) {
+		 QueryDescriptor * cqd = (QueryDescriptor *) cur->data;
+		 if (cqd->docId[tid] == doc_desc->docId
+		 && cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
+		 doc_desc->matches[p++] = cqd->queryId;
+		 if (p == matchCount)
+		 break;
+		 cur = cur->next;
+		 }
+		 */
+		while (i < QDESC_MAP_SIZE) {
+			QueryDescriptor * cqd = &qmap[i++];
+			if (cqd->docId[tid] == doc_desc->docId
+					&& cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
+				doc_desc->matches[p++] = cqd->queryId;
+			if (p == matchCount)
+				break;
+		}
+		//XXX could be moved above when we're using array instead of linkedlist
+		cir_queue_insert(&cirq_free_docs, doc_desc->document);
 
-	pthread_mutex_lock(&docList_lock);
-	append(docList, doc_desc);
-	pthread_cond_signal(&docList_avail);
-	pthread_mutex_unlock(&docList_lock);
+		pthread_mutex_lock(&docList_lock);
+		append(docList, doc_desc);
+		pthread_cond_signal(&docList_avail);
+		pthread_mutex_unlock(&docList_lock);
 #ifdef THREAD_ENABLE
-}
+	}
 #endif
 	return 0;
 }
@@ -173,6 +175,8 @@ ErrorCode InitializeIndex() {
 	docCount = 0;
 	cir_queue_init(&cirq_free_docs, &free_docs, NUM_THREADS);
 	cir_queue_init(&cirq_busy_docs, &busy_docs, NUM_THREADS);
+
+	pthread_mutex_init(&test_lock, NULL);
 
 	pthread_mutex_init(&docList_lock, NULL);
 	pthread_cond_init(&docList_avail, NULL);

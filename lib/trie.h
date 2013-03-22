@@ -33,6 +33,8 @@ typedef struct Trie2 {
 	TrieNode_t2 root;
 } Trie_t2;
 
+pthread_mutex_t test_lock;
+
 DNode_t* TrieInsert(Trie_t * trie, char * str, char* word, int length, int type,
 		SegmentData* queryData, int wordLength, int s, int e);
 

@@ -39,6 +39,7 @@ inline TrieNode_t2* next_node2(TrieNode_t2 *current, char c) {
 
 DNode_t* insertParts(TrieNode_t** n, int type, int dist, int len, char* str,
 		SegmentData* queryData, int s, int e) {
+
 	TrieNode_t* node = n[0];
 	int i;
 	for (i = 0; i < len; i++) {
@@ -60,7 +61,6 @@ DNode_t* insertParts(TrieNode_t** n, int type, int dist, int len, char* str,
 		n[0] = node;
 	} else
 		n[0] = 0;
-
 	return append(node->edit_dist_list[len], queryData);
 }
 
@@ -98,13 +98,8 @@ DNode_t* TrieInsert(Trie_t * trie, char * str, char* word, int length, int type,
 				queryData->parentQuery->matchDistance, wordLength, word,
 				queryData, s, e);
 
-		if (node[0]) {
-//			printf("\t%d\n", cnt4++);
+		if (node[0])
 			append(current->list1[wordLength], node[0]);
-		}
-
-//		else
-//			printf("%d\n", cnt3++);
 
 		return ret;
 	} else {
