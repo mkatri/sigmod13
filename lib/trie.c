@@ -10,9 +10,9 @@ TrieNode_t * newTrieNode() {
 	memset(ret->list1, 0, tmp);
 	memset(ret->list2, 0, tmp);
 	memset(ret->edit_dist_list, 0, tmp);
-//		ret->list = 0;
 	memset(ret->count, 0, sizeof(ret->count));
 	memset(ret->max_dist, 0, sizeof(ret->max_dist));
+	ret->edit_dist_Trie = 0;
 	ret->counter = 0;
 	return ret;
 }
@@ -99,7 +99,7 @@ DNode_t* TrieInsert(Trie_t * trie, char * str, char* word, int length, int type,
 			current->edit_dist_Trie = newTrieNode();
 
 		TrieNode_t* node[1];
-		node[0] = current->edit_dist_list;
+		node[0] = current->edit_dist_Trie;
 
 		DNode_t* ret = insertParts(node, type,
 				queryData->parentQuery->matchDistance, wordLength, word,
