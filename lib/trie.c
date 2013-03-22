@@ -41,6 +41,7 @@ DNode_t* insertParts(TrieNode_t** n, int type, int dist, int len, char* str,
 		SegmentData* queryData, int s, int e) {
 
 	TrieNode_t* node = n[0];
+	n[0] = 0;
 	int i;
 	for (i = 0; i < len; i++) {
 		if (node->next[str[i] - BASE_CHAR] == 0)
@@ -55,13 +56,19 @@ DNode_t* insertParts(TrieNode_t** n, int type, int dist, int len, char* str,
 	if (node->next[e] == 0)
 		node->next[e] = newTrieNode();
 	node = node->next[e];
-
-	if (node->edit_dist_list[len] == 0) {
+	if (node->edit_dist_list[len] == 0)
 		node->edit_dist_list[len] = newLinkedList();
+
+	int empty = isEmpty(node->edit_dist_list[len]);
+
+	DNode_t* ret = append(node->edit_dist_list[len], queryData);
+
+	if (empty)
 		n[0] = node;
-	} else
-		n[0] = 0;
-	return append(node->edit_dist_list[len], queryData);
+	else
+		ret->tmp = node->edit_dist_list[len]->head.next->tmp;
+
+	return ret;
 }
 
 int cnt3 = 0, cnt4 = 0;
@@ -99,7 +106,7 @@ DNode_t* TrieInsert(Trie_t * trie, char * str, char* word, int length, int type,
 				queryData, s, e);
 
 		if (node[0])
-			append(current->list1[wordLength], node[0]);
+			ret->tmp = append(current->list1[wordLength], node[0]);
 
 		return ret;
 	} else {

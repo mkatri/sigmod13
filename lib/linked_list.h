@@ -9,6 +9,7 @@
 #define LINKEDLIST_H_
 typedef struct DNode {
 	struct DNode *prev, *next;
+	struct DNode *tmp;
 	void * data;
 } DNode_t;
 typedef struct LinkedList {

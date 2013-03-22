@@ -487,7 +487,7 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
-
+int cnt5 = 0;
 ErrorCode EndQuery(QueryID query_id) {
 #ifdef CORE_DEBUG
 	puts("inside here");
@@ -521,16 +521,16 @@ ErrorCode EndQuery(QueryID query_id) {
 
 			segment[j] = '\0';
 
-			//insert in trie
-//			printf("segment >>>> %s\n", segment);
-			//			if (match_type == MT_EDIT_DIST) {
-			//				queryDescriptor->segmentsData[top++] = TrieInsert(
-			//						trie1[wordLength], segment, first, match_type, sd);
-			//			} else {
-			//				queryDescriptor->segmentsData[top++] = TrieInsert(
-			//						trie2[wordLength], segment, first, match_type, sd);
-			//			}
-			delete(queryDescriptor->segmentsData[top++]);
+			DNode_t* node = queryDescriptor->segmentsData[top++];
+			SegmentData* sd = node->data;
+
+			if (sd->parentQuery->matchType == MT_EDIT_DIST
+					&& node->next->data == 0 && node->prev->data == 0) {
+				delete(node->tmp);
+			}
+
+			delete(node);
+
 			TrieDelete(trie, segment, segLen, queryDescriptor->matchType);
 		}
 
