@@ -111,7 +111,8 @@ inline int min(int a, int b) {
 	return b;
 }
 inline int max(int a, int b) {
-	if(a>=b)return a;
+	if (a >= b)
+		return a;
 	return b;
 }
 #ifdef PROFILER
@@ -119,7 +120,8 @@ void handleQuery(int tid, int did, DNode_t *cur, int i, int j, char *w, int l,
 		int *count)
 #else
 inline void __attribute__((always_inline)) handleQuery(int tid, int did,
-		DNode_t *cur, int i, int j, char *w, int l, int *count)
+		DNode_t *cur, TrieNode_t* similar_node, int i, int j, char *w, int l,
+		int *count)
 #endif
 {
 	/*XXX somewhere you set the data of the list tail, this is not cool*/
@@ -211,6 +213,7 @@ void matchWord(int did, int tid, char *w, int l, int *count, Trie_t * trie) {
 			if (n->count[MT_EDIT_DIST] == 0 && n->count[MT_HAMMING_DIST] == 0
 					&& (i > 0 || n->count[MT_EXACT_MATCH] == 0))
 				break;
+
 			j++;
 			int en, st, z;
 			st = l - 3;
@@ -219,18 +222,47 @@ void matchWord(int did, int tid, char *w, int l, int *count, Trie_t * trie) {
 			en = en <= 31 ? en : l;
 			for (z = st; z <= en + 1; z++) {
 				LinkedList_t * list;
-				if (z <= en)
+				if (z <= en) {
 					list = n->list1[z];
-				else
-					list = n->list2[l];
-				if (!isEmpty(list)) {
-					DNode_t *cur = list->head.next;
-					while (cur->data && cur != &(list->tail)) {
 
-						handleQuery(tid, did, cur, i, j, w, l, count);
-						cur = cur->next;
+					if (!isEmpty(list)) {
+						DNode_t *cur = list->head.next;
+						while (/*cur->data &&*/cur != &(list->tail)) {
+
+							TrieNode_t* _2nd_lvl_trie_node =
+									(TrieNode_t*) cur->data;
+							LinkedList_t* _2nd_lvl_list =
+									_2nd_lvl_trie_node->edit_dist_list[z];
+
+							if (!isEmpty(_2nd_lvl_list)) {
+								DNode_t* cur2 = _2nd_lvl_list->head.next;
+
+								while (cur2 != &(_2nd_lvl_list->tail)) {
+									handleQuery(tid, did, cur2, 0, i, j, w, l,
+											count);
+									cur2 = cur2->next;
+								}
+
+							}
+
+							cur = cur->next;
+						}
 					}
+
+				} else {
+					list = n->list2[l];
+
+					if (!isEmpty(list)) {
+						DNode_t *cur = list->head.next;
+						while (/*cur->data &&*/cur != &(list->tail)) {
+
+							handleQuery(tid, did, cur, 0, i, j, w, l, count);
+							cur = cur->next;
+						}
+					}
+
 				}
+
 			}
 		}
 	}

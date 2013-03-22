@@ -38,7 +38,7 @@ inline TrieNode_t2* next_node2(TrieNode_t2 *current, char c) {
 }
 
 DNode_t* insertParts(TrieNode_t** n, int type, int dist, int l, int r,
-		char* str, void* queryData) {
+		char* str, SegmentData* queryData) {
 	TrieNode_t* node = n[0];
 	int i;
 	for (i = l; i < r; i++) {
@@ -47,14 +47,16 @@ DNode_t* insertParts(TrieNode_t** n, int type, int dist, int l, int r,
 		node = node->next[str[i] - BASE_CHAR];
 	}
 
-	if (node->edit_dist_list[r - l] == 0) {
-		node->edit_dist_list[r - l] = newLinkedList();
+	if (node->edit_dist_list[r] == 0) {
+		node->edit_dist_list[r] = newLinkedList();
 		n[0] = node;
 	} else
 		n[0] = 0;
 
-	return append(node->edit_dist_list[r - l], queryData);
+	return append(node->edit_dist_list[r], queryData);
 }
+
+int cnt3 = 0, cnt4 = 0;
 
 DNode_t* TrieInsert(Trie_t * trie, char * str, char* word, int length, int type,
 		SegmentData* queryData, int wordLength) {
@@ -84,15 +86,17 @@ DNode_t* TrieInsert(Trie_t * trie, char * str, char* word, int length, int type,
 		TrieNode_t* node[1];
 		node[0] = current->edit_dist_list;
 
-//		DNode_t* ret = insertParts(current->edit_dist_Trie, type,
-//				queryData->parentQuery->matchDistance, 0, wordLength, word,
-//				queryData);
+		DNode_t* ret = insertParts(node, type,
+				queryData->parentQuery->matchDistance, 0, wordLength, word,
+				queryData);
 
-//		if (node[0])
-//			append(current->list1[wordLength], node[0]);
-//
-//		return ret;
-		return append(current->list1[wordLength], queryData);;
+		if (node[0]) {
+			printf("\t%d\n", cnt4++);
+			append(current->list1[wordLength], node[0]);
+		} else
+			printf("%d\n", cnt3++);
+
+		return ret;
 	} else {
 		if (current->list2[wordLength] == 0)
 			current->list2[wordLength] = newLinkedList();
