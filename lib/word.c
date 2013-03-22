@@ -116,72 +116,68 @@ inline int max(int a, int b) {
 	return b;
 }
 #ifdef PROFILER
-void handleQuery(int tid, int did, DNode_t *cur, int i, int j, char *w, int l,
+void handleQuery(int tid, int did, DNode_t *cur,int z, int i, int j, char *w, int l,
 		int *count)
 #else
 inline void __attribute__((always_inline)) handleQuery(int tid, int did,
-		DNode_t *cur, int type, int i, int j, char *w, int l, int *count)
+		DNode_t *cur, int z, int type, int i, int j, char *w, int l, int *count)
 #endif
 {
-	/*XXX somewhere you set the data of the list tail, this is not cool*/
-	SegmentData * segData = (SegmentData *) (cur->data);
-	QueryDescriptor * queryData = segData->parentQuery;
-
-	if (queryData->docId[tid] != did) {
-		queryData->docId[tid] = did;
-		queryData->matchedWords[tid] = 0;
-	}
-
-	if (((queryData->matchedWords[tid]) & (1 << (segData->wordIndex)))) {
-		cur = cur->next;
-		return;
-	}
 
 	if (type == MT_EDIT_DIST) {
-		int d1;
-		if (!(d1 = preCheck(i,
-				segData->startIndex - queryData->words[segData->wordIndex],
-				queryData->matchDistance))) {
-			d1 += editDistance(tid, w, i, queryData->words[segData->wordIndex],
+
+		//2nd_lvl_trie_node
+		TrieNode_t* trie_node = (TrieNode_t*) cur->data;
+		LinkedList_t* _2nd_lvl_list = trie_node->edit_dist_list[z];
+
+		if (!isEmpty(_2nd_lvl_list)) {
+
+			DNode_t* cur2 = _2nd_lvl_list->head.next;
+
+			SegmentData * segData = (SegmentData *) (cur2->data);
+			QueryDescriptor * queryData = segData->parentQuery;
+
+			int tmp = queryData->matchDistance;
+			queryData->matchDistance = trie_node->max_dist[z];
+
+			int d1;
+			if (!(d1 = preCheck(i,
 					segData->startIndex - queryData->words[segData->wordIndex],
-					queryData->matchDistance - d1);
-		}
-		if (d1 <= queryData->matchDistance) {
-			int tmp = 0;
-			if (!(tmp = preCheck(l - j,
-					queryData->words[segData->wordIndex + 1]
-							- segData->startIndex - (j - i),
-					queryData->matchDistance - d1))) {
-				d1 += editDistance(tid, w + j, l - j,
-						segData->startIndex + j - i,
+					queryData->matchDistance))) {
+				d1 += editDistance(tid, w, i,
+						queryData->words[segData->wordIndex],
+						segData->startIndex
+								- queryData->words[segData->wordIndex],
+						queryData->matchDistance - d1);
+			}
+			if (d1 <= queryData->matchDistance) {
+				int tmp = 0;
+				if (!(tmp = preCheck(l - j,
 						queryData->words[segData->wordIndex + 1]
 								- segData->startIndex - (j - i),
-						queryData->matchDistance - d1);
-			} else
-				d1 += tmp;
-		}
-		if (d1 <= queryData->matchDistance) {
-			queryData->matchedWords[tid] |= (1 << (segData->wordIndex));
-
-			if (queryData->matchedWords[tid]
-					== (1 << (queryData->numWords)) - 1) {
-				(*count)++;
+						queryData->matchDistance - d1))) {
+					d1 += editDistance(tid, w + j, l - j,
+							segData->startIndex + j - i,
+							queryData->words[segData->wordIndex + 1]
+									- segData->startIndex - (j - i),
+							queryData->matchDistance - d1);
+				} else
+					d1 += tmp;
 			}
-		}
+			queryData->matchDistance = tmp;
 
-	} else if (type == MT_HAMMING_DIST) {
-		if (i == segData->startIndex - queryData->words[segData->wordIndex]
-				&& (l - j)
-						== queryData->words[segData->wordIndex + 1]
-								- segData->startIndex - (j - i)) {
-			int d1 = hammingDistance(w, queryData->words[segData->wordIndex], i,
-					queryData->matchDistance);
-			if (d1 <= queryData->matchDistance) {
-				d1 += hammingDistance(w + j,
-						queryData->words[segData->wordIndex] + j, l - j,
-						queryData->matchDistance - d1);
+			while (cur2 != &(_2nd_lvl_list->tail)) {
 
-				if (d1 <= queryData->matchDistance) {
+				segData = (SegmentData *) (cur2->data);
+				queryData = segData->parentQuery;
+
+				if (queryData->docId[tid] != did) {
+					queryData->docId[tid] = did;
+					queryData->matchedWords[tid] = 0;
+				}
+
+				if ((queryData->matchedWords[tid] & (1 << (segData->wordIndex)))
+						== 0 && d1 <= queryData->matchDistance) {
 					queryData->matchedWords[tid] |= (1 << (segData->wordIndex));
 
 					if (queryData->matchedWords[tid]
@@ -189,13 +185,56 @@ inline void __attribute__((always_inline)) handleQuery(int tid, int did,
 						(*count)++;
 					}
 				}
-			}
-		}
-	} else if (i == 0 && j == l) { // Exact matching must be done from the start of the word only
-		queryData->matchedWords[tid] |= (1 << (segData->wordIndex));
 
-		if (queryData->matchedWords[tid] == (1 << (queryData->numWords)) - 1) {
-			(*count)++;
+				cur2 = cur2->next;
+			}
+
+		}
+	} else {
+		SegmentData * segData = (SegmentData *) (cur->data);
+		QueryDescriptor * queryData = segData->parentQuery;
+
+		if (queryData->docId[tid] != did) {
+			queryData->docId[tid] = did;
+			queryData->matchedWords[tid] = 0;
+		}
+
+		if (((queryData->matchedWords[tid]) & (1 << (segData->wordIndex)))) {
+			cur = cur->next;
+			return;
+		}
+
+		if (type == MT_HAMMING_DIST) {
+			if (i == segData->startIndex - queryData->words[segData->wordIndex]
+					&& (l - j)
+							== queryData->words[segData->wordIndex + 1]
+									- segData->startIndex - (j - i)) {
+				int d1 = hammingDistance(w,
+						queryData->words[segData->wordIndex], i,
+						queryData->matchDistance);
+				if (d1 <= queryData->matchDistance) {
+					d1 += hammingDistance(w + j,
+							queryData->words[segData->wordIndex] + j, l - j,
+							queryData->matchDistance - d1);
+
+					if (d1 <= queryData->matchDistance) {
+						queryData->matchedWords[tid] |= (1
+								<< (segData->wordIndex));
+
+						if (queryData->matchedWords[tid]
+								== (1 << (queryData->numWords)) - 1) {
+							(*count)++;
+						}
+					}
+				}
+			}
+		} else if (i == 0 && j == l) { // Exact matching must be done from the start of the word only
+			queryData->matchedWords[tid] |= (1 << (segData->wordIndex));
+
+			if (queryData->matchedWords[tid]
+					== (1 << (queryData->numWords)) - 1) {
+				(*count)++;
+			}
 		}
 	}
 }
@@ -227,21 +266,8 @@ void matchWord(int did, int tid, char *w, int l, int *count, Trie_t * trie) {
 						DNode_t *cur = list->head.next;
 						while (/*cur->data &&*/cur != &(list->tail)) {
 
-							TrieNode_t* _2nd_lvl_trie_node =
-									(TrieNode_t*) cur->data;
-							LinkedList_t* _2nd_lvl_list =
-									_2nd_lvl_trie_node->edit_dist_list[z];
-
-							if (!isEmpty(_2nd_lvl_list)) {
-								DNode_t* cur2 = _2nd_lvl_list->head.next;
-
-								while (cur2 != &(_2nd_lvl_list->tail)) {
-									handleQuery(tid, did, cur2, MT_EDIT_DIST, i,
-											j, w, l, count);
-									cur2 = cur2->next;
-								}
-
-							}
+							handleQuery(tid, did, cur, z, MT_EDIT_DIST, i, j, w,
+									l, count);
 
 							cur = cur->next;
 						}
@@ -254,7 +280,7 @@ void matchWord(int did, int tid, char *w, int l, int *count, Trie_t * trie) {
 						DNode_t *cur = list->head.next;
 						while (/*cur->data &&*/cur != &(list->tail)) {
 
-							handleQuery(tid, did, cur,
+							handleQuery(tid, did, cur, z,
 									((SegmentData*) cur->data)->parentQuery->matchType,
 									i, j, w, l, count);
 							cur = cur->next;

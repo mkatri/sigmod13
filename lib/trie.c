@@ -91,10 +91,12 @@ DNode_t* TrieInsert(Trie_t * trie, char * str, char* word, int length, int type,
 				queryData);
 
 		if (node[0]) {
-			printf("\t%d\n", cnt4++);
+//			printf("\t%d\n", cnt4++);
 			append(current->list1[wordLength], node[0]);
-		} else
-			printf("%d\n", cnt3++);
+		}
+
+//		else
+//			printf("%d\n", cnt3++);
 
 		return ret;
 	} else {
