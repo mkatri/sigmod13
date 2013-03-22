@@ -57,33 +57,40 @@ int cmpfunc(const QueryID * a, const QueryID * b);
 Trie_t *trie;
 Trie_t * dtrie[NUM_THREADS];
 LinkedList_t *docList;
-//LinkedList_t *queries;
+LinkedList_t *queries;
 unsigned long docCount;
 
 /*QUERY DESCRIPTOR MAP GOES HERE*/
-#define QDESC_MAP_SIZE 20000
 QueryDescriptor qmap[QDESC_MAP_SIZE];
+DNode_t qnodes[QDESC_MAP_SIZE];
 //HashTable* ht;
 //Trie_t2 *dtrie;
 //inline QueryDescriptor * getQueryDescriptor(int queryId) {
 //	return qmap[queryId];
 //}
-/*
- inline void addQuery(int queryId, QueryDescriptor * qds) {
- //	qmap[queryId] = qds;
 
- DNode_t* node = append(queries, qds);
- insert(ht, queryId, node);
+inline void addQuery(int queryId, QueryDescriptor * qds) {
+	//	qmap[queryId] = qds;
+	DNode_t* node = &qnodes[queryId];
+	node->data = qds;
+	node->prev = queries->tail.prev, node->next = &(queries->tail);
+	node->next->prev = node, node->prev->next = node;
+//	insert(ht, queryId, node);
+}
 
- }
- */
+inline void removeQuery(int queryId, QueryDescriptor *qds) {
+	DNode_t* node = &qnodes[queryId];
+	node->next->prev = node->prev;
+	node->prev->next = node->next;
+}
+
 /*QUERY DESCRIPTOR MAP ENDS HERE*/
 
 void split(int length[6], QueryDescriptor *desc, const char* query_str,
 		int * idx);
 
 void init() {
-//	queries = newLinkedList();
+	queries = newLinkedList();
 //	ht = new_Hash_Table();
 	//THREAD_ENABLE=1;
 	trie = newTrie();
@@ -137,26 +144,28 @@ void *matcher_thread(void *n) {
 
 		i = 0;
 		int p = 0;
-		/*
-		 DNode_t* cur = queries->head.next;
-		 while (cur != &(queries->tail)) {
-		 QueryDescriptor * cqd = (QueryDescriptor *) cur->data;
-		 if (cqd->docId[tid] == doc_desc->docId
-		 && cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
-		 doc_desc->matches[p++] = cqd->queryId;
-		 if (p == matchCount)
-		 break;
-		 cur = cur->next;
-		 }
-		 */
-		while (i < QDESC_MAP_SIZE) {
-			QueryDescriptor * cqd = &qmap[i++];
+
+		DNode_t* cur = queries->head.next;
+		while (cur != &(queries->tail)) {
+			QueryDescriptor * cqd = (QueryDescriptor *) cur->data;
 			if (cqd->docId[tid] == doc_desc->docId
 					&& cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
 				doc_desc->matches[p++] = cqd->queryId;
 			if (p == matchCount)
 				break;
+			cur = cur->next;
 		}
+
+		/*
+		 while (i < QDESC_MAP_SIZE) {
+		 QueryDescriptor * cqd = &qmap[i++];
+		 if (cqd->docId[tid] == doc_desc->docId
+		 && cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
+		 doc_desc->matches[p++] = cqd->queryId;
+		 if (p == matchCount)
+		 break;
+		 }
+		 */
 		//XXX could be moved above when we're using array instead of linkedlist
 		cir_queue_insert(&cirq_free_docs, doc_desc->document);
 
@@ -176,10 +185,10 @@ ErrorCode InitializeIndex() {
 	cir_queue_init(&cirq_free_docs, &free_docs, NUM_THREADS);
 	cir_queue_init(&cirq_busy_docs, &busy_docs, NUM_THREADS);
 
-	pthread_mutex_init(&test_lock, NULL);
+	pthread_mutex_init(&test_lock, NULL );
 
-	pthread_mutex_init(&docList_lock, NULL);
-	pthread_cond_init(&docList_avail, NULL);
+	pthread_mutex_init(&docList_lock, NULL );
+	pthread_cond_init(&docList_avail, NULL );
 
 	int i;
 	for (i = 0; i < NUM_THREADS; i++) {
@@ -300,7 +309,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	for (in = 0; in < NUM_THREADS; in++)
 		queryDescriptor->docId[in] = -1;
 
-	//addQuery(query_id, queryDescriptor);
+	addQuery(query_id, queryDescriptor);
 
 	//as the query words are space separated so this method return the words and it's length
 	split(wordSizes, queryDescriptor, query_str, &numOfWords);
@@ -492,7 +501,6 @@ ErrorCode EndQuery(QueryID query_id) {
 #ifdef CORE_DEBUG
 	puts("inside here");
 #endif
-//	QueryDescriptor* queryDescriptor = getQueryDescriptor(query_id);
 	waitTillFull(&cirq_free_docs);
 	QueryDescriptor* queryDescriptor = &qmap[query_id];
 	int i, j;
@@ -601,6 +609,7 @@ ErrorCode EndQuery(QueryID query_id) {
 ////	qmap[query_id] = 0;
 
 	}
+	removeQuery(query_id, queryDescriptor);
 	return EC_SUCCESS;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////

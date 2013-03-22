@@ -15,7 +15,8 @@
 #define THREAD_ENABLE
 #define RES_POOL_INITSIZE 10000
 #define NUM_THREADS 2
-#define HT_SIZE  5000011
+#define HT_SIZE 5000011
+#define QDESC_MAP_SIZE 20000
 
 #else
 
@@ -23,6 +24,7 @@
 #define RES_POOL_INITSIZE 100000
 #define NUM_THREADS 23
 #define HT_SIZE 100007
+#define QDESC_MAP_SIZE 500000
 
 #endif
 

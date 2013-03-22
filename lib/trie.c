@@ -12,7 +12,7 @@ TrieNode_t * newTrieNode() {
 	memset(ret->edit_dist_list, 0, tmp);
 //		ret->list = 0;
 	memset(ret->count, 0, sizeof(ret->count));
-	memset(ret->max_dist, 5, sizeof(ret->max_dist));
+	memset(ret->max_dist, 0, sizeof(ret->max_dist));
 	ret->counter = 0;
 	return ret;
 }
