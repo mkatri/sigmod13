@@ -295,7 +295,9 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	printf("query: %d --> %s\n", query_id, query_str);
 #endif
 //TODO DNode_t ** segmentsData ;
+#ifdef THREAD_ENABLE
 	waitTillFull(&cirq_free_docs);
+#endif
 	int in = 0, i = 0, j = 0, wordLength = 0, k, first, second, iq = 0, s;
 
 	int wordSizes[6];
@@ -501,7 +503,9 @@ ErrorCode EndQuery(QueryID query_id) {
 #ifdef CORE_DEBUG
 	puts("inside here");
 #endif
+#ifdef THREAD_ENABLE
 	waitTillFull(&cirq_free_docs);
+#endif
 	QueryDescriptor* queryDescriptor = &qmap[query_id];
 	int i, j;
 	int in, iq, wordLength, numOfSegments = queryDescriptor->matchDistance + 1,
