@@ -9,8 +9,7 @@
 #define QUERY_H_
 #include "submit_params.h"
 #include "linked_list.h"
-#include "../include/core.h"
-
+#include <core.h>
 
 typedef struct {
 	char *words[6];
@@ -28,7 +27,7 @@ typedef struct {
 typedef struct {
 	int queryId;
 	QueryDescriptor* parentQuery;
-	char wordIndex;
+	unsigned char wordIndex;
 	char* startIndex;
 } SegmentData;
 

@@ -1,4 +1,5 @@
 #include <pthread.h>
+#include <stdlib.h>
 #include "submit_params.h"
 #include "linked_list.h"
 #include "trie.h"

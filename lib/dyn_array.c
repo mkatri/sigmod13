@@ -4,6 +4,7 @@
  *  Created on: Mar 14, 2013
  *      Author: mkatri
  */
+#include <stdlib.h>
 #include "dyn_array.h"
 
 inline void doubleCapacity(DynamicArray *a) {

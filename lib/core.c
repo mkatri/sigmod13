@@ -31,9 +31,12 @@
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
+#include <stdint.h>
 #include <core.h>
+#include <unistd.h>
 #include "query.h"
 #include "trie.h"
+#include "word.h"
 #include "document.h"
 #include "Hash_Table.h"
 #include "cir_queue.h"
@@ -55,7 +58,7 @@ pthread_cond_t docList_avail;
 int cmpfunc(const QueryID * a, const QueryID * b);
 ///////////////////////////////////////////////////////////////////////////////////////////////
 Trie_t *trie;
-Trie_t * dtrie[NUM_THREADS];
+Trie_t2 * dtrie[NUM_THREADS];
 LinkedList_t *docList;
 LinkedList_t *queries;
 unsigned long docCount;
@@ -91,6 +94,9 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 
 void init() {
 	queries = newLinkedList();
+
+	int numCPU = sysconf(_SC_NPROCESSORS_ONLN);
+	printf("we have %d cores\n", numCPU);
 //	ht = new_Hash_Table();
 	//THREAD_ENABLE=1;
 	trie = newTrie();
@@ -105,7 +111,7 @@ void init() {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 int cnt = 0;
 void *matcher_thread(void *n) {
-	int tid = n;
+	int tid = (uintptr_t) n;
 #ifdef THREAD_ENABLE
 	while (1) {
 #endif
@@ -182,8 +188,8 @@ void *matcher_thread(void *n) {
 ErrorCode InitializeIndex() {
 	init();
 	docCount = 0;
-	cir_queue_init(&cirq_free_docs, &free_docs, NUM_THREADS);
-	cir_queue_init(&cirq_busy_docs, &busy_docs, NUM_THREADS);
+	cir_queue_init(&cirq_free_docs, (void **) &free_docs, NUM_THREADS);
+	cir_queue_init(&cirq_busy_docs, (void **) &busy_docs, NUM_THREADS);
 
 	pthread_mutex_init(&test_lock, NULL );
 
@@ -194,13 +200,14 @@ ErrorCode InitializeIndex() {
 	for (i = 0; i < NUM_THREADS; i++) {
 		free_docs[i] = documents[i];
 		//dyn_array_init(&matches[i], RES_POOL_INITSIZE);
-		dtrie[i] = newTrie();
+		dtrie[i] = newTrie2();
 	}
 	cirq_free_docs.size = NUM_THREADS;
 
 #ifdef THREAD_ENABLE
 	for (i = 0; i < NUM_THREADS; i++) {
-		pthread_create(&threads[i], NULL, matcher_thread, i);
+		pthread_create(&threads[i], NULL, matcher_thread,
+				(void *) (uintptr_t) i);
 	}
 #endif
 	return EC_SUCCESS;

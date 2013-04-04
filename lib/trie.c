@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../include/core.h"
+#include <core.h>
 #include "trie.h"
 TrieNode_t * newTrieNode() {
 	TrieNode_t* ret = (TrieNode_t*) (malloc(sizeof(TrieNode_t)));
@@ -26,11 +26,18 @@ Trie_t * newTrie() {
 	return t;
 }
 
+Trie_t2 * newTrie2() {
+	Trie_t2* t = (Trie_t2 *) malloc(sizeof(Trie_t2));
+	memset(t, 0, sizeof(Trie_t2));
+	return t;
+}
+
 inline TrieNode_t* next_node(TrieNode_t *current, char c) {
 	if (current == 0)
 		return 0;
 	if (c >= 'a' && c <= 'z')
 		return current->next[c - BASE_CHAR];
+	return 0;
 }
 
 inline TrieNode_t2* next_node2(TrieNode_t2 *current, char c) {
@@ -162,7 +169,7 @@ TrieNode_t2 * newTrieNode2() {
 	ret->terminal = 0;
 	return ret;
 }
-char TriewordExist(Trie_t* trie, char * str, int length, int docId) {
+char TriewordExist(Trie_t2* trie, char * str, int length, int docId) {
 	TrieNode_t2 *cur = &(trie->root);
 	int i;
 	for (i = 0; i < length; i++)

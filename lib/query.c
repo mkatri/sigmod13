@@ -1,3 +1,5 @@
+#include <stdlib.h>
+#include <string.h>
 #include "query.h"
 
 SegmentData * newSegmentdata() {
@@ -17,5 +19,4 @@ QueryDescriptor * newQueryDescriptor() {
 
 void freeQueryDescriptor(QueryDescriptor * qds) {
 	free(qds);
-
 }
