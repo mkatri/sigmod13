@@ -191,7 +191,6 @@ ErrorCode InitializeIndex() {
 	cir_queue_init(&cirq_free_docs, (void **) &free_docs, NUM_THREADS);
 	cir_queue_init(&cirq_busy_docs, (void **) &busy_docs, NUM_THREADS);
 
-	pthread_mutex_init(&test_lock, NULL );
 
 	pthread_mutex_init(&docList_lock, NULL );
 	pthread_cond_init(&docList_avail, NULL );
