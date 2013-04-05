@@ -137,28 +137,27 @@ inline void __attribute__((always_inline)) handleQuery(int tid, int did,
 
 			SegmentData * segData = (SegmentData *) (cur2->data);
 			QueryDescriptor * queryData = segData->parentQuery;
-
 			int d1;
 			if (!(d1 = preCheck(i,
 					segData->startIndex - queryData->words[segData->wordIndex],
-					trie_node->max_dist))) {
+					trie_node->max_dist[z]))) {
 				d1 += editDistance(tid, w, i,
 						queryData->words[segData->wordIndex],
 						segData->startIndex
 								- queryData->words[segData->wordIndex],
-						trie_node->max_dist - d1);
+						trie_node->max_dist[z] - d1);
 			}
-			if (d1 <= trie_node->max_dist) {
+			if (d1 <= trie_node->max_dist[z]) {
 				int tmp = 0;
 				if (!(tmp = preCheck(l - j,
 						queryData->words[segData->wordIndex + 1]
 								- segData->startIndex - (j - i),
-						trie_node->max_dist - d1))) {
+						trie_node->max_dist[z] - d1))) {
 					d1 += editDistance(tid, w + j, l - j,
 							segData->startIndex + j - i,
 							queryData->words[segData->wordIndex + 1]
 									- segData->startIndex - (j - i),
-							trie_node->max_dist - d1);
+							trie_node->max_dist[z] - d1);
 				} else
 					d1 += tmp;
 			}

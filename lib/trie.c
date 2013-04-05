@@ -66,6 +66,9 @@ DNode_t* insertParts(TrieNode_t** n, int type, int dist, int len, char* str,
 	if (node->edit_dist_list[len] == 0)
 		node->edit_dist_list[len] = newLinkedList();
 
+	if (node->max_dist[len] < dist)
+		node->max_dist[len] = dist;
+
 	int empty = isEmpty(node->edit_dist_list[len]);
 
 	DNode_t* ret = append(node->edit_dist_list[len], queryData);
