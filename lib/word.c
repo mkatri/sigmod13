@@ -42,8 +42,8 @@ int editDistance(int tid, char* a, int na, char* b, int nb, int dist) {
 	for (ib = 0; ib <= nb; ib++)
 		dp[tid][0][ib] = ib;
 	for (ia = 1; ia <= na; ia++) {
-		dp[tid][ia][0]=ia;
-		min = dist+1;
+		dp[tid][ia][0] = ia;
+		min = dist + 1;
 		strt = ia - dist > 1 ? ia - dist : 1;
 		if (strt > 1)
 			dp[tid][ia][strt - 1] = dist + 1;
@@ -57,9 +57,10 @@ int editDistance(int tid, char* a, int na, char* b, int nb, int dist) {
 										dp[tid][ia][ib - 1]),
 								dp[tid][ia - 1][ib - 1]);
 			}
-			min=minimum(min,dp[tid][ia][ib]);
+			min = minimum(min, dp[tid][ia][ib]);
 		}
-		if(min>dist)return min;
+		if (min > dist)
+			return min;
 		if (ia + dist + 1 <= nb)
 			dp[tid][ia][ia + dist + 1] = dist + 1;
 	}
@@ -76,8 +77,8 @@ inline int max(int a, int b) {
 	return b;
 }
 #ifdef PROFILER
-void handleQuery(int tid, int did, DNode_t *cur,int z, int i, int j, char *w, int l,
-		int *count)
+void handleQuery(int tid, int did, DNode_t *cur, int z, int type, int i, int j,
+		char *w, int l, int *count)
 #else
 inline void __attribute__((always_inline)) handleQuery(int tid, int did,
 		DNode_t *cur, int z, int type, int i, int j, char *w, int l, int *count)
