@@ -16,14 +16,14 @@ DNode_t* append(LinkedList_t* list, void * data) {
 	node->data = data;
 	return node;
 }
-DNode_t* delete(DNode_t * node) {
+DNode_t* delete_node(DNode_t * node) {
 	node->next->prev = node->prev;
 	node->prev->next = node->next;
 	DNode_t* nxt = node->next;
 	free(node);
 	return nxt;
 }
-inline char isEmpty(LinkedList_t * list) {
+char isEmpty(LinkedList_t * list) {
 	return list == 0 || list->head.next == &list->tail;
 }
 //int main(int argc, char **argv) {

@@ -4,7 +4,6 @@
 #include "linked_list.h"
 #include "trie.h"
 #include "query.h"
-#include "dyn_array.h"
 
 int hammingDistance(char *a, char *b, int n, int max) {
 	int mismatch = 0;
@@ -37,7 +36,7 @@ inline char minimum(char a, char b) {
 }
 int editDistance(int tid, char* a, int na, char* b, int nb, int dist) {
 	static char dp[NUM_THREADS][35][33];
-	char ia, ib, strt, min;
+	unsigned char ia, ib, strt, min;
 	if (abs(na - nb) > dist)
 		return dist + 1;
 	for (ib = 0; ib <= nb; ib++)
