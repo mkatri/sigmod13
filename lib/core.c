@@ -62,7 +62,7 @@ Trie_t2 * dtrie[NUM_THREADS];
 LinkedList_t *docList;
 LinkedList_t *queries;
 unsigned long docCount;
-
+int cnttt =0;
 /*QUERY DESCRIPTOR MAP GOES HERE*/
 QueryDescriptor qmap[QDESC_MAP_SIZE];
 DNode_t qnodes[QDESC_MAP_SIZE];
@@ -139,7 +139,7 @@ void *matcher_thread(void *n) {
 				cnt++;
 			i = e;
 		}
-
+//		printf("%d\n", cntt);
 		doc_desc->matches = malloc(sizeof(QueryID) * matchCount);
 		doc_desc->numResults = matchCount;
 
@@ -215,7 +215,7 @@ ErrorCode InitializeIndex() {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode DestroyIndex() {
-	printf("%d\n", cnt);
+	printf("%d\n", cnttt);
 	return EC_SUCCESS;
 }
 

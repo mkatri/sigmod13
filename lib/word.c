@@ -5,7 +5,7 @@
 #include "trie.h"
 #include "query.h"
 #include "dyn_array.h"
-
+extern int cnttt;
 int hammingDistance(char *a, char *b, int n, int max) {
 	int mismatch = 0;
 	int i;
@@ -124,9 +124,8 @@ inline void __attribute__((always_inline)) handleQuery(int tid, int did,
 		DNode_t *cur, int z, int type, int i, int j, char *w, int l, int *count)
 #endif
 {
-
 	if (type == MT_EDIT_DIST) {
-
+		cnttt++;
 		//2nd_lvl_trie_node
 		TrieNode_t* trie_node = (TrieNode_t*) cur->data;
 		LinkedList_t* _2nd_lvl_list = trie_node->edit_dist_list[z];
@@ -161,6 +160,8 @@ inline void __attribute__((always_inline)) handleQuery(int tid, int did,
 				} else
 					d1 += tmp;
 			}
+
+			if(d1>trie_node->max_dist[z])return;
 
 			while (cur2 != &(_2nd_lvl_list->tail)) {
 
@@ -249,21 +250,21 @@ void matchWord(int did, int tid, char *w, int l, int *count, Trie_t * trie) {
 				break;
 
 			j++;
-			int en, st, z;
+			int en, st, len;
 			st = l - 3;
 			en = l + 3;
 			st = st >= 1 ? st : 1;
 			en = en <= 31 ? en : l;
-			for (z = st; z <= en + 1; z++) {
+			for (len = st; len <= en + 1; len++) {
 				LinkedList_t * list;
-				if (z <= en) {
-					list = n->list1[z];
+				if (len <= en) {
+					list = n->list1[len];
 
 					if (!isEmpty(list)) {
 						DNode_t *cur = list->head.next;
 						while (/*cur->data &&*/cur != &(list->tail)) {
 
-							handleQuery(tid, did, cur, z, MT_EDIT_DIST, i, j, w,
+							handleQuery(tid, did, cur, len, MT_EDIT_DIST, i, j, w,
 									l, count);
 
 							cur = cur->next;
@@ -277,7 +278,7 @@ void matchWord(int did, int tid, char *w, int l, int *count, Trie_t * trie) {
 						DNode_t *cur = list->head.next;
 						while (/*cur->data &&*/cur != &(list->tail)) {
 
-							handleQuery(tid, did, cur, z,
+							handleQuery(tid, did, cur, len,
 									((SegmentData*) cur->data)->parentQuery->matchType,
 									i, j, w, l, count);
 							cur = cur->next;

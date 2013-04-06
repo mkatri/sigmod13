@@ -91,13 +91,11 @@ DNode_t* TrieInsert(Trie_t * trie, char * str, char* word, int length, int type,
 	TrieNode_t* current = &(trie->root);
 	current->count[type]++;
 	int i;
-	TrieNode_t* p = &(trie->root);
 	for (i = 0; i < length; i++) {
 		if (current->next[str[i] - BASE_CHAR] == 0)
 			current->next[str[i] - BASE_CHAR] = newTrieNode();
 		current = current->next[str[i] - BASE_CHAR];
 		current->count[type]++;
-		p = current;
 	}
 
 	current->counter++;
