@@ -90,8 +90,8 @@ int editDistance(char* a, int na, char* b, int nb, int dist) {
 			T[cur][ib] = ret;
 
 			/* XXX not tested */
-			int difa = na - ia, difb = nb - ib, totalMin = ret + abs(
-					difa - difb);
+			int difa = na - ia, difb = nb - ib, totalMin = ret
+					+ abs(difa - difb);
 
 			if (totalMin < min)
 				min = totalMin;
@@ -134,6 +134,117 @@ void resetPath(char* str, int edit_dist, int wordLength) {
 	}
 }
 
+void handleQuery(int doc_id, DNode_t * cur, char *w, TrieNode_t2 *doc_node,
+		int i, int l, int j, int *count) {
+	SegmentData * segData = (SegmentData *) (cur->data);
+	QueryDescriptor * queryData = segData->parentQuery;
+
+	int type = queryData->matchType;
+
+	if (queryData->docId != doc_id) {
+		queryData->docId = doc_id;
+		queryData->matchedWords = 0;
+	}
+
+	if (((queryData->matchedWords) & (1 << (segData->wordIndex)))) {
+		return;
+	}
+
+	if (type == MT_EDIT_DIST) {
+		int d1;
+		if ((d1 = preCheck(i,
+				segData->startIndex - queryData->words[segData->wordIndex],
+				queryData->matchDistance)) <= queryData->matchDistance) {
+			d1 += editDistance(w, i, queryData->words[segData->wordIndex],
+					segData->startIndex - queryData->words[segData->wordIndex],
+					queryData->matchDistance - d1);
+			if (d1 <= queryData->matchDistance) {
+				d1 += editDistance(w + j, l - j, segData->startIndex + j - i,
+						queryData->words[segData->wordIndex + 1]
+								- segData->startIndex - (j - i),
+						queryData->matchDistance - d1);
+
+				if (d1 <= queryData->matchDistance) {
+
+					queryData->matchedWords |= (1 << (segData->wordIndex));
+
+					doc_list_entry* entry = malloc(sizeof(doc_list_entry));
+					entry->query_id = segData->queryId;
+					entry->segData = segData;
+					append(doc_node->list, entry);
+
+					resetPath(queryData->words[segData->wordIndex],
+							queryData->matchDistance,
+							queryData->words[segData->wordIndex + 1]
+									- queryData->words[segData->wordIndex]);
+
+					if (queryData->matchedWords
+							== (1 << (queryData->numWords)) - 1) {
+						(*count)++;
+						if (pos == sizeOfPool)
+							doubleSize();
+						qres[pos++] = queryData->queryId;
+					}
+				}
+			}
+		}
+	} else if (type == MT_HAMMING_DIST) {
+		if (i == segData->startIndex - queryData->words[segData->wordIndex]
+				&& (l - j)
+						== queryData->words[segData->wordIndex + 1]
+								- segData->startIndex - (j - i)) {
+			int d1 = hammingDistance(w, queryData->words[segData->wordIndex], i,
+					queryData->matchDistance);
+			if (d1 <= queryData->matchDistance) {
+				d1 += hammingDistance(w + j,
+						queryData->words[segData->wordIndex] + j, l - j,
+						queryData->matchDistance - d1);
+
+				if (d1 <= queryData->matchDistance) {
+
+					doc_list_entry* entry = malloc(sizeof(doc_list_entry));
+					entry->query_id = segData->queryId;
+					entry->segData = segData;
+					append(doc_node->list, entry);
+
+					resetPath(queryData->words[segData->wordIndex],
+							queryData->matchDistance,
+							queryData->words[segData->wordIndex + 1]
+									- queryData->words[segData->wordIndex]);
+
+					queryData->matchedWords |= (1 << (segData->wordIndex));
+					if (queryData->matchedWords
+							== (1 << (queryData->numWords)) - 1) {
+						(*count)++;
+						if (pos == sizeOfPool)
+							doubleSize();
+						qres[pos++] = queryData->queryId;
+					}
+				}
+			}
+		}
+	} else if (i == 0 && j == l) { // Exact matching must be done from the start of the word only
+
+		queryData->matchedWords |= (1 << (segData->wordIndex));
+		doc_list_entry* entry = malloc(sizeof(doc_list_entry));
+		entry->query_id = segData->queryId;
+		entry->segData = segData;
+		append(doc_node->list, entry);
+
+		resetPath(queryData->words[segData->wordIndex],
+				queryData->matchDistance,
+				queryData->words[segData->wordIndex + 1]
+						- queryData->words[segData->wordIndex]);
+
+		if (queryData->matchedWords == (1 << (queryData->numWords)) - 1) {
+			(*count)++;
+			if (pos == sizeOfPool)
+				doubleSize();
+			qres[pos++] = queryData->queryId;
+		}
+	}
+}
+
 void matchWord(char *w, int l, int *count, int doc_id, TrieNode_t2* doc_node,
 		byte newWord) {
 	int i = 0;
@@ -154,144 +265,7 @@ void matchWord(char *w, int l, int *count, int doc_id, TrieNode_t2* doc_node,
 				DNode_t *cur = n->list->head.next;
 				while (cur->data && cur != &(n->list->tail)) {
 					/*XXX somewhere you set the data of the list tail, this is not cool*/
-
-					SegmentData * segData = (SegmentData *) (cur->data);
-					QueryDescriptor * queryData = segData->parentQuery;
-
-					int type = queryData->matchType;
-
-					if (queryData->docId != doc_id) {
-						queryData->docId = doc_id;
-						queryData->matchedWords = 0;
-					}
-
-					if (((queryData->matchedWords)
-							& (1 << (segData->wordIndex)))) {
-						cur = cur->next;
-						continue;
-					}
-
-					if (type == MT_EDIT_DIST) {
-						int d1;
-						if ((d1 = preCheck(
-								i,
-								segData->startIndex
-										- queryData->words[segData->wordIndex],
-								queryData->matchDistance))
-								<= queryData->matchDistance) {
-							d1
-									+= editDistance(
-											w,
-											i,
-											queryData->words[segData->wordIndex],
-											segData->startIndex
-													- queryData->words[segData->wordIndex],
-											queryData->matchDistance - d1);
-							if (d1 <= queryData->matchDistance) {
-								d1
-										+= editDistance(
-												w + j,
-												l - j,
-												segData->startIndex + j - i,
-												queryData->words[segData->wordIndex
-														+ 1]
-														- segData->startIndex
-														- (j - i),
-												queryData->matchDistance - d1);
-
-								if (d1 <= queryData->matchDistance) {
-
-									queryData->matchedWords |= (1
-											<< (segData->wordIndex));
-
-									doc_list_entry* entry = malloc(
-											sizeof(doc_list_entry));
-									entry->query_id = segData->queryId;
-									entry->segData = segData;
-									append(doc_node->list, entry);
-
-									resetPath(
-											queryData->words[segData->wordIndex],
-											queryData->matchDistance,
-											queryData->words[segData->wordIndex
-													+ 1]
-													- queryData->words[segData->wordIndex]);
-
-									if (queryData->matchedWords == (1
-											<< (queryData->numWords)) - 1) {
-										(*count)++;
-										if (pos == sizeOfPool)
-											doubleSize();
-										qres[pos++] = queryData->queryId;
-									}
-								}
-							}
-						}
-					} else if (type == MT_HAMMING_DIST) {
-						if (i == segData->startIndex
-								- queryData->words[segData->wordIndex] && (l
-								- j)
-								== queryData->words[segData->wordIndex + 1]
-										- segData->startIndex - (j - i)) {
-							int d1 = hammingDistance(w,
-									queryData->words[segData->wordIndex], i,
-									queryData->matchDistance);
-							if (d1 <= queryData->matchDistance) {
-								d1 += hammingDistance(
-										w + j,
-										queryData->words[segData->wordIndex]
-												+ j, l - j,
-										queryData->matchDistance - d1);
-
-								if (d1 <= queryData->matchDistance) {
-
-									doc_list_entry* entry = malloc(
-											sizeof(doc_list_entry));
-									entry->query_id = segData->queryId;
-									entry->segData = segData;
-									append(doc_node->list, entry);
-
-									resetPath(
-											queryData->words[segData->wordIndex],
-											queryData->matchDistance,
-											queryData->words[segData->wordIndex
-													+ 1]
-													- queryData->words[segData->wordIndex]);
-
-									queryData->matchedWords |= (1
-											<< (segData->wordIndex));
-									if (queryData->matchedWords == (1
-											<< (queryData->numWords)) - 1) {
-										(*count)++;
-										if (pos == sizeOfPool)
-											doubleSize();
-										qres[pos++] = queryData->queryId;
-									}
-								}
-							}
-						}
-					} else if (i == 0 && j == l) { // Exact matching must be done from the start of the word only
-
-						queryData->matchedWords |= (1 << (segData->wordIndex));
-						doc_list_entry* entry = malloc(sizeof(doc_list_entry));
-						entry->query_id = segData->queryId;
-						entry->segData = segData;
-						append(doc_node->list, entry);
-
-						resetPath(
-								queryData->words[segData->wordIndex],
-								queryData->matchDistance,
-								queryData->words[segData->wordIndex + 1]
-										- queryData->words[segData->wordIndex]);
-
-						if (queryData->matchedWords == (1
-								<< (queryData->numWords)) - 1) {
-							(*count)++;
-							if (pos == sizeOfPool)
-								doubleSize();
-							qres[pos++] = queryData->queryId;
-						}
-					}
+					handleQuery(doc_id, cur, w, doc_node, i, l, j, count);
 					cur = cur->next;
 				}
 			}
