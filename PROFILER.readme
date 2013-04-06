@@ -1,0 +1,15 @@
+to build with profiler support
+use:
+make -f Makefile.profile
+or 
+copy Makefile.profile to Makefile
+
+to disable profiler support
+use
+make -f Makefile.normal
+or copy Makefile.normal to Makefile
+
+run the test as usual, if the library was built with profiler enabled, it'll ouput a binary file called "gmon.out"
+
+to generate human readable analysis file, use:
+gprof bin/ourtestdriver gmon.out > analysis.txt
