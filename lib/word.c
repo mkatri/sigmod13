@@ -6,6 +6,7 @@
 #include "query.h"
 #include "dyn_array.h"
 extern int cnttt;
+
 int hammingDistance(char *a, char *b, int n, int max) {
 	int mismatch = 0;
 	int i;
@@ -32,79 +33,40 @@ inline int preCheck(int na, int nb, int dist) {
 	return 0;
 }
 
+inline char minimum(char a, char b) {
+	return (a < b) ? a : b;
+}
 int editDistance(int tid, char* a, int na, char* b, int nb, int dist) {
-	int oo = 0x7FFFFFFF;
-
-	static int T[NUM_THREADS][2][100];
-
-	int ia, ib;
-//	for (ia = 0; ia < na; ia++)
-//		putchar(a[ia]);
-//	putchar('\n');
-//	for (ib = 0; ib < nb; ib++)
-//		putchar(b[ib]);
-//	putchar('\n');
-	int cur = 0, min;
-	ia = 0;
-	min = 1 << 30;
-
-	for (ib = 0; ib <= nb; ib++) {
-		T[tid][cur][ib] = ib;
-		int tmp = ib + abs((na - ia) - (nb - ib));
-		if (tmp < min)
-			min = tmp;
-	}
-
-	if (min > dist)
-		return min;
-
-	cur = 1 - cur;
-
+	static char dp[NUM_THREADS][35][33];
+	unsigned char ia, ib, strt, min;
+	if (abs(na - nb) > dist)
+		return dist + 1;
+	for (ib = 0; ib <= nb; ib++)
+		dp[tid][0][ib] = ib;
 	for (ia = 1; ia <= na; ia++) {
-		int ib_st = 0;
-		int ib_en = nb;
-
-		ib = 0;
-		T[tid][cur][ib] = ia;
-		ib_st++;
-
-		min = ia + abs(na - ia - nb + ib);
-
-		for (ib = ib_st; ib <= ib_en; ib++) {
-			int ret = oo;
-
-			int d1 = T[tid][1 - cur][ib] + 1;
-			int d2 = T[tid][cur][ib - 1] + 1;
-			int d3 = T[tid][1 - cur][ib - 1];
-			if (a[ia - 1] != b[ib - 1])
-				d3++;
-
-			if (d1 < ret)
-				ret = d1;
-			if (d2 < ret)
-				ret = d2;
-			if (d3 < ret)
-				ret = d3;
-
-			T[tid][cur][ib] = ret;
-
-			/* XXX not tested */
-			int difa = na - ia, difb = nb - ib, totalMin = ret
-					+ abs(difa - difb);
-
-			if (totalMin < min)
-				min = totalMin;
+		dp[tid][ia][0] = ia;
+		min = dist + 1;
+		strt = ia - dist > 1 ? ia - dist : 1;
+		if (strt > 1)
+			dp[tid][ia][strt - 1] = dist + 1;
+		for (ib = strt; ib <= ia + dist && ib <= nb; ib++) {
+			if (a[ia - 1] == b[ib - 1])
+				dp[tid][ia][ib] = dp[tid][ia - 1][ib - 1];
+			else {
+				dp[tid][ia][ib] = 1
+						+ minimum(
+								minimum(dp[tid][ia - 1][ib],
+										dp[tid][ia][ib - 1]),
+								dp[tid][ia - 1][ib - 1]);
+			}
+			min = minimum(min, dp[tid][ia][ib]);
 		}
-
 		if (min > dist)
 			return min;
-
-		cur = 1 - cur;
+		if (ia + dist + 1 <= nb)
+			dp[tid][ia][ia + dist + 1] = dist + 1;
 	}
-
-	int ret = T[tid][1 - cur][nb];
-
-	return ret;
+	return dp[tid][na][nb];
 }
 inline int min(int a, int b) {
 	if (a <= b)
@@ -117,8 +79,8 @@ inline int max(int a, int b) {
 	return b;
 }
 #ifdef PROFILER
-void handleQuery(int tid, int did, DNode_t *cur,int z, int i, int j, char *w, int l,
-		int *count)
+void handleQuery(int tid, int did, DNode_t *cur, int z, int type, int i, int j,
+		char *w, int l, int *count)
 #else
 inline void __attribute__((always_inline)) handleQuery(int tid, int did,
 		DNode_t *cur, int z, int type, int i, int j, char *w, int l, int *count)

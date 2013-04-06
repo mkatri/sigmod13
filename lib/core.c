@@ -38,10 +38,8 @@
 #include "trie.h"
 #include "word.h"
 #include "document.h"
-#include "Hash_Table.h"
 #include "cir_queue.h"
 #include "submit_params.h"
-#include "dyn_array.h"
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //////////////// DOC THREADING STRUCTS //////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -115,7 +113,8 @@ void *matcher_thread(void *n) {
 #ifdef THREAD_ENABLE
 	while (1) {
 #endif
-		DocumentDescriptor *doc_desc = cir_queue_remove(&cirq_busy_docs);
+		DocumentDescriptor *doc_desc = (DocumentDescriptor *) cir_queue_remove(
+				&cirq_busy_docs);
 		char *doc = doc_desc->document;
 		int i = 0;
 		int matchCount = 0;
@@ -139,8 +138,8 @@ void *matcher_thread(void *n) {
 				cnt++;
 			i = e;
 		}
-//		printf("%d\n", cntt);
-		doc_desc->matches = malloc(sizeof(QueryID) * matchCount);
+
+		doc_desc->matches = (QueryID *) malloc(sizeof(QueryID) * matchCount);
 		doc_desc->numResults = matchCount;
 
 		/*
@@ -190,8 +189,6 @@ ErrorCode InitializeIndex() {
 	docCount = 0;
 	cir_queue_init(&cirq_free_docs, (void **) &free_docs, NUM_THREADS);
 	cir_queue_init(&cirq_busy_docs, (void **) &busy_docs, NUM_THREADS);
-
-	pthread_mutex_init(&test_lock, NULL );
 
 	pthread_mutex_init(&docList_lock, NULL );
 	pthread_cond_init(&docList_avail, NULL );
@@ -541,14 +538,14 @@ ErrorCode EndQuery(QueryID query_id) {
 			segment[j] = '\0';
 
 			DNode_t* node = queryDescriptor->segmentsData[top++];
-			SegmentData* sd = node->data;
+			SegmentData* sd = (SegmentData *) node->data;
 
 			if (sd->parentQuery->matchType == MT_EDIT_DIST
 					&& node->next->data == 0 && node->prev->data == 0) {
-				delete(node->tmp);
+				delete_node(node->tmp);
 			}
 
-			delete(node);
+			delete_node(node);
 
 			TrieDelete(trie, segment, segLen, queryDescriptor->matchType);
 		}
@@ -630,9 +627,10 @@ int cmpfunc(const QueryID * a, const QueryID * b) {
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 	docCount++;
-	char *doc_buf = cir_queue_remove(&cirq_free_docs);
+	char *doc_buf = (char *) cir_queue_remove(&cirq_free_docs);
 	strcpy(doc_buf, doc_str);
-	DocumentDescriptor *desc = malloc(sizeof(DocumentDescriptor));
+	DocumentDescriptor *desc = (DocumentDescriptor *) malloc(
+			sizeof(DocumentDescriptor));
 	desc->docId = doc_id;
 	desc->document = doc_buf;
 	cir_queue_insert(&cirq_busy_docs, desc);
@@ -652,7 +650,7 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 		pthread_cond_wait(&docList_avail, &docList_lock);
 	DNode_t *node = docList->head.next;
 	DocumentDescriptor* doc_desc = (DocumentDescriptor *) (node->data);
-	delete(node);
+	delete_node(node);
 	pthread_mutex_unlock(&docList_lock);
 
 	docCount--;

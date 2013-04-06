@@ -33,13 +33,12 @@ typedef struct Trie2 {
 	TrieNode_t2 root;
 } Trie_t2;
 
-pthread_mutex_t test_lock;
 
 DNode_t* TrieInsert(Trie_t * trie, char * str, char* word, int length, int type,
 		SegmentData* queryData, int wordLength, int s, int e);
 void TrieDelete(Trie_t* trie, char*str, int length, int type);
 
-inline TrieNode_t* next_node(TrieNode_t *current, char c);
+TrieNode_t* next_node(TrieNode_t *current, char c);
 TrieNode_t * newTrieNode();
 Trie_t * newTrie();
 Trie_t2 * newTrie2();

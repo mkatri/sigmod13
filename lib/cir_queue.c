@@ -6,18 +6,18 @@
  */
 #include "cir_queue.h"
 
-inline void cir_queue_init(CircularQueue *q, void **array, int cap) {
+void cir_queue_init(CircularQueue *q, void **array, int cap) {
 	q->array = array;
 	q->cap = cap;
-	pthread_cond_init(&q->not_full, NULL);
-	pthread_cond_init(&q->not_empty, NULL);
-	pthread_mutex_init(&q->lock, NULL);
+	pthread_cond_init(&q->not_full, NULL );
+	pthread_cond_init(&q->not_empty, NULL );
+	pthread_mutex_init(&q->lock, NULL );
 	q->front = 0;
 	q->tail = 0;
 	q->size = 0;
 }
 
-inline void cir_queue_insert(CircularQueue *q, void *i) {
+void cir_queue_insert(CircularQueue *q, void *i) {
 	pthread_mutex_lock(&q->lock);
 	while (q->size >= q->cap)
 		pthread_cond_wait(&q->not_full, &q->lock);
@@ -30,7 +30,7 @@ inline void cir_queue_insert(CircularQueue *q, void *i) {
 	pthread_mutex_unlock(&q->lock);
 }
 
-inline void *cir_queue_remove(CircularQueue *q) {
+void *cir_queue_remove(CircularQueue *q) {
 	pthread_mutex_lock(&q->lock);
 	while (q->size <= 0)
 		pthread_cond_wait(&q->not_empty, &q->lock);
@@ -42,7 +42,7 @@ inline void *cir_queue_remove(CircularQueue *q) {
 	return ret;
 }
 
-inline void waitTillFull(CircularQueue *q) {
+void waitTillFull(CircularQueue *q) {
 	pthread_mutex_lock(&q->lock);
 	while (q->size != q->cap)
 		pthread_cond_wait(&q->full, &q->lock);

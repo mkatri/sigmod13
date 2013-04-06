@@ -32,7 +32,7 @@ Trie_t2 * newTrie2() {
 	return t;
 }
 
-inline TrieNode_t* next_node(TrieNode_t *current, char c) {
+TrieNode_t* next_node(TrieNode_t *current, char c) {
 	if (current == 0)
 		return 0;
 	if (c >= 'a' && c <= 'z')

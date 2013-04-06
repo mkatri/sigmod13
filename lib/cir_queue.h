@@ -21,9 +21,9 @@ typedef struct {
 	pthread_cond_t full;
 } CircularQueue;
 
-inline void cir_queue_init(CircularQueue *q, void **array, int cap);
-inline void cir_queue_insert(CircularQueue *q, void *i);
-inline void *cir_queue_remove(CircularQueue *q);
-inline void waitTillFull(CircularQueue *q);
+void cir_queue_init(CircularQueue *q, void **array, int cap);
+void cir_queue_insert(CircularQueue *q, void *i);
+void *cir_queue_remove(CircularQueue *q);
+void waitTillFull(CircularQueue *q);
 
 #endif /* CIR_QUEUE_H_ */

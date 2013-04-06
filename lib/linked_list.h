@@ -27,7 +27,7 @@ DNode_t* append(LinkedList_t* list, void * data);
  * note:this doesn't free the memory used by content
  * returns the node->next (for deletion while iteration).
  */
-DNode_t* delete(DNode_t * node);
+DNode_t* delete_node(DNode_t * node);
 /**
  * returns true if the linkedlist list is empty
  */
