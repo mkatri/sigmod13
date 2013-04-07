@@ -54,16 +54,22 @@ pthread_mutex_t docList_lock;
 pthread_cond_t docList_avail;
 //DynamicArray matches[NUM_THREADS];
 int cmpfunc(const QueryID * a, const QueryID * b);
+void generate_candidates(char * str, int len, int dist, SegmentData* segData);
 ///////////////////////////////////////////////////////////////////////////////////////////////
 Trie_t *trie;
 Trie_t2 * dtrie[NUM_THREADS];
 LinkedList_t *docList;
 LinkedList_t *queries;
 unsigned long docCount;
-int cnttt =0;
+int cnttt = 0;
+Trie3 * eltire;
+char lamda = 'a' + 26;
+char r[3][3][32][32];
+int cntz = 0;
 /*QUERY DESCRIPTOR MAP GOES HERE*/
 QueryDescriptor qmap[QDESC_MAP_SIZE];
 DNode_t qnodes[QDESC_MAP_SIZE];
+LinkedList_t * edit_list[QDESC_MAP_SIZE];
 //HashTable* ht;
 //Trie_t2 *dtrie;
 //inline QueryDescriptor * getQueryDescriptor(int queryId) {
@@ -92,12 +98,12 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 
 void init() {
 	queries = newLinkedList();
-
 	int numCPU = sysconf(_SC_NPROCESSORS_ONLN);
 	printf("we have %d cores\n", numCPU);
 //	ht = new_Hash_Table();
 	//THREAD_ENABLE=1;
 	trie = newTrie();
+	eltire = newTrie3();
 //	dtrie = newTrie();
 	docList = newLinkedList();
 }
@@ -129,7 +135,7 @@ void *matcher_thread(void *n) {
 			if (!TriewordExist(dtrie[tid], &doc[i], e - i, doc_desc->docId)) {
 //				TrieInsert2(dtrie[tid], &doc[i], e - i, doc_desc->docId,tid);
 				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
-						trie);
+						trie, eltire);
 
 //				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
 //						trie2[e - i]);
@@ -190,8 +196,8 @@ ErrorCode InitializeIndex() {
 	cir_queue_init(&cirq_free_docs, (void **) &free_docs, NUM_THREADS);
 	cir_queue_init(&cirq_busy_docs, (void **) &busy_docs, NUM_THREADS);
 
-	pthread_mutex_init(&docList_lock, NULL );
-	pthread_cond_init(&docList_avail, NULL );
+	pthread_mutex_init(&docList_lock, NULL);
+	pthread_cond_init(&docList_avail, NULL);
 
 	int i;
 	for (i = 0; i < NUM_THREADS; i++) {
@@ -199,6 +205,9 @@ ErrorCode InitializeIndex() {
 		//dyn_array_init(&matches[i], RES_POOL_INITSIZE);
 		dtrie[i] = newTrie2();
 	}
+	for (i = 0; i < QDESC_MAP_SIZE; i++)
+		edit_list[i] = newLinkedList();
+
 	cirq_free_docs.size = NUM_THREADS;
 
 #ifdef THREAD_ENABLE
@@ -212,7 +221,7 @@ ErrorCode InitializeIndex() {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode DestroyIndex() {
-	printf("%d\n", cnttt);
+	printf("%d\n", cntz);
 	return EC_SUCCESS;
 }
 
@@ -321,6 +330,18 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	split(wordSizes, queryDescriptor, query_str, &numOfWords);
 	queryDescriptor->numWords = numOfWords;
 //	return 0;
+	if (match_type == MT_EDIT_DIST) {
+
+		for (in = 0; in < numOfWords; in++) {
+			SegmentData *sd = newSegmentdata();
+			sd->parentQuery = queryDescriptor;
+			sd->queryId = query_id;
+			sd->wordIndex = in;
+			generate_candidates(queryDescriptor->words[in], wordSizes[in],
+					match_dist, sd);
+		}
+		return EC_SUCCESS;
+	}
 
 	char segment[32];
 	/*initialize the DNode array here*/
@@ -502,6 +523,7 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
+
 int cnt5 = 0;
 ErrorCode EndQuery(QueryID query_id) {
 #ifdef CORE_DEBUG
@@ -510,7 +532,20 @@ ErrorCode EndQuery(QueryID query_id) {
 #ifdef THREAD_ENABLE
 	waitTillFull(&cirq_free_docs);
 #endif
+
 	QueryDescriptor* queryDescriptor = &qmap[query_id];
+
+	if (queryDescriptor->matchType == MT_EDIT_DIST) {
+		LinkedList_t * list = edit_list[query_id];
+		DNode_t *cur = list->head.next;
+		while (cur != &(list->tail)) {
+			DNode_t * node = (DNode_t *) cur->data;
+			delete_node(node);
+			cur = cur->next;
+		}
+		return EC_SUCCESS;
+	}
+
 	int i, j;
 	int in, iq, wordLength, numOfSegments = queryDescriptor->matchDistance + 1,
 			k, first, second;
@@ -662,23 +697,130 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 	free(doc_desc);
 	return EC_SUCCESS;
 }
+char result[300000][33];
+int lengths[300000];
+int maxLen=0;
+void generate_candidates(char * str, int len, int dist, SegmentData* segData) {
+	int start = 0, end = 1;
+	lengths[0] = len;
+	int i;
+	for (i = 0; i < len; i++)
+		result[0][i] = str[i];
+	int id = 0;
+	int resIndex = 1;
+	while (dist > 0) {
+		for (id = start; id < end; id++) {
+			str = result[id];
+			int i, j;
+			// insert
+			for (i = 0; i <= lengths[id]; i++) {
+				int ptr = 0;
+				for (j = 0; j < i; j++)
+					result[resIndex][ptr++] = str[j];
+				result[resIndex][ptr++] = lamda;
+				for (j = i; j < lengths[id]; j++)
+					result[resIndex][ptr++] = str[j];
+				result[resIndex][ptr] = '\0';
+				lengths[resIndex] = lengths[id] + 1;
+				resIndex++;
+			}
+			// delete
+			for (i = 0; i < lengths[id]; i++) {
+				int ptr = 0;
+				for (j = 0; j < i; j++)
+					result[resIndex][ptr++] = str[j];
+				for (j = i + 1; j < lengths[id]; j++)
+					result[resIndex][ptr++] = str[j];
+				result[resIndex][ptr] = '\0';
+				lengths[resIndex] = lengths[id] - 1;
+				resIndex++;
+			}
+			// swap
+			for (i = 0; i < lengths[id]; i++) {
+				int ptr = 0;
+				for (j = 0; j < lengths[id]; j++)
+					result[resIndex][ptr++] = str[j];
+				result[resIndex][i] = lamda;
+				result[resIndex][ptr] = '\0';
+				lengths[resIndex] = lengths[id];
+				resIndex++;
+			}
+		}
+		start = end;
+		end = resIndex;
+		dist--;
+	}
+//	int ii = 0;
+//	printf("-----------------\n");
+//	for (ii = 0; ii < resIndex; ii++)
+//		printf("ssss: %s\n", result[ii]);
 
+//	printf("-----------------\n");
+	int ind = start;
+	while (ind < end) {
+		DNode_t * node = InsertTrie3(eltire, result[ind], lengths[ind],
+				segData);
+//		printf("string = %s\n",result[ind]);
+		append(edit_list[segData->queryId], node);
+		ind++;
+	}
+}
+//void generate_candidates(char * str, int len, int dist, SegmentData* segData) {
+//	if (len == 0)
+//		return;
+//	cntz++;
+//	if (dist == 0) {
+////		printf("stringaya =====  %s \n", str);
+//		DNode_t * node = InsertTrie3(eltire, str, len, segData);
+//		append(edit_list[segData->queryId], node);
+//		// insert in trie;
+//		return;
+//	}
+//
+//	int i, j;
+//	// insert
+//	for (i = 0; i <= len; i++) {
+//		for (j = 0; j < i; j++)
+//			r[dist - 1][0][i][j] = str[j];
+//		r[dist - 1][0][i][i] = lamda;
+//		for (j = i; j < len; j++)
+//			r[dist - 1][0][i][j + 1] = str[j];
+//	}
+//	// delete
+//	for (i = 0; i < len; i++) {
+//		for (j = 0; j < i; j++)
+//			r[dist - 1][1][i][j] = str[j];
+//		for (j = i + 1; j < len; j++)
+//			r[dist - 1][1][i][j - 1] = str[j];
+//	}
+//	// swap
+//	for (i = 0; i < len; i++) {
+//		for (j = 0; j < len; j++)
+//			r[dist - 1][2][i][j] = str[j];
+//		r[dist - 1][2][i][i] = lamda;
+//	}
+//
+//	for (i = 0; i < len; i++) {
+//		generate_candidates(r[dist - 1][0][i], len + 1, dist - 1, segData);
+//		generate_candidates(r[dist - 1][1][i], len - 1, dist - 1, segData);
+//		generate_candidates(r[dist - 1][2][i], len, dist - 1, segData);
+//	}
+//	generate_candidates(r[dist - 1][0][len], len + 1, dist - 1, segData);
+//}
 ///////////////////////////////////////////
 void core_test() {
 	InitializeIndex();
-	char f[32] = "airprt deicing zirlines";
+	char f[32] = "air";
+	char f2[32] = "aix";
 
 	StartQuery(5, f, MT_EDIT_DIST, 1);
-
-	//StartQuery(7, f2, MT_EXACT_MATCH, 0);
-	//
-	//	dfs(&(trie->root));
+//	StartQuery(75, f2, MT_EDIT_DIST, 1);
 	//	EndQuery(7);
-	////	dfs(&(trie->root));
+//		dfs(&(trie->root));
 	//	printf("done\n");
 
 	//hashTest();
-	MatchDocument(10, "irlines deicing airport");
+	MatchDocument(10, "air");
 	//	MatchDocument(11, "ok no fucker");
 	//	MatchDocument(20, "fuck you oknofutcher");
 	//	MatchDocument(30, "fuck mother you oknofucker father");

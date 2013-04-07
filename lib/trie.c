@@ -3,6 +3,8 @@
 #include <string.h>
 #include <core.h>
 #include "trie.h"
+void dfs(TrieNode3 * node, char last);
+extern int cntz ;
 TrieNode_t * newTrieNode() {
 	TrieNode_t* ret = (TrieNode_t*) (malloc(sizeof(TrieNode_t)));
 	memset(ret->next, 0, sizeof(ret->next));
@@ -32,6 +34,33 @@ Trie_t2 * newTrie2() {
 	return t;
 }
 
+Trie3 * newTrie3() {
+	Trie3* t = (Trie3 *) malloc(sizeof(Trie3));
+	memset(t, 0, sizeof(Trie3));
+	return t;
+}
+TrieNode3 * newTrieNode3() {
+	TrieNode3* ret = (TrieNode3*) (malloc(sizeof(TrieNode3)));
+	memset(ret->next, 0, sizeof(ret->next));
+	ret->list = 0;
+	ret->terminal = 0;
+	return ret;
+}
+DNode_t* InsertTrie3(Trie3 * trie, char * str, int length, SegmentData* segData) {
+	TrieNode3* current = &(trie->root);
+	int i;
+	for (i = 0; i < length; i++) {
+		if (current->next[str[i] - BASE_CHAR] == 0)
+			current->next[str[i] - BASE_CHAR] = newTrieNode3();
+		current = current->next[str[i] - BASE_CHAR];
+	}
+	DNode_t* ret;
+	if (current->list == 0)
+		current->list = newLinkedList();
+	ret = append(current->list, segData);
+	current->terminal = 1;
+	return ret;
+}
 TrieNode_t* next_node(TrieNode_t *current, char c) {
 	if (current == 0)
 		return 0;
@@ -201,15 +230,15 @@ char TriewordExist(Trie_t2* trie, char * str, int length, int docId) {
 	return 0;
 }
 
-void dfs(TrieNode_t * node) {
+void dfs(TrieNode3 * node, char last) {
 	int i;
 #ifdef CORE_DEBUG
 	printf("%d %d %d\n", node->count[0], node->count[1], node->count[2]);
 #endif
-	for (i = 0; i < CHAR_SET_SIZE; i++) {
+	for (i = 0; i <= 26; i++) {
 		if (node->next[i] != 0) {
-			putchar(i + 'a');
-			dfs(node->next[i]);
+			printf("%c", i + 'a');
+			dfs(node->next[i], i + 'a');
 		}
 	}
 }
