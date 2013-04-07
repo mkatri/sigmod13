@@ -4,17 +4,14 @@
 #include <core.h>
 #include "trie.h"
 void dfs(TrieNode3 * node, char last);
-extern int cntz ;
+extern int cntz;
 TrieNode_t * newTrieNode() {
 	TrieNode_t* ret = (TrieNode_t*) (malloc(sizeof(TrieNode_t)));
 	memset(ret->next, 0, sizeof(ret->next));
 	int tmp = sizeof(ret->list1);
 	memset(ret->list1, 0, tmp);
 	memset(ret->list2, 0, tmp);
-	memset(ret->edit_dist_list, 0, tmp);
 	memset(ret->count, 0, sizeof(ret->count));
-	memset(ret->max_dist, 0, sizeof(ret->max_dist));
-	ret->edit_dist_Trie = 0;
 	ret->counter = 0;
 	return ret;
 }
@@ -73,45 +70,6 @@ inline TrieNode_t2* next_node2(TrieNode_t2 *current, char c) {
 	return current->next[c - BASE_CHAR];
 }
 
-DNode_t* insertParts(TrieNode_t** n, int type, int dist, int len, char* str,
-		SegmentData* queryData, int s, int e) {
-
-	TrieNode_t* node = n[0];
-	n[0] = 0;
-	int i;
-	for (i = 0; i < len; i++) {
-		if (node->next[str[i] - BASE_CHAR] == 0)
-			node->next[str[i] - BASE_CHAR] = newTrieNode();
-		node = node->next[str[i] - BASE_CHAR];
-	}
-
-	if (node->next[s] == 0)
-		node->next[s] = newTrieNode();
-	node = node->next[s];
-
-	if (node->next[e] == 0)
-		node->next[e] = newTrieNode();
-	node = node->next[e];
-	if (node->edit_dist_list[len] == 0)
-		node->edit_dist_list[len] = newLinkedList();
-
-	if (node->max_dist[len] < dist)
-		node->max_dist[len] = dist;
-
-	int empty = isEmpty(node->edit_dist_list[len]);
-
-	DNode_t* ret = append(node->edit_dist_list[len], queryData);
-
-	if (empty)
-		n[0] = node;
-	else
-		ret->tmp = node->edit_dist_list[len]->head.next->tmp;
-
-	return ret;
-}
-
-int cnt3 = 0, cnt4 = 0;
-
 DNode_t* TrieInsert(Trie_t * trie, char * str, char* word, int length, int type,
 		SegmentData* queryData, int wordLength, int s, int e) {
 #ifdef CORE_DEBUG
@@ -128,30 +86,13 @@ DNode_t* TrieInsert(Trie_t * trie, char * str, char* word, int length, int type,
 	}
 
 	current->counter++;
-	if (type == MT_EDIT_DIST) {
-		if (current->list1[wordLength] == 0)
-			current->list1[wordLength] = newLinkedList();
-
-		if (current->edit_dist_Trie == 0)
-			current->edit_dist_Trie = newTrieNode();
-
-		TrieNode_t* node[1];
-		node[0] = current->edit_dist_Trie;
-
-		DNode_t* ret = insertParts(node, type,
-				queryData->parentQuery->matchDistance, wordLength, word,
-				queryData, s, e);
-
-		if (node[0])
-			ret->tmp = append(current->list1[wordLength], node[0]);
-
-		return ret;
-	} else {
+	if (type != MT_EDIT_DIST) {
 		if (current->list2[wordLength] == 0)
 			current->list2[wordLength] = newLinkedList();
 
 		return append(current->list2[wordLength], queryData);
 	}
+	return 0;
 }
 
 //void deleteTrieNode(TrieNode_t* node) {

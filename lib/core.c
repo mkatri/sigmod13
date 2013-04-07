@@ -1,4 +1,3 @@
-//#define CORE_DEBUG
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -15,6 +14,8 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //////////////// DOC THREADING STRUCTS //////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////
+
+long long lazy_cnt = 0;
 
 pthread_t threads[NUM_THREADS];
 char documents[NUM_THREADS][MAX_DOC_LENGTH];
@@ -70,11 +71,8 @@ void init() {
 	queries = newLinkedList();
 	int numCPU = sysconf(_SC_NPROCESSORS_ONLN);
 	printf("we have %d cores\n", numCPU);
-//	ht = new_Hash_Table();
-	//THREAD_ENABLE=1;
 	trie = newTrie();
 	eltire = newTrie3();
-//	dtrie = newTrie();
 	docList = newLinkedList();
 }
 
@@ -171,7 +169,7 @@ ErrorCode InitializeIndex() {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode DestroyIndex() {
-	printf("%d\n", cntz);
+	printf("%lld\n", lazy_cnt);
 	return EC_SUCCESS;
 }
 
@@ -250,6 +248,7 @@ void lazyStart(QueryDescriptor* queryDescriptor) {
 					match_dist, sd);
 		}
 
+		return;
 	}
 
 	char segment[32];
@@ -388,9 +387,6 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 
 int cnt5 = 0;
 ErrorCode EndQuery(QueryID query_id) {
-#ifdef CORE_DEBUG
-	puts("inside here");
-#endif
 #ifdef THREAD_ENABLE
 	waitTillFull(&cirq_free_docs);
 #endif
@@ -398,8 +394,9 @@ ErrorCode EndQuery(QueryID query_id) {
 	QueryDescriptor* queryDescriptor = &qmap[query_id];
 
 	if (lazy_nodes[query_id]) {
+		lazy_cnt++;
 		DNode_t*tmp = lazy_nodes[query_id];
-		delete_node(lazy_nodes[query_id]);
+		delete_node((long long) lazy_nodes[query_id]);
 		lazy_nodes[query_id] = 0;
 		return EC_SUCCESS;
 	}
@@ -570,6 +567,7 @@ void generate_candidates(char * str, int len, int dist, SegmentData* segData) {
 //		printf("ssss: %s\n", result[ii]);
 
 //	printf("-----------------\n");
+	lazy_cnt += end - start;
 	int ind = start;
 	while (ind < end) {
 		DNode_t * node = InsertTrie3(eltire, result[ind], lengths[ind],
