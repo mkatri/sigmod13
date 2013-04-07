@@ -8,7 +8,7 @@
 #ifndef THREADING_H_
 #define THREADING_H_
 
-#define HOME
+//#define HOME
 
 #ifdef HOME
 //#define PROFILER
@@ -22,7 +22,7 @@
 
 #define THREAD_ENABLE
 #define RES_POOL_INITSIZE 10000000
-#define NUM_THREADS 4
+#define NUM_THREADS 12
 #define HT_SIZE 100000007
 #define QDESC_MAP_SIZE 5000000
 

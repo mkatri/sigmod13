@@ -41,20 +41,17 @@ int cntz = 0;
 /*QUERY DESCRIPTOR MAP GOES HERE*/
 QueryDescriptor qmap[QDESC_MAP_SIZE];
 DNode_t qnodes[QDESC_MAP_SIZE];
+
+DNode_t *lazy_nodes[QDESC_MAP_SIZE];
+LinkedList_t* lazy_list;
+
 LinkedList_t * edit_list[QDESC_MAP_SIZE];
-//HashTable* ht;
-//Trie_t2 *dtrie;
-//inline QueryDescriptor * getQueryDescriptor(int queryId) {
-//	return qmap[queryId];
-//}
 
 inline void addQuery(int queryId, QueryDescriptor * qds) {
-	//	qmap[queryId] = qds;
 	DNode_t* node = &qnodes[queryId];
 	node->data = qds;
 	node->prev = queries->tail.prev, node->next = &(queries->tail);
 	node->next->prev = node, node->prev->next = node;
-//	insert(ht, queryId, node);
 }
 
 inline void removeQuery(int queryId, QueryDescriptor *qds) {
@@ -69,6 +66,7 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 		int * idx);
 
 void init() {
+	lazy_list = newLinkedList();
 	queries = newLinkedList();
 	int numCPU = sysconf(_SC_NPROCESSORS_ONLN);
 	printf("we have %d cores\n", numCPU);
@@ -231,35 +229,15 @@ inline void optimal_segmentation(char * str, int len, int* start, int t) {
 }
 /////////////////////////////////
 
-ErrorCode StartQuery(QueryID query_id, const char* query_str,
-		MatchType match_type, unsigned int match_dist) {
+void lazyStart(QueryDescriptor* queryDescriptor) {
 
-#ifdef CORE_DEBUG
-	printf("query: %d --> %s\n", query_id, query_str);
-#endif
-//TODO DNode_t ** segmentsData ;
-#ifdef THREAD_ENABLE
-	waitTillFull(&cirq_free_docs);
-#endif
-	int in = 0, i = 0, j = 0, wordLength = 0, k, first, second, iq = 0, s;
+	int in, match_type = queryDescriptor->matchType, numOfWords =
+			queryDescriptor->numWords, query_id = queryDescriptor->queryId,
+			match_dist = queryDescriptor->matchDistance, iq = 0, wordLength, i,
+			j, s;
 
-	int wordSizes[6];
-	int numOfWords = 0;
 	int numOfSegments = match_dist + 1;
-	//get query descriptor for the query
-	QueryDescriptor * queryDescriptor = &qmap[query_id];
-	queryDescriptor->matchDistance = match_dist;
-	queryDescriptor->matchType = match_type;
-	queryDescriptor->queryId = query_id;
-	for (in = 0; in < NUM_THREADS; in++)
-		queryDescriptor->docId[in] = -1;
 
-	addQuery(query_id, queryDescriptor);
-
-	//as the query words are space separated so this method return the words and it's length
-	split(wordSizes, queryDescriptor, query_str, &numOfWords);
-	queryDescriptor->numWords = numOfWords;
-//	return 0;
 	if (match_type == MT_EDIT_DIST) {
 
 		for (in = 0; in < numOfWords; in++) {
@@ -267,10 +245,11 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 			sd->parentQuery = queryDescriptor;
 			sd->queryId = query_id;
 			sd->wordIndex = in;
-			generate_candidates(queryDescriptor->words[in], wordSizes[in],
+			generate_candidates(queryDescriptor->words[in],
+					queryDescriptor->words[in + 1] - queryDescriptor->words[in],
 					match_dist, sd);
 		}
-		return EC_SUCCESS;
+
 	}
 
 	char segment[32];
@@ -288,7 +267,8 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	for (in = 0; in < numOfWords; in++) {
 		//get the word length
 		iq = 0;
-		wordLength = wordSizes[in];
+		wordLength = queryDescriptor->words[in + 1]
+				- queryDescriptor->words[in];
 
 		optimal_segmentation(queryDescriptor->words[in], wordLength,
 				segmentStart, numOfSegments);
@@ -317,6 +297,36 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 					wordLength, s, iq);
 		}
 	}
+}
+
+ErrorCode StartQuery(QueryID query_id, const char* query_str,
+		MatchType match_type, unsigned int match_dist) {
+
+//TODO DNode_t ** segmentsData ;
+#ifdef THREAD_ENABLE
+	waitTillFull(&cirq_free_docs);
+#endif
+
+	int in = 0, i = 0, j = 0, wordLength = 0, iq = 0, s;
+
+	int wordSizes[6];
+	int numOfWords = 0;
+	//get query descriptor for the query
+	QueryDescriptor * queryDescriptor = &qmap[query_id];
+	queryDescriptor->matchDistance = match_dist;
+	queryDescriptor->matchType = match_type;
+	queryDescriptor->queryId = query_id;
+	for (in = 0; in < NUM_THREADS; in++)
+		queryDescriptor->docId[in] = -1;
+
+	addQuery(query_id, queryDescriptor);
+
+	//as the query words are space separated so this method return the words and it's length
+	split(wordSizes, queryDescriptor, query_str, &numOfWords);
+	queryDescriptor->numWords = numOfWords;
+
+	DNode_t* lazy_node = append(lazy_list, queryDescriptor);
+	lazy_nodes[query_id] = lazy_node;
 
 	return EC_SUCCESS;
 
@@ -387,6 +397,13 @@ ErrorCode EndQuery(QueryID query_id) {
 
 	QueryDescriptor* queryDescriptor = &qmap[query_id];
 
+	if (lazy_nodes[query_id]) {
+		DNode_t*tmp = lazy_nodes[query_id];
+		delete_node(lazy_nodes[query_id]);
+		lazy_nodes[query_id] = 0;
+		return EC_SUCCESS;
+	}
+
 	if (queryDescriptor->matchType == MT_EDIT_DIST) {
 		LinkedList_t * list = edit_list[query_id];
 		DNode_t *cur = list->head.next;
@@ -447,6 +464,17 @@ int cmpfunc(const QueryID * a, const QueryID * b) {
 }
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
+
+	DNode_t* lazy_node = lazy_list->head.next, *tmp;
+
+	while (lazy_node != &(lazy_list->tail)) {
+		tmp = lazy_node->next;
+		lazyStart((QueryDescriptor*) (lazy_node->data));
+		lazy_nodes[((QueryDescriptor*) (lazy_node->data))->queryId] = 0;
+		delete_node(lazy_node);
+		lazy_node = tmp;
+	}
+
 	docCount++;
 	char *doc_buf = (char *) cir_queue_remove(&cirq_free_docs);
 	strcpy(doc_buf, doc_str);
@@ -558,14 +586,17 @@ void core_test() {
 	char f2[32] = "aix";
 
 	StartQuery(5, f, MT_EDIT_DIST, 1);
-
 	MatchDocument(10, "air");
-	DocID did;
-	QueryID *qid;
-	unsigned int numRes;
-	GetNextAvailRes(&did, &numRes, &qid);
-	int i;
-	for (i = 0; i < numRes; i++)
-		printf("---->%d\n", qid[i]);
-	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
+	EndQuery(5);
+	puts("====");
+	fflush(0);
+
+//	DocID did;
+//	QueryID *qid;
+//	unsigned int numRes;
+//	GetNextAvailRes(&did, &numRes, &qid);
+//	int i;
+//	for (i = 0; i < numRes; i++)
+//		printf("---->%d\n", qid[i]);
+//	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
 }
