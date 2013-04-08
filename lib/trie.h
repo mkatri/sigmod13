@@ -34,19 +34,21 @@ typedef struct Trie2 {
 } Trie_t2;
 
 typedef struct TrieNode3 {
-	struct TrieNode3* next[26+1];
+	struct TrieNode3* next[26 + 1];
 	LinkedList_t* list;
 	char terminal;
 } TrieNode3;
 typedef struct Trie3 {
 	TrieNode3 root;
+	TrieNode3 *pool;
+	long pool_size;
+	long pool_space;
 } Trie3;
 
 Trie3 * newTrie3();
 TrieNode3 * newTrieNode3();
 
-DNode_t* InsertTrie3(Trie3 *trie, char * str, int length,
-		SegmentData* segData);
+DNode_t* InsertTrie3(Trie3 *trie, char * str, int length, SegmentData* segData);
 
 DNode_t* TrieInsert(Trie_t * trie, char * str, char* word, int length, int type,
 		SegmentData* queryData, int wordLength, int s, int e);

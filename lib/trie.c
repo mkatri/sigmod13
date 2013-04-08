@@ -4,7 +4,7 @@
 #include <core.h>
 #include "trie.h"
 void dfs(TrieNode3 * node, char last);
-extern int cntz ;
+extern int cntz;
 TrieNode_t * newTrieNode() {
 	TrieNode_t* ret = (TrieNode_t*) (malloc(sizeof(TrieNode_t)));
 	memset(ret->next, 0, sizeof(ret->next));
@@ -37,13 +37,21 @@ Trie_t2 * newTrie2() {
 Trie3 * newTrie3() {
 	Trie3* t = (Trie3 *) malloc(sizeof(Trie3));
 	memset(t, 0, sizeof(Trie3));
+	t->pool_size = TRIE3_INIT_SIZE;
+	t->pool = malloc(sizeof(TrieNode3) * t->pool_size);
+	t->pool_space = t->pool_size;
 	return t;
 }
-TrieNode3 * newTrieNode3() {
-	TrieNode3* ret = (TrieNode3*) (malloc(sizeof(TrieNode3)));
-	memset(ret->next, 0, sizeof(ret->next));
-	ret->list = 0;
-	ret->terminal = 0;
+TrieNode3 * newTrieNode3(Trie3 *t) {
+	if (t->pool_space == 0) {
+		t->pool_size *= 2;
+		t->pool = malloc(sizeof(TrieNode3) * t->pool_size);
+		t->pool_space = t->pool_size;
+	}
+	TrieNode3* ret = (TrieNode3*) t->pool;
+	t->pool++;
+	t->pool_space--;
+	memset(ret, 0, sizeof(TrieNode3));
 	return ret;
 }
 DNode_t* InsertTrie3(Trie3 * trie, char * str, int length, SegmentData* segData) {
@@ -51,13 +59,13 @@ DNode_t* InsertTrie3(Trie3 * trie, char * str, int length, SegmentData* segData)
 	int i;
 	for (i = 0; i < length; i++) {
 		if (current->next[str[i] - BASE_CHAR] == 0)
-			current->next[str[i] - BASE_CHAR] = newTrieNode3();
+			current->next[str[i] - BASE_CHAR] = newTrieNode3(trie);
 		current = current->next[str[i] - BASE_CHAR];
 	}
 	DNode_t* ret;
-	if (current->list == 0){
+	if (current->list == 0) {
 		current->list = newLinkedList();
-	}else{
+	} else {
 		cntz++;
 	}
 	ret = append(current->list, segData);
