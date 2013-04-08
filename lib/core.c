@@ -14,7 +14,8 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //////////////// DOC THREADING STRUCTS //////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////
-
+int hamming_cnt2 = 0, edit_cnt2 = 0;
+int hamming_cnt = 0, edit_cnt = 0;
 long long lazy_cnt = 0;
 
 pthread_t threads[NUM_THREADS];
@@ -169,7 +170,11 @@ ErrorCode InitializeIndex() {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode DestroyIndex() {
-	printf("%lld\n", lazy_cnt);
+	printf("generated words:%lld\n", lazy_cnt);
+	printf("total hamming query words--> %d\n", hamming_cnt);
+	printf("hamming query words with dist=3--> %d\n", hamming_cnt2);
+	printf("total edit query words--> %d\n", edit_cnt);
+	printf("edit query words with dist=3--> %d\n", edit_cnt2);
 	return EC_SUCCESS;
 }
 
@@ -324,6 +329,16 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	split(wordSizes, queryDescriptor, query_str, &numOfWords);
 	queryDescriptor->numWords = numOfWords;
 
+	if (match_dist == 3) {
+		if (match_type == MT_HAMMING_DIST)
+			hamming_cnt2 += numOfWords;
+		else
+			edit_cnt2 += numOfWords;
+	}
+	if (match_type == MT_HAMMING_DIST)
+		hamming_cnt += numOfWords;
+	else if (match_type == MT_EDIT_DIST)
+		edit_cnt += numOfWords;
 	DNode_t* lazy_node = append(lazy_list, queryDescriptor);
 	lazy_nodes[query_id] = lazy_node;
 
