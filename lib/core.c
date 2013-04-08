@@ -16,19 +16,21 @@
 //////////////// DOC THREADING STRUCTS //////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
+#define CIR_QUEUE_SIZE 10 * NUM_THREADS
+
 pthread_t matcher_threads[NUM_THREADS];
 pthread_t candidate_gen_threads[NUM_THREADS];
-char documents[NUM_THREADS][MAX_DOC_LENGTH];
+char documents[CIR_QUEUE_SIZE][MAX_DOC_LENGTH];
 CircularQueue cirq_free_docs;
 CircularQueue cirq_busy_docs;
 CircularQueue cirq_busy_queries;
 CircularQueue cirq_free_segments;
 CircularQueue cirq_busy_segments;
-char *free_docs[NUM_THREADS];
-DocumentDescriptor *busy_docs[NUM_THREADS];
-QueryDescriptor *busy_queries[NUM_THREADS];
-char *free_segments[NUM_THREADS];
-QueryDescriptor *busy_segments[NUM_THREADS];
+char *free_docs[CIR_QUEUE_SIZE];
+DocumentDescriptor *busy_docs[CIR_QUEUE_SIZE];
+QueryDescriptor *busy_queries[CIR_QUEUE_SIZE];
+char *free_segments[CIR_QUEUE_SIZE];
+QueryDescriptor *busy_segments[CIR_QUEUE_SIZE];
 pthread_mutex_t docList_lock;
 pthread_cond_t docList_avail;
 pthread_mutex_t trie_lock;
@@ -155,28 +157,34 @@ void *matcher_thread(void *n) {
 ErrorCode InitializeIndex() {
 	init();
 	docCount = 0;
-	cir_queue_init(&cirq_free_docs, (void **) &free_docs, NUM_THREADS);
-	cir_queue_init(&cirq_busy_docs, (void **) &busy_docs, NUM_THREADS);
-	cir_queue_init(&cirq_busy_queries, (void **) &busy_queries, NUM_THREADS);
-	cir_queue_init(&cirq_free_segments, (void **) &free_segments, NUM_THREADS);
-	cir_queue_init(&cirq_busy_segments, (void **) &busy_segments, NUM_THREADS);
+	cir_queue_init(&cirq_free_docs, (void **) &free_docs, CIR_QUEUE_SIZE);
+	cir_queue_init(&cirq_busy_docs, (void **) &busy_docs, CIR_QUEUE_SIZE);
+	cir_queue_init(&cirq_busy_queries, (void **) &busy_queries, CIR_QUEUE_SIZE);
+	cir_queue_init(&cirq_free_segments, (void **) &free_segments,
+	CIR_QUEUE_SIZE);
+	cir_queue_init(&cirq_busy_segments, (void **) &busy_segments,
+	CIR_QUEUE_SIZE);
 
-	pthread_mutex_init(&big_debug_lock, NULL);
-	pthread_mutex_init(&trie_lock, NULL);
-	pthread_mutex_init(&docList_lock, NULL);
-	pthread_cond_init(&docList_avail, NULL);
+	pthread_mutex_init(&big_debug_lock, NULL );
+	pthread_mutex_init(&trie_lock, NULL );
+	pthread_mutex_init(&docList_lock, NULL );
+	pthread_cond_init(&docList_avail, NULL );
 
 	int i;
 	for (i = 0; i < NUM_THREADS; i++) {
-		free_docs[i] = documents[i];
 		//dyn_array_init(&matches[i], RES_POOL_INITSIZE);
 		dtrie[i] = newTrie2();
 	}
+
+	for (i = 0; i < CIR_QUEUE_SIZE; i++) {
+		free_docs[i] = documents[i];
+	}
+
 	for (i = 0; i < QDESC_MAP_SIZE; i++)
 		edit_list[i] = newLinkedList();
 
-	cirq_free_docs.size = NUM_THREADS;
-	cirq_free_segments.size = NUM_THREADS;
+	cirq_free_docs.size = CIR_QUEUE_SIZE;
+	cirq_free_segments.size = CIR_QUEUE_SIZE;
 
 #ifdef THREAD_ENABLE
 	for (i = 0; i < NUM_THREADS; i++) {
@@ -513,7 +521,7 @@ void *generate_candidates(void *n) {
 		}
 		pthread_mutex_unlock(&trie_lock);
 //		pthread_mutex_unlock(&big_debug_lock);
-		cir_queue_insert(&cirq_free_segments, NULL);
+		cir_queue_insert(&cirq_free_segments, NULL );
 #ifdef THREAD_ENABLE
 	}
 #endif

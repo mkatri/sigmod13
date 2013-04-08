@@ -22,7 +22,7 @@
 
 #define THREAD_ENABLE
 #define RES_POOL_INITSIZE 10000000
-#define NUM_THREADS 16
+#define NUM_THREADS 22
 #define HT_SIZE 100000007
 #define QDESC_MAP_SIZE 5000000
 #define TRIE3_INIT_SIZE 1E7 /* 1 billion items */
