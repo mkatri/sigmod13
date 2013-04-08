@@ -24,8 +24,8 @@ int hammingDistance(char *a, char *b, int n, int max) {
 }
 
 #ifdef PROFILER
-void handleQuery(int tid, int did, DNode_t *cur, int z, int type, int i, int j,
-		char *w, int l, int *count)
+void handleQuery(int tid, int did,
+		DNode_t *cur, int z, int type, int i, int j, char *w, int l, int *count)
 #else
 inline void __attribute__((always_inline)) handleQuery(int tid, int did,
 		DNode_t *cur, int z, int type, int i, int j, char *w, int l, int *count)

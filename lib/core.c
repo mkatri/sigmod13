@@ -16,17 +16,28 @@
 //////////////// DOC THREADING STRUCTS //////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-pthread_t threads[NUM_THREADS];
+pthread_t matcher_threads[NUM_THREADS];
+pthread_t candidate_gen_threads[NUM_THREADS];
 char documents[NUM_THREADS][MAX_DOC_LENGTH];
 CircularQueue cirq_free_docs;
 CircularQueue cirq_busy_docs;
+CircularQueue cirq_busy_queries;
+CircularQueue cirq_free_segments;
+CircularQueue cirq_busy_segments;
 char *free_docs[NUM_THREADS];
 DocumentDescriptor *busy_docs[NUM_THREADS];
+QueryDescriptor *busy_queries[NUM_THREADS];
+char *free_segments[NUM_THREADS];
+QueryDescriptor *busy_segments[NUM_THREADS];
 pthread_mutex_t docList_lock;
 pthread_cond_t docList_avail;
+pthread_mutex_t trie_lock;
+
+pthread_mutex_t big_debug_lock;
 //DynamicArray matches[NUM_THREADS];
 int cmpfunc(const QueryID * a, const QueryID * b);
-void generate_candidates(char * str, int len, int dist, SegmentData* segData);
+//void generate_candidates(char * str, int len, int dist, SegmentData* segData);
+void *generate_candidates(void *n);
 ///////////////////////////////////////////////////////////////////////////////////////////////
 Trie_t *trie;
 Trie_t2 * dtrie[NUM_THREADS];
@@ -89,6 +100,7 @@ void *matcher_thread(void *n) {
 #ifdef THREAD_ENABLE
 	while (1) {
 #endif
+		//pthread_mutex_lock(&big_debug_lock);
 		DocumentDescriptor *doc_desc = (DocumentDescriptor *) cir_queue_remove(
 				&cirq_busy_docs);
 		char *doc = doc_desc->document;
@@ -133,6 +145,7 @@ void *matcher_thread(void *n) {
 		append(docList, doc_desc);
 		pthread_cond_signal(&docList_avail);
 		pthread_mutex_unlock(&docList_lock);
+		//pthread_mutex_unlock(&big_debug_lock);
 #ifdef THREAD_ENABLE
 	}
 #endif
@@ -144,9 +157,14 @@ ErrorCode InitializeIndex() {
 	docCount = 0;
 	cir_queue_init(&cirq_free_docs, (void **) &free_docs, NUM_THREADS);
 	cir_queue_init(&cirq_busy_docs, (void **) &busy_docs, NUM_THREADS);
+	cir_queue_init(&cirq_busy_queries, (void **) &busy_queries, NUM_THREADS);
+	cir_queue_init(&cirq_free_segments, (void **) &free_segments, NUM_THREADS);
+	cir_queue_init(&cirq_busy_segments, (void **) &busy_segments, NUM_THREADS);
 
-	pthread_mutex_init(&docList_lock, NULL);
-	pthread_cond_init(&docList_avail, NULL);
+	pthread_mutex_init(&big_debug_lock, NULL );
+	pthread_mutex_init(&trie_lock, NULL );
+	pthread_mutex_init(&docList_lock, NULL );
+	pthread_cond_init(&docList_avail, NULL );
 
 	int i;
 	for (i = 0; i < NUM_THREADS; i++) {
@@ -158,10 +176,13 @@ ErrorCode InitializeIndex() {
 		edit_list[i] = newLinkedList();
 
 	cirq_free_docs.size = NUM_THREADS;
+	cirq_free_segments.size = NUM_THREADS;
 
 #ifdef THREAD_ENABLE
 	for (i = 0; i < NUM_THREADS; i++) {
-		pthread_create(&threads[i], NULL, matcher_thread,
+		pthread_create(&matcher_threads[i], NULL, matcher_thread,
+				(void *) (uintptr_t) i);
+		pthread_create(&candidate_gen_threads[i], NULL, generate_candidates,
 				(void *) (uintptr_t) i);
 	}
 #endif
@@ -228,8 +249,16 @@ inline void optimal_segmentation(char * str, int len, int* start, int t) {
 }
 /////////////////////////////////
 
+//void *lazyStart(void *n) {
+//	int tid = (uintptr_t) n;
+//#ifdef THREAD_ENABLE
+//	while (1) {
+//#endif
+//	QueryDescriptor* queryDescriptor = cir_queue_remove(cirq_busy_docs);
 void lazyStart(QueryDescriptor* queryDescriptor) {
-
+#ifdef THREAD_ENABLE
+	waitTillFull(&cirq_free_docs);
+#endif
 	int in, match_type = queryDescriptor->matchType, numOfWords =
 			queryDescriptor->numWords, query_id = queryDescriptor->queryId,
 			match_dist = queryDescriptor->matchDistance, iq = 0, wordLength, i,
@@ -244,11 +273,17 @@ void lazyStart(QueryDescriptor* queryDescriptor) {
 			sd->parentQuery = queryDescriptor;
 			sd->queryId = query_id;
 			sd->wordIndex = in;
-			generate_candidates(queryDescriptor->words[in],
-					queryDescriptor->words[in + 1] - queryDescriptor->words[in],
-					match_dist, sd);
+			cir_queue_remove(&cirq_free_segments);
+			cir_queue_insert(&cirq_busy_segments, sd);
+#ifndef THREAD_ENABLE
+			generate_candidates(0);
+#endif
+//			generate_candidates(queryDescriptor->words[in],
+//					queryDescriptor->words[in + 1] - queryDescriptor->words[in],
+//					match_dist, sd);
 		}
 
+//		continue;
 		return;
 	}
 
@@ -297,6 +332,10 @@ void lazyStart(QueryDescriptor* queryDescriptor) {
 					wordLength, s, iq);
 		}
 	}
+//#ifdef THREAD_ENABLE
+//}
+//#endif
+//	return 0;
 }
 
 ErrorCode StartQuery(QueryID query_id, const char* query_str,
@@ -304,7 +343,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 
 //TODO DNode_t ** segmentsData ;
 #ifdef THREAD_ENABLE
-	waitTillFull(&cirq_free_docs);
+	//waitTillFull(&cirq_free_docs);
 #endif
 
 	int in = 0, i = 0, j = 0, wordLength = 0, iq = 0, s;
@@ -465,6 +504,18 @@ int cmpfunc(const QueryID * a, const QueryID * b) {
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 
+//	DNode_t* lazy_node = lazy_list->head.next;
+//
+//	while ((lazy_node = lazy_list->head.next) != &(lazy_list->tail)) {
+//		lazyStart((QueryDescriptor*) (lazy_node->data));
+////		cir_queue_insert(cirq_busy_queries, lazy_node->data);
+////#ifndef THREAD_ENABLE
+////		lazyStart(0);
+////#endif
+//		lazy_nodes[((QueryDescriptor*) (lazy_node->data))->queryId] = 0;
+//		delete_node(lazy_node);
+//	}
+
 	DNode_t* lazy_node = lazy_list->head.next, *tmp;
 
 	while (lazy_node != &(lazy_list->tail)) {
@@ -475,6 +526,9 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 		lazy_node = tmp;
 	}
 
+#ifdef THREAD_ENABLE
+	waitTillFull(&cirq_free_segments);
+#endif
 	docCount++;
 	char *doc_buf = (char *) cir_queue_remove(&cirq_free_docs);
 	strcpy(doc_buf, doc_str);
@@ -484,7 +538,7 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 	desc->document = doc_buf;
 	cir_queue_insert(&cirq_busy_docs, desc);
 #ifndef THREAD_ENABLE
-	matcher_thread(1);
+	matcher_thread(0);
 #endif
 	return EC_SUCCESS;
 }
@@ -511,78 +565,101 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 	free(doc_desc);
 	return EC_SUCCESS;
 }
-char result[300000][33];
-int lengths[300000];
-int indexxx[300000];
-int maxLen = 0;
-void generate_candidates(char * str, int len, int dist, SegmentData* segData) {
-	int start = 0, end = 1;
-	lengths[0] = len;
-	int i;
-	for (i = 0; i < len; i++)
-		result[0][i] = str[i];
-	int id = 0;
-	int resIndex = 1;
-	indexxx[0] = 0;
-	while (dist > 0) {
-		for (id = start; id < end; id++) {
-			str = result[id];
-			int i, j;
-			// insert
-			for (i = indexxx[id]; i <= lengths[id]; i++) {
-				int ptr = 0;
-				for (j = 0; j < i; j++)
-					result[resIndex][ptr++] = str[j];
-				result[resIndex][ptr++] = lamda;
-				for (j = i; j < lengths[id]; j++)
-					result[resIndex][ptr++] = str[j];
-				result[resIndex][ptr] = '\0';
-				lengths[resIndex] = lengths[id] + 1;
-				indexxx[resIndex] = i + 1;
-				resIndex++;
+char result[NUM_THREADS][300000][33];
+int lengths[NUM_THREADS][300000];
+int indexxx[NUM_THREADS][300000];
+//int maxLen[NUM_THREADS] = 0;
+
+//void generate_candidates(char * str, int len, int dist, SegmentData* segData) {
+void *generate_candidates(void *n) {
+	int tid = (uintptr_t) n;
+#ifdef THREAD_ENABLE
+	while (1) {
+#endif
+
+		SegmentData* segData = cir_queue_remove(&cirq_busy_segments);
+//		pthread_mutex_lock(&big_debug_lock);
+		char *str = segData->parentQuery->words[segData->wordIndex];
+		int len = segData->parentQuery->words[segData->wordIndex + 1]
+				- segData->parentQuery->words[segData->wordIndex];
+		int dist = segData->parentQuery->matchDistance;
+
+		int start = 0, end = 1;
+		lengths[tid][0] = len;
+		int i;
+		for (i = 0; i < len; i++)
+			result[tid][0][i] = str[i];
+		int id = 0;
+		int resIndex = 1;
+		indexxx[tid][0] = 0;
+		while (dist > 0) {
+			for (id = start; id < end; id++) {
+				str = result[tid][id];
+				int i, j;
+				// insert
+				for (i = indexxx[tid][id]; i <= lengths[tid][id]; i++) {
+					int ptr = 0;
+					for (j = 0; j < i; j++)
+						result[tid][resIndex][ptr++] = str[j];
+					result[tid][resIndex][ptr++] = lamda;
+					for (j = i; j < lengths[tid][id]; j++)
+						result[tid][resIndex][ptr++] = str[j];
+					result[tid][resIndex][ptr] = '\0';
+					lengths[tid][resIndex] = lengths[tid][id] + 1;
+					indexxx[tid][resIndex] = i + 1;
+					resIndex++;
+				}
+				// delete
+				for (i = indexxx[tid][id]; i < lengths[tid][id]; i++) {
+					int ptr = 0;
+					for (j = 0; j < i; j++)
+						result[tid][resIndex][ptr++] = str[j];
+					for (j = i + 1; j < lengths[tid][id]; j++)
+						result[tid][resIndex][ptr++] = str[j];
+					result[tid][resIndex][ptr] = '\0';
+					lengths[tid][resIndex] = lengths[tid][id] - 1;
+					indexxx[tid][resIndex] = i;
+					resIndex++;
+				}
+				// swap
+				for (i = indexxx[tid][id]; i < lengths[tid][id]; i++) {
+					int ptr = 0;
+					for (j = 0; j < lengths[tid][id]; j++)
+						result[tid][resIndex][ptr++] = str[j];
+					result[tid][resIndex][i] = lamda;
+					result[tid][resIndex][ptr] = '\0';
+					lengths[tid][resIndex] = lengths[tid][id];
+					indexxx[tid][resIndex] = i + 1;
+					resIndex++;
+				}
 			}
-			// delete
-			for (i = indexxx[id]; i < lengths[id]; i++) {
-				int ptr = 0;
-				for (j = 0; j < i; j++)
-					result[resIndex][ptr++] = str[j];
-				for (j = i + 1; j < lengths[id]; j++)
-					result[resIndex][ptr++] = str[j];
-				result[resIndex][ptr] = '\0';
-				lengths[resIndex] = lengths[id] - 1;
-				indexxx[resIndex] = i;
-				resIndex++;
-			}
-			// swap
-			for (i = indexxx[id]; i < lengths[id]; i++) {
-				int ptr = 0;
-				for (j = 0; j < lengths[id]; j++)
-					result[resIndex][ptr++] = str[j];
-				result[resIndex][i] = lamda;
-				result[resIndex][ptr] = '\0';
-				lengths[resIndex] = lengths[id];
-				indexxx[resIndex] = i + 1;
-				resIndex++;
-			}
+			start = end;
+			end = resIndex;
+			dist--;
 		}
-		start = end;
-		end = resIndex;
-		dist--;
-	}
+
 //	int ii = 0;
 //	printf("-----------------\n");
 //	for (ii = 0; ii < resIndex; ii++)
-//		printf("ssss: %s\n", result[ii]);
+//		printf("ssss: %s\n", result[tid][ii]);
 
 //	printf("-----------------\n");
-	int ind = start;
-	while (ind < end) {
-		DNode_t * node = InsertTrie3(eltire, result[ind], lengths[ind],
-				segData);
-//		printf("string = %s\n",result[ind]);
-		append(edit_list[segData->queryId], node);
-		ind++;
+		pthread_mutex_lock(&trie_lock);
+		int ind = start;
+		while (ind < end) {
+			DNode_t * node = InsertTrie3(eltire, result[tid][ind],
+					lengths[tid][ind], segData);
+//		printf("string = %s\n",result[tid][ind]);
+			append(edit_list[segData->queryId], node);
+			ind++;
+		}
+		pthread_mutex_unlock(&trie_lock);
+//		pthread_mutex_unlock(&big_debug_lock);
+		cir_queue_insert(&cirq_free_segments, NULL );
+#ifdef THREAD_ENABLE
 	}
+#endif
+	return 0;
 }
 ///////////////////////////////////////////
 void core_test() {
