@@ -36,7 +36,6 @@ unsigned long docCount;
 int cnttt = 0;
 Trie3 * eltire;
 char lamda = 'a' + 26;
-char r[3][3][32][32];
 int cntz = 0;
 /*QUERY DESCRIPTOR MAP GOES HERE*/
 QueryDescriptor qmap[QDESC_MAP_SIZE];
@@ -73,7 +72,8 @@ void init() {
 //	ht = new_Hash_Table();
 	//THREAD_ENABLE=1;
 	trie = newTrie();
-	eltire = newTrie3();
+	int i = 0;
+		eltire = newTrie3();
 //	dtrie = newTrie();
 	docList = newLinkedList();
 }
@@ -104,7 +104,6 @@ void *matcher_thread(void *n) {
 			if (!TriewordExist(dtrie[tid], &doc[i], e - i, doc_desc->docId)) {
 				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
 						trie, eltire);
-
 			} else
 				cnt++;
 			i = e;
@@ -146,8 +145,8 @@ ErrorCode InitializeIndex() {
 	cir_queue_init(&cirq_free_docs, (void **) &free_docs, NUM_THREADS);
 	cir_queue_init(&cirq_busy_docs, (void **) &busy_docs, NUM_THREADS);
 
-	pthread_mutex_init(&docList_lock, NULL );
-	pthread_cond_init(&docList_avail, NULL );
+	pthread_mutex_init(&docList_lock, NULL);
+	pthread_cond_init(&docList_avail, NULL);
 
 	int i;
 	for (i = 0; i < NUM_THREADS; i++) {
@@ -250,6 +249,7 @@ void lazyStart(QueryDescriptor* queryDescriptor) {
 					match_dist, sd);
 		}
 
+		return;
 	}
 
 	char segment[32];
@@ -513,6 +513,7 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 }
 char result[300000][33];
 int lengths[300000];
+int indexxx[300000];
 int maxLen = 0;
 void generate_candidates(char * str, int len, int dist, SegmentData* segData) {
 	int start = 0, end = 1;
@@ -522,12 +523,13 @@ void generate_candidates(char * str, int len, int dist, SegmentData* segData) {
 		result[0][i] = str[i];
 	int id = 0;
 	int resIndex = 1;
+	indexxx[0] = 0;
 	while (dist > 0) {
 		for (id = start; id < end; id++) {
 			str = result[id];
 			int i, j;
 			// insert
-			for (i = 0; i <= lengths[id]; i++) {
+			for (i = indexxx[id]; i <= lengths[id]; i++) {
 				int ptr = 0;
 				for (j = 0; j < i; j++)
 					result[resIndex][ptr++] = str[j];
@@ -536,10 +538,11 @@ void generate_candidates(char * str, int len, int dist, SegmentData* segData) {
 					result[resIndex][ptr++] = str[j];
 				result[resIndex][ptr] = '\0';
 				lengths[resIndex] = lengths[id] + 1;
+				indexxx[resIndex] = i;
 				resIndex++;
 			}
 			// delete
-			for (i = 0; i < lengths[id]; i++) {
+			for (i = indexxx[id]; i < lengths[id]; i++) {
 				int ptr = 0;
 				for (j = 0; j < i; j++)
 					result[resIndex][ptr++] = str[j];
@@ -547,16 +550,18 @@ void generate_candidates(char * str, int len, int dist, SegmentData* segData) {
 					result[resIndex][ptr++] = str[j];
 				result[resIndex][ptr] = '\0';
 				lengths[resIndex] = lengths[id] - 1;
+				indexxx[resIndex] = i;
 				resIndex++;
 			}
 			// swap
-			for (i = 0; i < lengths[id]; i++) {
+			for (i = indexxx[id]; i < lengths[id]; i++) {
 				int ptr = 0;
 				for (j = 0; j < lengths[id]; j++)
 					result[resIndex][ptr++] = str[j];
 				result[resIndex][i] = lamda;
 				result[resIndex][ptr] = '\0';
 				lengths[resIndex] = lengths[id];
+				indexxx[resIndex] = i;
 				resIndex++;
 			}
 		}
