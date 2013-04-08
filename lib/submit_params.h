@@ -25,7 +25,7 @@
 #define NUM_THREADS 16
 #define HT_SIZE 100000007
 #define QDESC_MAP_SIZE 5000000
-#define TRIE3_INIT_SIZE 1E9 /* 1 billion items */
+#define TRIE3_INIT_SIZE 1E7 /* 1 billion items */
 #endif
 
 #endif /* THREADING_H_ */
