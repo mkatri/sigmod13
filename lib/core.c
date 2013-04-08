@@ -73,7 +73,7 @@ void init() {
 	//THREAD_ENABLE=1;
 	trie = newTrie();
 	int i = 0;
-		eltire = newTrie3();
+	eltire = newTrie3();
 //	dtrie = newTrie();
 	docList = newLinkedList();
 }
@@ -538,7 +538,7 @@ void generate_candidates(char * str, int len, int dist, SegmentData* segData) {
 					result[resIndex][ptr++] = str[j];
 				result[resIndex][ptr] = '\0';
 				lengths[resIndex] = lengths[id] + 1;
-				indexxx[resIndex] = i;
+				indexxx[resIndex] = i + 1;
 				resIndex++;
 			}
 			// delete
@@ -561,7 +561,7 @@ void generate_candidates(char * str, int len, int dist, SegmentData* segData) {
 				result[resIndex][i] = lamda;
 				result[resIndex][ptr] = '\0';
 				lengths[resIndex] = lengths[id];
-				indexxx[resIndex] = i;
+				indexxx[resIndex] = i + 1;
 				resIndex++;
 			}
 		}

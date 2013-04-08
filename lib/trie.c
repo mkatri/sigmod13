@@ -55,8 +55,11 @@ DNode_t* InsertTrie3(Trie3 * trie, char * str, int length, SegmentData* segData)
 		current = current->next[str[i] - BASE_CHAR];
 	}
 	DNode_t* ret;
-	if (current->list == 0)
+	if (current->list == 0){
 		current->list = newLinkedList();
+	}else{
+		cntz++;
+	}
 	ret = append(current->list, segData);
 	current->terminal = 1;
 	return ret;
