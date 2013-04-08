@@ -15,6 +15,9 @@ typedef struct TrieNode {
 	struct TrieNode* next[CHAR_SET_SIZE];
 	LinkedList_t* list1[32];
 	LinkedList_t* list2[32];
+	LinkedList_t* edit_dist_list[32];
+	int max_dist[32];
+	struct TrieNode* edit_dist_Trie;
 	int count[3];
 	int counter;
 } TrieNode_t;

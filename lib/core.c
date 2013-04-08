@@ -1,3 +1,4 @@
+//#define CORE_DEBUG
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -14,9 +15,6 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //////////////// DOC THREADING STRUCTS //////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////
-int hamming_cnt2 = 0, edit_cnt2 = 0;
-int hamming_cnt = 0, edit_cnt = 0;
-long long lazy_cnt = 0;
 
 pthread_t threads[NUM_THREADS];
 char documents[NUM_THREADS][MAX_DOC_LENGTH];
@@ -28,7 +26,8 @@ pthread_mutex_t docList_lock;
 pthread_cond_t docList_avail;
 //DynamicArray matches[NUM_THREADS];
 int cmpfunc(const QueryID * a, const QueryID * b);
-void generate_candidates(char * str, int len, int dist, SegmentData* segData);
+void generate_candidates(char * str, int len, int dist, SegmentData* segData,
+		int matchType);
 ///////////////////////////////////////////////////////////////////////////////////////////////
 Trie_t *trie;
 Trie_t2 * dtrie[NUM_THREADS];
@@ -72,8 +71,11 @@ void init() {
 	queries = newLinkedList();
 	int numCPU = sysconf(_SC_NPROCESSORS_ONLN);
 	printf("we have %d cores\n", numCPU);
+//	ht = new_Hash_Table();
+	//THREAD_ENABLE=1;
 	trie = newTrie();
 	eltire = newTrie3();
+//	dtrie = newTrie();
 	docList = newLinkedList();
 }
 
@@ -170,11 +172,7 @@ ErrorCode InitializeIndex() {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode DestroyIndex() {
-	printf("generated words:%lld\n", lazy_cnt);
-	printf("total hamming query words--> %d\n", hamming_cnt);
-	printf("hamming query words with dist=3--> %d\n", hamming_cnt2);
-	printf("total edit query words--> %d\n", edit_cnt);
-	printf("edit query words with dist=3--> %d\n", edit_cnt2);
+	printf("%d\n", cntz);
 	return EC_SUCCESS;
 }
 
@@ -241,66 +239,61 @@ void lazyStart(QueryDescriptor* queryDescriptor) {
 
 	int numOfSegments = match_dist + 1;
 
-	if (match_type == MT_EDIT_DIST) {
-
-		for (in = 0; in < numOfWords; in++) {
-			SegmentData *sd = newSegmentdata();
-			sd->parentQuery = queryDescriptor;
-			sd->queryId = query_id;
-			sd->wordIndex = in;
-			generate_candidates(queryDescriptor->words[in],
-					queryDescriptor->words[in + 1] - queryDescriptor->words[in],
-					match_dist, sd);
-		}
-
-		return;
-	}
-
-	char segment[32];
-	/*initialize the DNode array here*/
-	int top = 0;
-	queryDescriptor->segmentsData = (DNode_t**) malloc(
-			numOfSegments * numOfWords * sizeof(DNode_t *));
-	for (top = 0; top < numOfSegments * numOfWords; top++)
-		queryDescriptor->segmentsData[top] = 0;
-	top = 0;
-	//printf("num of words %d\n",numOfWords);
-
-	int segmentStart[6];
-	int segLen = 0;
 	for (in = 0; in < numOfWords; in++) {
-		//get the word length
-		iq = 0;
-		wordLength = queryDescriptor->words[in + 1]
-				- queryDescriptor->words[in];
-
-		optimal_segmentation(queryDescriptor->words[in], wordLength,
-				segmentStart, numOfSegments);
-
-		for (i = 0; i < numOfSegments; i++) {
-
-			segLen = segmentStart[i + 1] - segmentStart[i];
-			queryDescriptor->segmentSizes[in][i] = segLen;
-			SegmentData *sd = newSegmentdata();
-			sd->parentQuery = queryDescriptor;
-			sd->startIndex = queryDescriptor->words[in] + segmentStart[i];
-			s = iq;
-			for (j = 0; j < segLen; j++) {
-				segment[j] = *(queryDescriptor->words[in] + iq);
-				iq++;
-			}
-
-			segment[j] = '\0';
-
-			sd->queryId = query_id;
-
-			sd->wordIndex = in;
-
-			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
-					queryDescriptor->words[in], segLen, match_type, sd,
-					wordLength, s, iq);
-		}
+		SegmentData *sd = newSegmentdata();
+		sd->parentQuery = queryDescriptor;
+		sd->queryId = query_id;
+		sd->wordIndex = in;
+		generate_candidates(queryDescriptor->words[in],
+				queryDescriptor->words[in + 1] - queryDescriptor->words[in],
+				match_dist, sd, match_type);
 	}
+//
+//	char segment[32];
+//	/*initialize the DNode array here*/
+//	int top = 0;
+//	queryDescriptor->segmentsData = (DNode_t**) malloc(
+//			numOfSegments * numOfWords * sizeof(DNode_t *));
+//	for (top = 0; top < numOfSegments * numOfWords; top++)
+//		queryDescriptor->segmentsData[top] = 0;
+//	top = 0;
+//	//printf("num of words %d\n",numOfWords);
+//
+//	int segmentStart[6];
+//	int segLen = 0;
+//	for (in = 0; in < numOfWords; in++) {
+//		//get the word length
+//		iq = 0;
+//		wordLength = queryDescriptor->words[in + 1]
+//				- queryDescriptor->words[in];
+//
+//		optimal_segmentation(queryDescriptor->words[in], wordLength,
+//				segmentStart, numOfSegments);
+//
+//		for (i = 0; i < numOfSegments; i++) {
+//
+//			segLen = segmentStart[i + 1] - segmentStart[i];
+//			queryDescriptor->segmentSizes[in][i] = segLen;
+//			SegmentData *sd = newSegmentdata();
+//			sd->parentQuery = queryDescriptor;
+//			sd->startIndex = queryDescriptor->words[in] + segmentStart[i];
+//			s = iq;
+//			for (j = 0; j < segLen; j++) {
+//				segment[j] = *(queryDescriptor->words[in] + iq);
+//				iq++;
+//			}
+//
+//			segment[j] = '\0';
+//
+//			sd->queryId = query_id;
+//
+//			sd->wordIndex = in;
+//
+//			queryDescriptor->segmentsData[top++] = TrieInsert(trie, segment,
+//					queryDescriptor->words[in], segLen, match_type, sd,
+//					wordLength, s, iq);
+//		}
+//	}
 }
 
 ErrorCode StartQuery(QueryID query_id, const char* query_str,
@@ -329,16 +322,6 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	split(wordSizes, queryDescriptor, query_str, &numOfWords);
 	queryDescriptor->numWords = numOfWords;
 
-	if (match_dist == 3) {
-		if (match_type == MT_HAMMING_DIST)
-			hamming_cnt2 += numOfWords;
-		else
-			edit_cnt2 += numOfWords;
-	}
-	if (match_type == MT_HAMMING_DIST)
-		hamming_cnt += numOfWords;
-	else if (match_type == MT_EDIT_DIST)
-		edit_cnt += numOfWords;
 	DNode_t* lazy_node = append(lazy_list, queryDescriptor);
 	lazy_nodes[query_id] = lazy_node;
 
@@ -402,6 +385,9 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 
 int cnt5 = 0;
 ErrorCode EndQuery(QueryID query_id) {
+#ifdef CORE_DEBUG
+	puts("inside here");
+#endif
 #ifdef THREAD_ENABLE
 	waitTillFull(&cirq_free_docs);
 #endif
@@ -409,66 +395,62 @@ ErrorCode EndQuery(QueryID query_id) {
 	QueryDescriptor* queryDescriptor = &qmap[query_id];
 
 	if (lazy_nodes[query_id]) {
-		lazy_cnt++;
 		DNode_t*tmp = lazy_nodes[query_id];
-		delete_node((long long) lazy_nodes[query_id]);
+		delete_node(lazy_nodes[query_id]);
 		lazy_nodes[query_id] = 0;
 		return EC_SUCCESS;
 	}
 
-	if (queryDescriptor->matchType == MT_EDIT_DIST) {
-		LinkedList_t * list = edit_list[query_id];
-		DNode_t *cur = list->head.next;
-		while (cur != &(list->tail)) {
-			DNode_t * node = (DNode_t *) cur->data;
-			delete_node(node);
-			cur = cur->next;
-		}
-		return EC_SUCCESS;
-	}
-
-	int i, j;
-	int in, iq, wordLength, numOfSegments = queryDescriptor->matchDistance + 1,
-			k, first, second;
-	char segment[32];
-	int top = 0;
-	int segmentStart[6];
-	int segLen = 0;
-
-	for (in = 0; in < 5 && queryDescriptor->words[in + 1]; in++) {
-
-		//get the word length
-		iq = 0;
-		wordLength = queryDescriptor->words[in + 1]
-				- queryDescriptor->words[in];
-
-		for (i = 0; i < numOfSegments; i++) {
-
-			segLen = queryDescriptor->segmentSizes[in][i];
-
-			for (j = 0; j < segLen; j++) {
-				segment[j] = *(queryDescriptor->words[in] + iq);
-				iq++;
-			}
-
-			segment[j] = '\0';
-
-			DNode_t* node = queryDescriptor->segmentsData[top++];
-			SegmentData* sd = (SegmentData *) node->data;
-
-			if (sd->parentQuery->matchType == MT_EDIT_DIST
-					&& node->next->data == 0 && node->prev->data == 0) {
-				delete_node(node->tmp);
-			}
-
-			delete_node(node);
-
-			TrieDelete(trie, segment, segLen, queryDescriptor->matchType);
-		}
-
+	LinkedList_t * list = edit_list[query_id];
+	DNode_t *cur = list->head.next;
+	while (cur != &(list->tail)) {
+		DNode_t * node = (DNode_t *) cur->data;
+		delete_node(node);
+		cur = cur->next;
 	}
 	removeQuery(query_id, queryDescriptor);
 	return EC_SUCCESS;
+
+//	int i, j;
+//	int in, iq, wordLength, numOfSegments = queryDescriptor->matchDistance + 1,
+//			k, first, second;
+//	char segment[32];
+//	int top = 0;
+//	int segmentStart[6];
+//	int segLen = 0;
+//
+//	for (in = 0; in < 5 && queryDescriptor->words[in + 1]; in++) {
+//
+//		//get the word length
+//		iq = 0;
+//		wordLength = queryDescriptor->words[in + 1]
+//				- queryDescriptor->words[in];
+//
+//		for (i = 0; i < numOfSegments; i++) {
+//
+//			segLen = queryDescriptor->segmentSizes[in][i];
+//
+//			for (j = 0; j < segLen; j++) {
+//				segment[j] = *(queryDescriptor->words[in] + iq);
+//				iq++;
+//			}
+//
+//			segment[j] = '\0';
+//
+//			DNode_t* node = queryDescriptor->segmentsData[top++];
+//			SegmentData* sd = (SegmentData *) node->data;
+//
+//			if (sd->parentQuery->matchType == MT_EDIT_DIST
+//					&& node->next->data == 0 && node->prev->data == 0) {
+//				delete_node(node->tmp);
+//			}
+//
+//			delete_node(node);
+//
+//			TrieDelete(trie, segment, segLen, queryDescriptor->matchType);
+//		}
+//
+//	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////
 int cmpfunc(const QueryID * a, const QueryID * b) {
@@ -526,7 +508,15 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 char result[300000][33];
 int lengths[300000];
 int maxLen = 0;
-void generate_candidates(char * str, int len, int dist, SegmentData* segData) {
+void generate_candidates(char * str, int len, int dist, SegmentData* segData,
+		int matchType) {
+
+	if (matchType == MT_EXACT_MATCH) {
+		DNode_t * node = InsertTrie3(eltire, str, len, segData);
+		append(edit_list[segData->queryId], node);
+		return;
+	}
+
 	int start = 0, end = 1;
 	lengths[0] = len;
 	int i;
@@ -538,28 +528,31 @@ void generate_candidates(char * str, int len, int dist, SegmentData* segData) {
 		for (id = start; id < end; id++) {
 			str = result[id];
 			int i, j;
-			// insert
-			for (i = 0; i <= lengths[id]; i++) {
-				int ptr = 0;
-				for (j = 0; j < i; j++)
-					result[resIndex][ptr++] = str[j];
-				result[resIndex][ptr++] = lamda;
-				for (j = i; j < lengths[id]; j++)
-					result[resIndex][ptr++] = str[j];
-				result[resIndex][ptr] = '\0';
-				lengths[resIndex] = lengths[id] + 1;
-				resIndex++;
-			}
-			// delete
-			for (i = 0; i < lengths[id]; i++) {
-				int ptr = 0;
-				for (j = 0; j < i; j++)
-					result[resIndex][ptr++] = str[j];
-				for (j = i + 1; j < lengths[id]; j++)
-					result[resIndex][ptr++] = str[j];
-				result[resIndex][ptr] = '\0';
-				lengths[resIndex] = lengths[id] - 1;
-				resIndex++;
+
+			if (matchType == MT_EDIT_DIST) {
+				// insert
+				for (i = 0; i <= lengths[id]; i++) {
+					int ptr = 0;
+					for (j = 0; j < i; j++)
+						result[resIndex][ptr++] = str[j];
+					result[resIndex][ptr++] = lamda;
+					for (j = i; j < lengths[id]; j++)
+						result[resIndex][ptr++] = str[j];
+					result[resIndex][ptr] = '\0';
+					lengths[resIndex] = lengths[id] + 1;
+					resIndex++;
+				}
+				// delete
+				for (i = 0; i < lengths[id]; i++) {
+					int ptr = 0;
+					for (j = 0; j < i; j++)
+						result[resIndex][ptr++] = str[j];
+					for (j = i + 1; j < lengths[id]; j++)
+						result[resIndex][ptr++] = str[j];
+					result[resIndex][ptr] = '\0';
+					lengths[resIndex] = lengths[id] - 1;
+					resIndex++;
+				}
 			}
 			// swap
 			for (i = 0; i < lengths[id]; i++) {
@@ -576,18 +569,10 @@ void generate_candidates(char * str, int len, int dist, SegmentData* segData) {
 		end = resIndex;
 		dist--;
 	}
-//	int ii = 0;
-//	printf("-----------------\n");
-//	for (ii = 0; ii < resIndex; ii++)
-//		printf("ssss: %s\n", result[ii]);
-
-//	printf("-----------------\n");
-	lazy_cnt += end - start;
 	int ind = start;
 	while (ind < end) {
 		DNode_t * node = InsertTrie3(eltire, result[ind], lengths[ind],
 				segData);
-//		printf("string = %s\n",result[ind]);
 		append(edit_list[segData->queryId], node);
 		ind++;
 	}
