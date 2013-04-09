@@ -18,6 +18,7 @@
 #define HT_SIZE 5000011
 #define QDESC_MAP_SIZE 50000
 #define TRIE3_INIT_SIZE 1000000
+#define CONC_TRIE3
 #else
 
 #define THREAD_ENABLE
@@ -26,6 +27,7 @@
 #define HT_SIZE 100000007
 #define QDESC_MAP_SIZE 5000000
 #define TRIE3_INIT_SIZE 1E7 /* 1 billion items */
+//#define CONC_TRIE3
 #endif
 
 #endif /* THREADING_H_ */

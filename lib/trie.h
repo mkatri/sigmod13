@@ -10,6 +10,7 @@
 #define CHAR_SET_SIZE 35
 #define BASE_CHAR 'a'
 #include "query.h"
+//#include <pthread.h>
 
 typedef struct TrieNode {
 	struct TrieNode* next[CHAR_SET_SIZE];
@@ -35,14 +36,16 @@ typedef struct Trie2 {
 
 typedef struct TrieNode3 {
 	struct TrieNode3* next[26 + 1];
-	LinkedList_t* list;
-	char terminal;
+	LinkedList_t list;
 } TrieNode3;
 typedef struct Trie3 {
 	TrieNode3 root;
 	TrieNode3 *pool;
 	long pool_size;
 	long pool_space;
+	TrieNode3 returned;
+	unsigned char spinLock;
+//	pthread_spinlock_t spinLock;
 } Trie3;
 
 Trie3 * newTrie3();

@@ -2,7 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <core.h>
+#include "atomic.h"
 #include "trie.h"
+
+extern inline unsigned char cmpxchg(uintptr_t *dest, uintptr_t oldVal,
+		uintptr_t newVal);
+extern inline unsigned char xchg(unsigned char *dest, unsigned char newVal);
+
 void dfs(TrieNode3 * node, char last);
 extern int cntz;
 TrieNode_t * newTrieNode() {
@@ -40,36 +46,68 @@ Trie3 * newTrie3() {
 	t->pool_size = TRIE3_INIT_SIZE;
 	t->pool = malloc(sizeof(TrieNode3) * t->pool_size);
 	t->pool_space = t->pool_size;
+//	pthread_spin_init(&(t->spinLock));
 	return t;
 }
+
+void returnToPool(Trie3 *t, TrieNode3 *node) {
+	while (xchg(&(t->spinLock), 1))
+		;
+//	pthread_spin_lock(&(t->spinLock));
+	node->next[0] = t->returned.next[0];
+	t->returned.next[0] = node;
+//	xchg(&(t->spinLock), 0);
+	t->spinLock = 0;
+//	pthread_spin_unlock(&(t->spinLock));
+}
+
 TrieNode3 * newTrieNode3(Trie3 *t) {
-	if (t->pool_space == 0) {
-		t->pool_size *= 2;
-		t->pool = malloc(sizeof(TrieNode3) * t->pool_size);
-		t->pool_space = t->pool_size;
+	TrieNode3* ret;
+	while (xchg(&(t->spinLock), 1))
+		;
+	if (t->returned.next[0]) {
+		ret = t->returned.next[0];
+		t->returned.next[0] = ret->next[0];
+	} else {
+		if (t->pool_space == 0) {
+			t->pool_size *= 2;
+			t->pool = malloc(sizeof(TrieNode3) * t->pool_size);
+			t->pool_space = t->pool_size;
+		}
+
+		ret = (TrieNode3*) t->pool;
+		t->pool++;
+		t->pool_space--;
 	}
-	TrieNode3* ret = (TrieNode3*) t->pool;
-	t->pool++;
-	t->pool_space--;
+//	xchg(&(t->spinLock), 0);
+	t->spinLock = 0;
 	memset(ret, 0, sizeof(TrieNode3));
+	ret->list.head.next = &(ret->list.tail), ret->list.tail.prev =
+			&(ret->list.head);
 	return ret;
 }
 DNode_t* InsertTrie3(Trie3 * trie, char * str, int length, SegmentData* segData) {
 	TrieNode3* current = &(trie->root);
 	int i;
 	for (i = 0; i < length; i++) {
-		if (current->next[str[i] - BASE_CHAR] == 0)
-			current->next[str[i] - BASE_CHAR] = newTrieNode3(trie);
+		if (current->next[str[i] - BASE_CHAR] == 0) {
+			TrieNode3 *new = newTrieNode3(trie);
+			if (!cmpxchg(&(current->next[str[i] - BASE_CHAR]), 0, new))
+				returnToPool(trie, new);
+		}
 		current = current->next[str[i] - BASE_CHAR];
 	}
 	DNode_t* ret;
-	if (current->list == 0) {
-		current->list = newLinkedList();
-	} else {
-		cntz++;
-	}
-	ret = append(current->list, segData);
-	current->terminal = 1;
+//	if (current->list == 0) {
+//		LinkedList_t *nlist = newLinkedList();
+//		//TODO can use a return pool here too
+//		if (!cmpxchg(&(current->list), 0, nlist))
+//			free(nlist);
+//	}
+//	else {
+//		cntz++;
+//	}
+	ret = sync_append(&(current->list), segData);
 	return ret;
 }
 TrieNode_t* next_node(TrieNode_t *current, char c) {

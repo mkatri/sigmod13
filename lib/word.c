@@ -18,11 +18,11 @@ void matchEditDIstance(int did, int tid, char *w, int l, int *count,
 	if (ind != l)
 		return;
 
-	if (current && !isEmpty(current->list)) {
-		DNode_t *cur = current->list->head.next;
+	if (current && !isEmpty(&(current->list))) {
+		DNode_t *cur = current->list.head.next;
 		SegmentData * segData = (SegmentData *) (cur->data);
 		QueryDescriptor * queryData = segData->parentQuery;
-		while (cur != &(current->list->tail)) {
+		while (cur != &(current->list.tail)) {
 			segData = (SegmentData *) (cur->data);
 			queryData = segData->parentQuery;
 

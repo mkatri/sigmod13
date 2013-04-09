@@ -1,12 +1,17 @@
 #include "linked_list.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include "atomic.h"
+
+extern inline unsigned char cmpxchg(uintptr_t *dest, uintptr_t oldVal,
+		uintptr_t newVal);
+extern inline unsigned char xchg(unsigned char *dest, unsigned char newVal);
 
 LinkedList_t* newLinkedList() {
 	LinkedList_t* ret = (LinkedList_t*) malloc(sizeof(LinkedList_t));
+	memset(ret, 0, sizeof(LinkedList_t));
 	ret->head.next = &(ret->tail), ret->tail.prev = &(ret->head);
-	ret->head.data = 0, ret->tail.data = 0;
-	ret->head.prev = 0, ret->tail.next = 0;
+//	pthread_spin_init(&(ret->spinLock), PTHREAD_PROCESS_PRIVATE);
 	return ret;
 }
 DNode_t* append(LinkedList_t* list, void * data) {
@@ -16,6 +21,21 @@ DNode_t* append(LinkedList_t* list, void * data) {
 	node->data = data;
 	return node;
 }
+
+DNode_t* sync_append(LinkedList_t* list, void * data) {
+	DNode_t* node = (DNode_t *) (malloc(sizeof(DNode_t)));
+	while (xchg(&(list->spinLock), 1))
+		;
+//	pthread_spin_lock(&(list->spinLock));
+	node->prev = list->tail.prev, node->next = &(list->tail);
+	node->next->prev = node, node->prev->next = node;
+//	xchg(&(list->spinLock), 0);
+	list->spinLock = 0;
+//	pthread_spin_unlock(&(list->spinLock));
+	node->data = data;
+	return node;
+}
+
 DNode_t* delete_node(DNode_t * node) {
 	node->next->prev = node->prev;
 	node->prev->next = node->next;

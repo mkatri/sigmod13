@@ -336,6 +336,7 @@ ErrorCode EndQuery(QueryID query_id) {
 	puts("inside here");
 #endif
 #ifdef THREAD_ENABLE
+	waitTillFull(&cirq_free_segments);
 	waitTillFull(&cirq_free_docs);
 #endif
 
@@ -511,15 +512,19 @@ void *generate_candidates(void *n) {
 			end = resIndex;
 			dist--;
 		}
+#ifndef CONC_TRIE3
 		pthread_mutex_lock(&trie_lock);
+#endif
 		int ind = start;
 		while (ind < end) {
 			DNode_t * node = InsertTrie3(eltire, result[tid][ind],
 					lengths[tid][ind], segData);
-			append(edit_list[segData->queryId], node);
+			sync_append(edit_list[segData->queryId], node);
 			ind++;
 		}
+#ifndef CONC_TRIE3
 		pthread_mutex_unlock(&trie_lock);
+#endif
 //		pthread_mutex_unlock(&big_debug_lock);
 		cir_queue_insert(&cirq_free_segments, NULL );
 #ifdef THREAD_ENABLE

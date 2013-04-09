@@ -7,6 +7,9 @@
 
 #ifndef LINKEDLIST_H_
 #define LINKEDLIST_H_
+
+//#include <pthread.h>
+
 typedef struct DNode {
 	struct DNode *prev, *next;
 	struct DNode *tmp;
@@ -14,6 +17,8 @@ typedef struct DNode {
 } DNode_t;
 typedef struct LinkedList {
 	DNode_t head, tail;
+	unsigned char spinLock;
+//	pthread_spinlock_t spinLock;
 } LinkedList_t;
 /*creates a new empty linkedlist */
 LinkedList_t* newLinkedList();
@@ -22,6 +27,7 @@ LinkedList_t* newLinkedList();
  * node it doesn't copy the data.
  */
 DNode_t* append(LinkedList_t* list, void * data);
+DNode_t* sync_append(LinkedList_t *list, void *data);
 /**
  * deletes node from the linkedlist it belongs, and frees memory used by node
  * note:this doesn't free the memory used by content
