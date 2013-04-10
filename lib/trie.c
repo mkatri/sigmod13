@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <core.h>
+#include "linked_list.h"
 #include "atomic.h"
 #include "trie.h"
 
@@ -11,32 +12,24 @@ extern inline unsigned char xchg(unsigned char *dest, unsigned char newVal);
 
 void dfs(TrieNode3 * node, char last);
 extern int cntz;
+
 TrieNode_t * newTrieNode() {
 	TrieNode_t* ret = (TrieNode_t*) (malloc(sizeof(TrieNode_t)));
-	memset(ret->next, 0, sizeof(ret->next));
-	int tmp = sizeof(ret->list1);
-	memset(ret->list1, 0, tmp);
-	memset(ret->list2, 0, tmp);
-	memset(ret->edit_dist_list, 0, tmp);
-	memset(ret->count, 0, sizeof(ret->count));
-	memset(ret->max_dist, 0, sizeof(ret->max_dist));
-	ret->edit_dist_Trie = 0;
-	ret->counter = 0;
+	memset(ret, 0, sizeof(TrieNode_t));
 	return ret;
 }
 Trie_t * newTrie() {
 	Trie_t* t = (Trie_t *) malloc(sizeof(Trie_t));
-	memset(t->root.count, 0, sizeof(t->root.count));
-//	t->root.list = 0;
-	memset(t->root.list1, 0, sizeof(t->root.list1));
-	memset(t->root.list2, 0, sizeof(t->root.list2));
-	memset(t->root.next, 0, sizeof(t->root.next));
+	memset(t, 0, sizeof(Trie_t));
 	return t;
 }
 
 Trie_t2 * newTrie2() {
 	Trie_t2* t = (Trie_t2 *) malloc(sizeof(Trie_t2));
 	memset(t, 0, sizeof(Trie_t2));
+	t->pool_size = TRIE2_INIT_SIZE;
+	t->pool = malloc(sizeof(TrieNode_t2) * t->pool_size);
+	t->pool_space = t->pool_size;
 	return t;
 }
 
@@ -46,19 +39,15 @@ Trie3 * newTrie3() {
 	t->pool_size = TRIE3_INIT_SIZE;
 	t->pool = malloc(sizeof(TrieNode3) * t->pool_size);
 	t->pool_space = t->pool_size;
-//	pthread_spin_init(&(t->spinLock));
 	return t;
 }
 
 void returnToPool(Trie3 *t, TrieNode3 *node) {
 	while (xchg(&(t->spinLock), 1))
 		;
-//	pthread_spin_lock(&(t->spinLock));
 	node->next[0] = t->returned.next[0];
 	t->returned.next[0] = node;
-//	xchg(&(t->spinLock), 0);
 	t->spinLock = 0;
-//	pthread_spin_unlock(&(t->spinLock));
 }
 
 TrieNode3 * newTrieNode3(Trie3 *t) {
@@ -79,13 +68,13 @@ TrieNode3 * newTrieNode3(Trie3 *t) {
 		t->pool++;
 		t->pool_space--;
 	}
-//	xchg(&(t->spinLock), 0);
 	t->spinLock = 0;
 	memset(ret, 0, sizeof(TrieNode3));
 	ret->list.head.next = &(ret->list.tail), ret->list.tail.prev =
 			&(ret->list.head);
 	return ret;
 }
+
 DNode_t* InsertTrie3(Trie3 * trie, char * str, int length, SegmentData* segData) {
 	TrieNode3* current = &(trie->root);
 	int i;
@@ -97,19 +86,10 @@ DNode_t* InsertTrie3(Trie3 * trie, char * str, int length, SegmentData* segData)
 		}
 		current = current->next[str[i] - BASE_CHAR];
 	}
-	DNode_t* ret;
-//	if (current->list == 0) {
-//		LinkedList_t *nlist = newLinkedList();
-//		//TODO can use a return pool here too
-//		if (!cmpxchg(&(current->list), 0, nlist))
-//			free(nlist);
-//	}
-//	else {
-//		cntz++;
-//	}
-	ret = sync_append(&(current->list), segData);
+	DNode_t* ret = sync_append(&(current->list), segData);
 	return ret;
 }
+
 TrieNode_t* next_node(TrieNode_t *current, char c) {
 	if (current == 0)
 		return 0;
@@ -242,12 +222,24 @@ void TrieDelete(Trie_t* trie, char*str, int length, int type) {
 
 // NEW TRIE !
 //--------------------------------------------------------------------------------------------------------------
-TrieNode_t2 * newTrieNode2() {
-	TrieNode_t2* ret = (TrieNode_t2*) (malloc(sizeof(TrieNode_t2)));
-	memset(ret->next, 0, sizeof(ret->next));
-	ret->terminal = 0;
+TrieNode_t2 * newTrieNode2(Trie_t2 *t) {
+	TrieNode_t2 *ret;
+	//XXX we never return those nodes
+	if (t->pool_space == 0) {
+		//XXX does not seem we need to double this one
+//		t->pool_size *= 2;
+		t->pool = malloc(sizeof(TrieNode_t2) * t->pool_size);
+		t->pool_space = t->pool_size;
+	}
+
+	ret = (TrieNode_t2*) t->pool;
+	t->pool++;
+	t->pool_space--;
+
+	memset(ret, 0, sizeof(TrieNode_t2));
 	return ret;
 }
+
 char TriewordExist(Trie_t2* trie, char * str, int length, int docId) {
 	TrieNode_t2 *cur = &(trie->root);
 	int i;
@@ -257,7 +249,7 @@ char TriewordExist(Trie_t2* trie, char * str, int length, int docId) {
 		else {
 			for (; i < length; i++) {
 				if (cur->next[str[i] - BASE_CHAR] == 0) {
-					cur->next[str[i] - BASE_CHAR] = newTrieNode2();
+					cur->next[str[i] - BASE_CHAR] = newTrieNode2(trie);
 					cur->next[str[i] - BASE_CHAR]->terminal |=
 							(i == length - 1);
 					cur->next[str[i] - BASE_CHAR]->docId = docId;
@@ -291,18 +283,3 @@ void dfs(TrieNode3 * node, char last) {
 		}
 	}
 }
-//int main(int argc, char **argv) {
-//	Trie_t *t = newTrie();
-//	char str[50] = "hello";
-//	char str2[20] = "motherfucker";
-//	char str3[23] = "hellobitch";
-//	TrieInsert(t, str, 5, 0, 0);
-//	TrieInsert(t, str2, 12, 1, 0);
-//	TrieInsert(t, str3, 10, 2, 0);
-//	dfs(&(t->root));
-//	puts("DONE");
-//	TrieDelete(t, str3, 10, 2);
-//	dfs(&(t->root));
-//	return 0;
-//}
-

@@ -30,8 +30,14 @@ typedef struct TrieNode2 {
 	char terminal;
 	int docId;
 } TrieNode_t2;
+
 typedef struct Trie2 {
 	TrieNode_t2 root;
+	TrieNode_t2 *pool;
+	unsigned long pool_size;
+	unsigned long pool_space;
+	TrieNode_t2 returned;
+	unsigned char spinLock;
 } Trie_t2;
 
 typedef struct TrieNode3 {
@@ -41,11 +47,10 @@ typedef struct TrieNode3 {
 typedef struct Trie3 {
 	TrieNode3 root;
 	TrieNode3 *pool;
-	long pool_size;
-	long pool_space;
+	unsigned long pool_size;
+	unsigned long pool_space;
 	TrieNode3 returned;
 	unsigned char spinLock;
-//	pthread_spinlock_t spinLock;
 } Trie3;
 
 Trie3 * newTrie3();

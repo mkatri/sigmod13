@@ -26,6 +26,7 @@ LinkedList_t* newLinkedList();
  * inserts new element at the tail of list, with data
  * node it doesn't copy the data.
  */
+void initLinkedListDefaultPool();
 DNode_t* append(LinkedList_t* list, void * data);
 DNode_t* sync_append(LinkedList_t *list, void *data);
 /**

@@ -12,6 +12,7 @@
 #include "document.h"
 #include "cir_queue.h"
 #include "submit_params.h"
+#include "linked_list.h"
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //////////////// DOC THREADING STRUCTS //////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -43,7 +44,7 @@ void *generate_candidates(void *n);
 ///////////////////////////////////////////////////////////////////////////////////////////////
 Trie_t *trie;
 Trie_t2 * dtrie[NUM_THREADS];
-LinkedList_t *docList;
+DocumentDescriptor docList;
 LinkedList_t *queries;
 unsigned long docCount;
 int cnttt = 0;
@@ -51,13 +52,13 @@ Trie3 * eltire;
 char lamda = 'a' + 26;
 int cntz = 0;
 /*QUERY DESCRIPTOR MAP GOES HERE*/
-QueryDescriptor qmap[QDESC_MAP_SIZE];
-DNode_t qnodes[QDESC_MAP_SIZE];
+QueryDescriptor qmap[QDESC_MAP_SIZE ];
+DNode_t qnodes[QDESC_MAP_SIZE ];
 
-DNode_t *lazy_nodes[QDESC_MAP_SIZE];
+DNode_t *lazy_nodes[QDESC_MAP_SIZE ];
 LinkedList_t* lazy_list;
 
-LinkedList_t * edit_list[QDESC_MAP_SIZE];
+LinkedList_t * edit_list[QDESC_MAP_SIZE ];
 
 inline void addQuery(int queryId, QueryDescriptor * qds) {
 	DNode_t* node = &qnodes[queryId];
@@ -78,6 +79,8 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 		int * idx);
 
 void init() {
+	initDocumentDescriptorPool();
+	initLinkedListDefaultPool();
 	lazy_list = newLinkedList();
 	queries = newLinkedList();
 	int numCPU = sysconf(_SC_NPROCESSORS_ONLN);
@@ -88,7 +91,7 @@ void init() {
 	int i = 0;
 	eltire = newTrie3();
 //	dtrie = newTrie();
-	docList = newLinkedList();
+//	docList = newLinkedList();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -144,7 +147,8 @@ void *matcher_thread(void *n) {
 		cir_queue_insert(&cirq_free_docs, doc_desc->document);
 
 		pthread_mutex_lock(&docList_lock);
-		append(docList, doc_desc);
+		doc_desc->next = docList.next;
+		docList.next = doc_desc;
 		pthread_cond_signal(&docList_avail);
 		pthread_mutex_unlock(&docList_lock);
 		//pthread_mutex_unlock(&big_debug_lock);
@@ -180,7 +184,7 @@ ErrorCode InitializeIndex() {
 		free_docs[i] = documents[i];
 	}
 
-	for (i = 0; i < QDESC_MAP_SIZE; i++)
+	for (i = 0; i < QDESC_MAP_SIZE ; i++)
 		edit_list[i] = newLinkedList();
 
 	cirq_free_docs.size = CIR_QUEUE_SIZE;
@@ -229,7 +233,7 @@ void lazyStart(QueryDescriptor* queryDescriptor) {
 			j, s;
 	int numOfSegments = match_dist + 1;
 	for (in = 0; in < numOfWords; in++) {
-		SegmentData *sd = newSegmentdata();
+		SegmentData *sd = &(queryDescriptor->segments[in]);
 		sd->parentQuery = queryDescriptor;
 		sd->queryId = query_id;
 		sd->wordIndex = in;
@@ -395,8 +399,7 @@ ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
 	docCount++;
 	char *doc_buf = (char *) cir_queue_remove(&cirq_free_docs);
 	strcpy(doc_buf, doc_str);
-	DocumentDescriptor *desc = (DocumentDescriptor *) malloc(
-			sizeof(DocumentDescriptor));
+	DocumentDescriptor *desc = newDocumentDescriptor();
 	desc->docId = doc_id;
 	desc->document = doc_buf;
 	cir_queue_insert(&cirq_busy_docs, desc);
@@ -412,11 +415,10 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 	if (docCount == 0)
 		return EC_NO_AVAIL_RES;
 	pthread_mutex_lock(&docList_lock);
-	while (isEmpty(docList))
+	while (docList.next == 0)
 		pthread_cond_wait(&docList_avail, &docList_lock);
-	DNode_t *node = docList->head.next;
-	DocumentDescriptor* doc_desc = (DocumentDescriptor *) (node->data);
-	delete_node(node);
+	DocumentDescriptor* doc_desc = docList.next;
+	docList.next = doc_desc->next;
 	pthread_mutex_unlock(&docList_lock);
 
 	docCount--;
@@ -425,7 +427,7 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 	*p_num_res = doc_desc->numResults;
 	if (doc_desc->numResults == 0)
 		free(doc_desc->matches);
-	free(doc_desc);
+	dealloc_docDesc(doc_desc);
 	return EC_SUCCESS;
 }
 char result[NUM_THREADS][300000][33];
@@ -439,9 +441,7 @@ void *generate_candidates(void *n) {
 #ifdef THREAD_ENABLE
 	while (1) {
 #endif
-
 		SegmentData* segData = cir_queue_remove(&cirq_busy_segments);
-//		pthread_mutex_lock(&big_debug_lock);
 		char *str = segData->parentQuery->words[segData->wordIndex];
 		int len = segData->parentQuery->words[segData->wordIndex + 1]
 				- segData->parentQuery->words[segData->wordIndex];
@@ -525,7 +525,6 @@ void *generate_candidates(void *n) {
 #ifndef CONC_TRIE3
 		pthread_mutex_unlock(&trie_lock);
 #endif
-//		pthread_mutex_unlock(&big_debug_lock);
 		cir_queue_insert(&cirq_free_segments, NULL );
 #ifdef THREAD_ENABLE
 	}
