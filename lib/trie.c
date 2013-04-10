@@ -11,7 +11,6 @@ extern inline unsigned char cmpxchg(uintptr_t *dest, uintptr_t oldVal,
 extern inline unsigned char xchg(unsigned char *dest, unsigned char newVal);
 
 void dfs(TrieNode3 * node, char last);
-extern int cntz;
 
 TrieNode_t * newTrieNode() {
 	TrieNode_t* ret = (TrieNode_t*) (malloc(sizeof(TrieNode_t)));
@@ -227,7 +226,7 @@ TrieNode_t2 * newTrieNode2(Trie_t2 *t) {
 	//XXX we never return those nodes
 	if (t->pool_space == 0) {
 		//XXX does not seem we need to double this one
-//		t->pool_size *= 2;
+		t->pool_size *= 2;
 		t->pool = malloc(sizeof(TrieNode_t2) * t->pool_size);
 		t->pool_space = t->pool_size;
 	}

@@ -12,8 +12,6 @@ LinkedList_t default_pool;
 long appendCount;
 long deleteCount;
 
-extern int cntz;
-
 void initLinkedListDefaultPool() {
 	default_pool.head.next = 0;
 	default_pool.tail.next = (DNode_t*) malloc(
@@ -40,8 +38,7 @@ inline DNode_t* alloc_node(LinkedList_t *pool) {
 	} else {
 		if (pool->tail.next == pool->tail.prev) {
 			//XXX expand size exponentially?
-			unsigned long newPoolSize = (pool->tail.prev - pool->head.prev)
-					* 1.5;
+			unsigned long newPoolSize = (pool->tail.prev - pool->head.prev) * 2;
 			pool->tail.next = (DNode_t*) malloc(sizeof(DNode_t) * newPoolSize);
 			pool->head.prev = pool->tail.next;
 			pool->tail.prev = pool->tail.next + newPoolSize;
