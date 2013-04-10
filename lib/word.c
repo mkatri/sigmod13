@@ -31,7 +31,18 @@ void matchEditDIstance(int did, int tid, char *w, int l, int *count,
 		if (!(temp->node) || temp->index > l)
 			continue;
 
-		if (temp->index == l) {
+		while (temp->index < l && (temp->node)) {
+			if ((temp->node->next[26]) && temp->used < 3) {
+				data* newData = (data *) (malloc(sizeof(data)));
+				newData->index = temp->index + 1;
+				newData->used = temp->used + 1;
+				newData->node = temp->node->next[26];
+				append(stack, newData);
+			}
+			temp->node = temp->node->next[w[temp->index] - BASE_CHAR];
+			temp->index = temp->index + 1;
+		}
+		if (temp->node && temp->index == l) {
 			current = temp->node;
 			if (current && !isEmpty(&(current->list))) {
 				DNode_t *cur = current->list.head.next;
@@ -59,22 +70,6 @@ void matchEditDIstance(int did, int tid, char *w, int l, int *count,
 					cur = cur->next;
 				}
 			}
-			continue;
-		}
-
-		if ((temp->node->next[26]) && temp->used < 3) {
-			data* newData = (data *) (malloc(sizeof(data)));
-			newData->index = temp->index + 1;
-			newData->used = temp->used + 1;
-			newData->node = temp->node->next[26];
-			append(stack, newData);
-		}
-		if ((temp->node->next[w[temp->index] - BASE_CHAR])) {
-			data* newData1 = (data *) (malloc(sizeof(data)));
-			newData1->index = temp->index + 1;
-			newData1->used = temp->used;
-			newData1->node = temp->node->next[w[temp->index] - BASE_CHAR];
-			append(stack, newData1);
 		}
 	}
 
