@@ -13,6 +13,7 @@
 #include "cir_queue.h"
 #include "submit_params.h"
 #include "linked_list.h"
+#include "word.h"
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //////////////// DOC THREADING STRUCTS //////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -84,7 +85,6 @@ void init() {
 	lazy_list = newLinkedList();
 	queries = newLinkedList();
 	int numCPU = sysconf(_SC_NPROCESSORS_ONLN);
-	printf("we have %d cores\n", numCPU);
 //	ht = new_Hash_Table();
 	//THREAD_ENABLE=1;
 	trie = newTrie();
@@ -441,7 +441,7 @@ void *generate_candidates(void *n) {
 #ifdef THREAD_ENABLE
 	while (1) {
 #endif
-		SegmentData* segData = cir_queue_remove(&cirq_busy_segments);
+		SegmentData* segData = (SegmentData *)cir_queue_remove(&cirq_busy_segments);
 		char *str = segData->parentQuery->words[segData->wordIndex];
 		int len = segData->parentQuery->words[segData->wordIndex + 1]
 				- segData->parentQuery->words[segData->wordIndex];

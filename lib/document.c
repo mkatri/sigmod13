@@ -4,7 +4,8 @@
  *  Created on: Apr 10, 2013
  *      Author: mkatri
  */
-
+#include <stdlib.h>
+#include <string.h>
 #include "document.h"
 #include "submit_params.h"
 
@@ -17,7 +18,7 @@ void initDocumentDescriptorPool() {
 	poolSize = INIT_DOCPOOL_SIZE;
 	poolSpace = INIT_DOCPOOL_SIZE;
 	reuse.next = 0;
-	pool = malloc(poolSize * sizeof(DocumentDescriptor));
+	pool = (DocumentDescriptor *) malloc(poolSize * sizeof(DocumentDescriptor));
 }
 
 DocumentDescriptor *newDocumentDescriptor() {
@@ -27,7 +28,8 @@ DocumentDescriptor *newDocumentDescriptor() {
 		reuse.next = desc->next;
 	} else {
 		if (poolSpace == 0) {
-			pool = malloc(poolSize * sizeof(DocumentDescriptor));
+			pool = (DocumentDescriptor *) malloc(
+					poolSize * sizeof(DocumentDescriptor));
 			poolSpace = poolSize;
 		}
 		desc = pool;

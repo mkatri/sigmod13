@@ -1,12 +1,11 @@
 #include "linked_list.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "submit_params.h"
+
 #include "atomic.h"
 
-extern inline unsigned char cmpxchg(uintptr_t *dest, uintptr_t oldVal,
-		uintptr_t newVal);
-extern inline unsigned char xchg(unsigned char *dest, unsigned char newVal);
 
 LinkedList_t default_pool;
 long appendCount;

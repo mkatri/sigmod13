@@ -40,7 +40,7 @@ LDFLAGS=-lpthread
 
 LIB_SRC_FILES := $(wildcard lib/*.c)
 LIB_OBJ_DIR := bin/obj/lib
-LIB_OBJ_FILES := $(patsubst lib/%.c,bin/obj/lib/%.o,$(LIB_SRC_FILES))
+LIB_OBJ_FILES := $(patsubst lib/%.c,lib/%.c,$(LIB_SRC_FILES))
 
 # The programs that will be built
 PROGRAMS=testdriver testours ourtestdriver
@@ -64,7 +64,7 @@ bin/obj/lib/%.o: $(LIB_OBJ_DIR) lib/%.c
 bin/obj/test.o: $(LIB_OBJ_DIR) test_ours/test.c
 	$(CC) $(CFLAGS) -c -o $@ $^
 	
-lib_ours: $(LIB_OBJ_FILES)
+lib_ours: 
 	$(CXX) $(CXXFLAGS) -shared -o bin/lib$(OUR_LIBRARY).so $(LIB_OBJ_FILES) $(LDFLAGS)
 	
 testours: lib_ours bin/obj/test.o

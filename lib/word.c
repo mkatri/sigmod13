@@ -4,7 +4,10 @@
 #include "linked_list.h"
 #include "trie.h"
 #include "query.h"
+#include "word.h"
+
 extern Trie3 eltire;
+
 void matchEditDIstance(int did, int tid, char *w, int l, int *count,
 		TrieNode3 * current, int used, int ind) {
 	while (ind < l && current) {

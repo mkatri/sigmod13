@@ -6,8 +6,7 @@
  */
 
 #include "atomic.h"
-inline unsigned char cmpxchg(uintptr_t *dest, uintptr_t oldVal,
-		uintptr_t newVal) {
+inline unsigned char cmpxchg(void *dest, uintptr_t oldVal, uintptr_t newVal) {
 	unsigned char ret;
 	asm __volatile("lock; cmpxchgq %2, %1\n\t" // dummy, semaphore (src, dest); AT/T syntax != Intel Syntax
 			"sete %0\n"
