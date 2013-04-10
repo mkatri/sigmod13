@@ -11,7 +11,6 @@
 #define BASE_CHAR 'a'
 #include "query.h"
 //#include <pthread.h>
-
 typedef struct TrieNode {
 	struct TrieNode* next[CHAR_SET_SIZE];
 	LinkedList_t* list1[32];
@@ -65,5 +64,10 @@ Trie_t2 * newTrie2();
 TrieNode_t2 * newTrieNode2();
 void TrieDelete2(Trie_t2* trie);
 char TriewordExist(Trie_t2* trie, char * str, int length, int docId);
+
+typedef struct data {
+	int used, index;
+	TrieNode3* node;
+} data;
 
 #endif /* TRIE_H_ */

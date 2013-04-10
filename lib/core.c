@@ -56,8 +56,8 @@ DNode_t qnodes[QDESC_MAP_SIZE];
 
 DNode_t *lazy_nodes[QDESC_MAP_SIZE];
 LinkedList_t* lazy_list;
-
 LinkedList_t * edit_list[QDESC_MAP_SIZE];
+extern LinkedList_t * stacks[NUM_THREADS];
 
 inline void addQuery(int queryId, QueryDescriptor * qds) {
 	DNode_t* node = &qnodes[queryId];
@@ -87,6 +87,7 @@ void init() {
 	trie = newTrie();
 	int i = 0;
 	eltire = newTrie3();
+
 //	dtrie = newTrie();
 	docList = newLinkedList();
 }
@@ -182,6 +183,9 @@ ErrorCode InitializeIndex() {
 
 	for (i = 0; i < QDESC_MAP_SIZE; i++)
 		edit_list[i] = newLinkedList();
+
+	for (i = 0; i < NUM_THREADS; i++)
+		stacks[i] = newLinkedList();
 
 	cirq_free_docs.size = CIR_QUEUE_SIZE;
 	cirq_free_segments.size = CIR_QUEUE_SIZE;

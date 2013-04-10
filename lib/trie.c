@@ -70,7 +70,7 @@ TrieNode3 * newTrieNode3(Trie3 *t) {
 		t->returned.next[0] = ret->next[0];
 	} else {
 		if (t->pool_space == 0) {
-			t->pool_size *= 2;
+//			t->pool_size *= 2;
 			t->pool = malloc(sizeof(TrieNode3) * t->pool_size);
 			t->pool_space = t->pool_size;
 		}
@@ -94,6 +94,7 @@ DNode_t* InsertTrie3(Trie3 * trie, char * str, int length, SegmentData* segData)
 			TrieNode3 *new = newTrieNode3(trie);
 			if (!cmpxchg(&(current->next[str[i] - BASE_CHAR]), 0, new))
 				returnToPool(trie, new);
+			cntz++;
 		}
 		current = current->next[str[i] - BASE_CHAR];
 	}

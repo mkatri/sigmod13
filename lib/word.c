@@ -4,45 +4,116 @@
 #include "linked_list.h"
 #include "trie.h"
 #include "query.h"
+#include "cir_queue.h"
 extern Trie3 eltire;
+
+//CircularQueue cirq_bfs_queue;
+//CircularQueue cirq_used_queue;
+//TrieNode3 *free_nodes[30000];
+//int *lamda_used[30000];
+
+LinkedList_t* stacks[NUM_THREADS];
+
 void matchEditDIstance(int did, int tid, char *w, int l, int *count,
 		TrieNode3 * current, int used, int ind) {
-	while (ind < l && current) {
-		if (current->next[26] && used < 3)
-			matchEditDIstance(did, tid, w, l, count, current->next[26],
-					used + 1, ind + 1);
-		current = current->next[w[ind] - BASE_CHAR];
-		ind++;
-	}
 
-	if (ind != l)
-		return;
+	LinkedList_t * stack = stacks[tid];
+	data* dt = (data *) (malloc(sizeof(data)));
+	dt->index = ind;
+	dt->used = used;
+	dt->node = current;
+	append(stack, dt);
 
-	if (current && !isEmpty(&(current->list))) {
-		DNode_t *cur = current->list.head.next;
-		SegmentData * segData = (SegmentData *) (cur->data);
-		QueryDescriptor * queryData = segData->parentQuery;
-		while (cur != &(current->list.tail)) {
-			segData = (SegmentData *) (cur->data);
-			queryData = segData->parentQuery;
+	while (!isEmpty(stack)) {
+		data* temp = (data*) (stack->head.next->data);
+		delete_node(stack->head.next);
 
-			if (queryData->docId[tid] != did) {
-				queryData->docId[tid] = did;
-				queryData->matchedWords[tid] = 0;
-			}
+		if (!(temp->node) || temp->index > l)
+			continue;
 
-			if ((queryData->matchedWords[tid] & (1 << (segData->wordIndex)))
-					== 0) {
-				queryData->matchedWords[tid] |= (1 << (segData->wordIndex));
+		if (temp->index == l) {
+			current = temp->node;
+			if (current && !isEmpty(&(current->list))) {
+				DNode_t *cur = current->list.head.next;
+				SegmentData * segData = (SegmentData *) (cur->data);
+				QueryDescriptor * queryData = segData->parentQuery;
+				while (cur != &(current->list.tail)) {
+					segData = (SegmentData *) (cur->data);
+					queryData = segData->parentQuery;
 
-				if (queryData->matchedWords[tid]
-						== (1 << (queryData->numWords)) - 1) {
-					(*count)++;
+					if (queryData->docId[tid] != did) {
+						queryData->docId[tid] = did;
+						queryData->matchedWords[tid] = 0;
+					}
+
+					if ((queryData->matchedWords[tid]
+							& (1 << (segData->wordIndex))) == 0) {
+						queryData->matchedWords[tid] |= (1
+								<< (segData->wordIndex));
+
+						if (queryData->matchedWords[tid]
+								== (1 << (queryData->numWords)) - 1) {
+							(*count)++;
+						}
+					}
+					cur = cur->next;
 				}
 			}
-			cur = cur->next;
+			continue;
+		}
+
+		if ((temp->node->next[26]) && temp->used < 3) {
+			data* newData = (data *) (malloc(sizeof(data)));
+			newData->index = temp->index + 1;
+			newData->used = temp->used + 1;
+			newData->node = temp->node->next[26];
+			append(stack, newData);
+		}
+		if ((temp->node->next[w[temp->index] - BASE_CHAR])) {
+			data* newData1 = (data *) (malloc(sizeof(data)));
+			newData1->index = temp->index + 1;
+			newData1->used = temp->used;
+			newData1->node = temp->node->next[w[temp->index] - BASE_CHAR];
+			append(stack, newData1);
 		}
 	}
+
+//	while (ind < l && current) {
+//		if (current->next[26] && used < 3)
+//			matchEditDIstance(did, tid, w, l, count, current->next[26],
+//					used + 1, ind + 1);
+//		current = current->next[w[ind] - BASE_CHAR];
+//		ind++;
+//	}
+
+//	if (ind != l)
+//		return;
+
+//	if (current && !isEmpty(&(current->list))) {
+//		DNode_t *cur = current->list.head.next;
+//		SegmentData * segData = (SegmentData *) (cur->data);
+//		QueryDescriptor * queryData = segData->parentQuery;
+//		while (cur != &(current->list.tail)) {
+//			segData = (SegmentData *) (cur->data);
+//			queryData = segData->parentQuery;
+//
+//			if (queryData->docId[tid] != did) {
+//				queryData->docId[tid] = did;
+//				queryData->matchedWords[tid] = 0;
+//			}
+//
+//			if ((queryData->matchedWords[tid] & (1 << (segData->wordIndex)))
+//					== 0) {
+//				queryData->matchedWords[tid] |= (1 << (segData->wordIndex));
+//
+//				if (queryData->matchedWords[tid]
+//						== (1 << (queryData->numWords)) - 1) {
+//					(*count)++;
+//				}
+//			}
+//			cur = cur->next;
+//		}
+//	}
 }
 void matchWord(int did, int tid, char *w, int l, int *count, Trie_t * trie,
 		Trie3 * trie3) {
