@@ -43,6 +43,8 @@ typedef struct Trie2 {
 typedef struct TrieNode3 {
 	struct TrieNode3* next[26 + 1];
 	LinkedList_t list;
+	//TODO first thing to sacrifice :D
+	int done[NUM_THREADS];
 } TrieNode3;
 typedef struct Trie3 {
 	TrieNode3 root;
@@ -69,6 +71,7 @@ Trie_t2 * newTrie2();
 
 TrieNode_t2 * newTrieNode2();
 void TrieDelete2(Trie_t2* trie);
+void TrieDocInsert(Trie_t2* trie, char *str, int length, int docId);
 char TriewordExist(Trie_t2* trie, char * str, int length, int docId);
 
 #endif /* TRIE_H_ */

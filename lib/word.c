@@ -1,6 +1,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdio.h>
 #include "submit_params.h"
 #include "linked_list.h"
 #include "trie.h"
@@ -47,6 +48,59 @@ void matchEditDIstance(int did, int tid, char *w, int l, int *count,
 			cur = cur->next;
 		}
 	}
+}
+
+void matchTrie(int did, int tid, int *count, TrieNode_t2 * dTrie,
+		TrieNode3 * qTrie, LinkedList_t *results, LinkedList_t *pool) {
+	if (dTrie->docId != did)
+		return;
+
+	if (dTrie->terminal == 1 && qTrie && !isEmpty(&(qTrie->list))) {
+		if (qTrie->done[tid] != did) {
+			qTrie->done[tid] = did;
+			DNode_t *cur = qTrie->list.head.next;
+			SegmentData * segData = (SegmentData *) (cur->data);
+			QueryDescriptor * queryData = segData->parentQuery;
+			while (cur != &(qTrie->list.tail)) {
+				segData = (SegmentData *) (cur->data);
+				queryData = segData->parentQuery;
+
+				if (queryData->docId[tid] != did) {
+					queryData->docId[tid] = did;
+					queryData->matchedWords[tid] = 0;
+				}
+
+				if ((queryData->matchedWords[tid] & (1 << (segData->wordIndex)))
+						== 0) {
+					queryData->matchedWords[tid] |= (1 << (segData->wordIndex));
+
+					if (queryData->matchedWords[tid]
+							== (1 << (queryData->numWords)) - 1) {
+						(*count)++;
+						append_with_pool(results,
+								(void *) (uintptr_t) queryData->queryId, pool);
+					}
+				}
+				cur = cur->next;
+			}
+		}
+	}
+
+	int i;
+	for (i = 0; i < 26; i++) {
+		if (dTrie->next[i] != 0 && dTrie->next[i]->docId == did) {
+			if (qTrie->next[26]) {
+				matchTrie(did, tid, count, dTrie->next[i], qTrie->next[26],
+						results, pool);
+			}
+			if (qTrie->next[i]) {
+				matchTrie(did, tid, count, dTrie->next[i], qTrie->next[i],
+						results, pool);
+
+			}
+		}
+	}
+
 }
 
 void matchWord(int did, int tid, char *w, int l, int *count, Trie_t * trie,

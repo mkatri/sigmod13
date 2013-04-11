@@ -239,23 +239,26 @@ TrieNode_t2 * newTrieNode2(Trie_t2 *t) {
 char TriewordExist(Trie_t2* trie, char * str, int length, int docId) {
 	TrieNode_t2 *cur = &(trie->root);
 	int i;
-	for (i = 0; i < length; i++)
-		if (cur->next[str[i] - BASE_CHAR] != 0)
+	for (i = 0; i < length; i++) {
+		if (cur->next[str[i] - BASE_CHAR] != 0) {
+			if (cur->docId != docId) {
+				cur->docId = docId;
+				cur->terminal = 0;
+			}
 			cur = cur->next[str[i] - BASE_CHAR];
-		else {
+		} else {
 			for (; i < length; i++) {
 				if (cur->next[str[i] - BASE_CHAR] == 0) {
 					cur->next[str[i] - BASE_CHAR] = newTrieNode2(trie);
-					cur->next[str[i] - BASE_CHAR]->terminal |=
-							(i == length - 1);
 					cur->next[str[i] - BASE_CHAR]->docId = docId;
 				}
 				cur = cur->next[str[i] - BASE_CHAR];
 			}
 			cur->terminal = 1;
-			cur->docId = docId;
 			return 0;
 		}
+	}
+
 	if (cur->terminal) {
 		if (cur->docId == docId)
 			return 1;
@@ -265,6 +268,25 @@ char TriewordExist(Trie_t2* trie, char * str, int length, int docId) {
 		cur->docId = docId;
 	}
 	return 0;
+}
+
+void TrieDocInsert(Trie_t2* trie, char *str, int length, int docId) {
+	TrieNode_t2 *cur = &(trie->root);
+	int i;
+
+	for (i = 0; i < length; i++) {
+		if (cur->docId != docId) {
+			cur->terminal = 0;
+			cur->docId = docId;
+		}
+		if (cur->next[str[i] - BASE_CHAR] == 0) {
+			cur->next[str[i] - BASE_CHAR] = newTrieNode2(trie);
+		}
+		cur = cur->next[str[i] - BASE_CHAR];
+	}
+
+	cur->terminal = 1;
+	cur->docId = docId;
 }
 
 void dfs(TrieNode3 * node, char last) {

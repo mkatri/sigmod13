@@ -122,12 +122,17 @@ void *matcher_thread(void *n) {
 			while (doc[e] != ' ' && doc[e] != '\0')
 				e++;
 			int en, st, z;
-			if (!TriewordExist(dtrie[tid], &doc[i], e - i, doc_desc->docId)) {
-				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
-						trie, eltire, &qresult[tid], &qresult_pool[tid]);
-			}
+			TrieDocInsert(dtrie[tid], &doc[i], e - i, doc_desc->docId);
+//			if (!TriewordExist(dtrie[tid], &doc[i], e - i, doc_desc->docId)) {
+//				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
+//						trie, eltire, &qresult[tid], &qresult_pool[tid]);
+//			}
 			i = e;
 		}
+
+		matchTrie(doc_desc->docId, tid, &matchCount, &(dtrie[tid]->root), &(eltire->root),
+				&qresult[tid], &qresult_pool[tid]);
+
 		cir_queue_insert(&cirq_free_docs, doc_desc->document);
 
 		doc_desc->matches = (QueryID *) malloc(sizeof(QueryID) * matchCount);
