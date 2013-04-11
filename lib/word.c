@@ -10,11 +10,11 @@ extern long long global_time;
 
 void matchEditDIstance(int did, int tid, char *w, int l, int *count,
 		TrieNode3 * current, int used, int ind, LinkedList_t * list,
-		long long word_time) {
+		long long word_time, long long doc_word_num) {
 	while (ind < l && current) {
 		if (current->next[26] && used < 3)
 			matchEditDIstance(did, tid, w, l, count, current->next[26],
-					used + 1, ind + 1, list, word_time);
+					used + 1, ind + 1, list, word_time, doc_word_num);
 		current = current->next[w[ind] - BASE_CHAR];
 		ind++;
 	}
@@ -35,9 +35,21 @@ void matchEditDIstance(int did, int tid, char *w, int l, int *count,
 				queryData->matchedWords[tid] = 0;
 			}
 
-			if ((queryData->matchedWords[tid] & (1 << (segData->wordIndex)))
-					== 0) {
+			if (queryData->last_doc_word_matched[tid][segData->wordIndex]
+					== doc_word_num) {
+				cur = cur->next;
+				continue;
+			}
+
+//			append(list,queryData);
+
+			if (/*word_time == 0
+					&&*/ (queryData->matchedWords[tid]
+							& (1 << (segData->wordIndex))) == 0) {
 				queryData->matchedWords[tid] |= (1 << (segData->wordIndex));
+
+				queryData->last_doc_word_matched[tid][segData->wordIndex] =
+						doc_word_num;
 
 				if (queryData->matchedWords[tid]
 						== (1 << (queryData->numWords)) - 1) {
@@ -49,7 +61,7 @@ void matchEditDIstance(int did, int tid, char *w, int l, int *count,
 	}
 }
 void matchWord(int did, int tid, char *w, int l, int *count, Trie3 * trie3,
-		LinkedList_t* list, long long word_time) {
+		LinkedList_t* list, long long word_time, long long doc_word_num) {
 	matchEditDIstance(did, tid, w, l, count, &trie3->root, 0, 0, list,
-			word_time);
+			word_time, doc_word_num);
 }

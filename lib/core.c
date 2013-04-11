@@ -92,7 +92,10 @@ void init() {
 // Keeps all currently active queries
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
+
 LinkedList_t* lists[NUM_THREADS_DOC][1];
+long long doc_word_num[NUM_THREADS_DOC];
+
 void *matcher_thread(void *n) {
 	int tid = (uintptr_t) n;
 #ifdef THREAD_ENABLE
@@ -109,15 +112,18 @@ void *matcher_thread(void *n) {
 			int e = i;
 			while (doc[e] != ' ' && doc[e] != '\0')
 				e++;
+
+			doc_word_num[tid]++;
+
 			long long time = TriewordExist(dtrie[tid], &doc[i], e - i,
 					doc_desc->docId, lists[tid]);
 			if (!time) {
 				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
-						eltire, lists[tid][0], 0);
+						eltire, lists[tid][0], 0, doc_word_num[tid]);
 			} else {
 				if (time > 0) {
 					matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
-							eltire, lists[tid][0], time);
+							eltire, lists[tid][0], time, doc_word_num[tid]);
 					DNode_t* cur = lists[tid][0]->head.next;
 					while (cur != &(lists[tid][0]->tail)) {
 

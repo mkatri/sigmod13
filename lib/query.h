@@ -27,7 +27,7 @@ typedef struct QueryDescriptor {
 	int docId[NUM_THREADS_DOC];
 	char matchedWords[NUM_THREADS_DOC];
 
-	long long last_doc_word_matched[NUM_THREADS_DOC];
+	long long last_doc_word_matched[NUM_THREADS_DOC][5];
 
 	SegmentData segments[5];
 	char numWords;
