@@ -61,6 +61,7 @@ TrieNode3 * newTrieNode3(Trie3 *t) {
 
 DNode_t* InsertTrie3(Trie3 * trie, char * str, int length, SegmentData* segData) {
 	TrieNode3* current = &(trie->root);
+	current->node_time = global_time;
 	int i;
 	for (i = 0; i < length; i++) {
 		if (current->next[str[i] - BASE_CHAR] == 0) {
@@ -70,6 +71,7 @@ DNode_t* InsertTrie3(Trie3 * trie, char * str, int length, SegmentData* segData)
 				returnToPool(trie, newNode);
 		}
 		current = current->next[str[i] - BASE_CHAR];
+		current->node_time = global_time;
 	}
 	DNode_t* ret = sync_append(&(current->list), segData);
 	return ret;

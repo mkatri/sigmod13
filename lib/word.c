@@ -6,18 +6,19 @@
 #include "query.h"
 #include "word.h"
 
-extern long long global_time;
-
-void matchEditDIstance(int did, int tid, char *w, int l, int *count,
+void matchEditDIstance(unsigned int did, int tid, char *w, int l, int *count,
 		TrieNode3 * current, int used, int ind, LinkedList_t * list,
 		long long word_time, long long doc_word_num) {
-	while (ind < l && current) {
+	while (ind < l && current && word_time <= current->node_time) {
 		if (current->next[26] && used < 3)
 			matchEditDIstance(did, tid, w, l, count, current->next[26],
 					used + 1, ind + 1, list, word_time, doc_word_num);
 		current = current->next[w[ind] - BASE_CHAR];
 		ind++;
 	}
+
+	if (current && word_time > current->node_time)
+		return;
 
 	if (ind != l)
 		return;

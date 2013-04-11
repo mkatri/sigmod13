@@ -125,9 +125,9 @@ void *matcher_thread(void *n) {
 				if (time > 0) {
 					matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
 							eltire, lists[tid][0], time, doc_word_num[tid]);
+
 					DNode_t* cur = lists[tid][0]->head.next;
 					while (cur != &(lists[tid][0]->tail)) {
-
 						global_list_data * tmp = (global_list_data*) (cur->data);
 
 						if (!active_queries[tmp->qid]) {
@@ -139,8 +139,14 @@ void *matcher_thread(void *n) {
 
 						QueryDescriptor* queryData = &qmap[tmp->qid];
 
+						if (queryData->docId[tid] != doc_desc->docId) {
+							queryData->docId[tid] = doc_desc->docId;
+							queryData->matchedWords[tid] = 0;
+						}
+
 						if ((queryData->matchedWords[tid]
 								& (1 << (tmp->wordIndex))) == 0) {
+
 							queryData->matchedWords[tid] |= (1
 									<< (tmp->wordIndex));
 
@@ -167,11 +173,8 @@ void *matcher_thread(void *n) {
 		while (cur != &(queries->tail)) {
 			QueryDescriptor * cqd = (QueryDescriptor *) cur->data;
 			if (cqd->docId[tid] == doc_desc->docId
-					&& cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1) {
-//				printf("%d\n", cqd->queryId);
-//				fflush(0);
+					&& cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
 				doc_desc->matches[p++] = cqd->queryId;
-			}
 
 			if (p == matchCount)
 				break;
@@ -255,14 +258,12 @@ ErrorCode DestroyIndex() {
 //#endif
 //	QueryDescriptor* queryDescriptor = cir_queue_remove(cirq_busy_docs);
 void lazyStart(QueryDescriptor* queryDescriptor) {
+	global_time++;
 #ifdef THREAD_ENABLE
 	waitTillFull(&cirq_free_docs);
 #endif
-	int in, match_type = queryDescriptor->matchType, numOfWords =
-			queryDescriptor->numWords, query_id = queryDescriptor->queryId,
-			match_dist = queryDescriptor->matchDistance, iq = 0, wordLength, i,
-			j, s;
-	int numOfSegments = match_dist + 1;
+	int in, numOfWords = queryDescriptor->numWords, query_id =
+			queryDescriptor->queryId;
 	for (in = 0; in < numOfWords; in++) {
 		SegmentData *sd = &(queryDescriptor->segments[in]);
 		sd->parentQuery = queryDescriptor;
@@ -273,25 +274,15 @@ void lazyStart(QueryDescriptor* queryDescriptor) {
 #ifndef THREAD_ENABLE
 		generate_candidates(0);
 #endif
-//			generate_candidates(queryDescriptor->words[in],
-//					queryDescriptor->words[in + 1] - queryDescriptor->words[in],
-//					match_dist, sd);
 	}
-//		continue;
 	return;
-//#ifdef THREAD_ENABLE
-//}
-//#endif
-//	return 0;
 }
 
 ErrorCode StartQuery(QueryID query_id, const char* query_str,
 		MatchType match_type, unsigned int match_dist) {
 
 //TODO DNode_t ** segmentsData ;
-#ifdef THREAD_ENABLE
-	//waitTillFull(&cirq_free_docs);
-#endif
+
 	int in = 0;
 	active_queries[query_id] = 1;
 	int wordSizes[6];
@@ -371,16 +362,17 @@ ErrorCode EndQuery(QueryID query_id) {
 	waitTillFull(&cirq_free_segments);
 	waitTillFull(&cirq_free_docs);
 #endif
+
 	active_queries[query_id] = 0;
 	QueryDescriptor* queryDescriptor = &qmap[query_id];
 	removeQuery(query_id, queryDescriptor);
 	if (lazy_nodes[query_id]) {
-		DNode_t*tmp = lazy_nodes[query_id];
 		delete_node(lazy_nodes[query_id]);
 		lazy_nodes[query_id] = 0;
 		removeQuery(query_id, queryDescriptor);
 		return EC_SUCCESS;
-	}
+	} else
+		global_time++;
 
 	LinkedList_t * list = edit_list[query_id];
 	DNode_t *cur = list->head.next;
@@ -551,7 +543,6 @@ void *generate_candidates(void *n) {
 void core_test() {
 	InitializeIndex();
 	char f[32] = "air";
-	char f2[32] = "aix";
 
 	StartQuery(5, f, MT_EDIT_DIST, 1);
 	MatchDocument(10, "air");
