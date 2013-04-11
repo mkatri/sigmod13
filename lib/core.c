@@ -98,7 +98,6 @@ void *matcher_thread(void *n) {
 #ifdef THREAD_ENABLE
 	while (1) {
 #endif
-		//pthread_mutex_lock(&big_debug_lock);
 		DocumentDescriptor *doc_desc = (DocumentDescriptor *) cir_queue_remove(
 				&cirq_busy_docs);
 		char *doc = doc_desc->document;
@@ -112,7 +111,6 @@ void *matcher_thread(void *n) {
 				e++;
 			long long time = TriewordExist(dtrie[tid], &doc[i], e - i,
 					doc_desc->docId, lists[tid]);
-
 			if (!time) {
 				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
 						eltire, lists[tid][0], 0);
@@ -120,7 +118,10 @@ void *matcher_thread(void *n) {
 				if (time > 0) {
 					matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
 							eltire, lists[tid][0], time);
-					DNode_t* lists[tid];
+					DNode_t* cur = lists[tid][0]->head.next;
+					while (cur != &(lists[tid][0]->tail)) {
+
+					}
 				}
 			}
 			i = e;
@@ -361,19 +362,6 @@ int cmpfunc(const QueryID * a, const QueryID * b) {
 }
 
 ErrorCode MatchDocument(DocID doc_id, const char* doc_str) {
-
-//	DNode_t* lazy_node = lazy_list->head.next;
-//
-//	while ((lazy_node = lazy_list->head.next) != &(lazy_list->tail)) {
-//		lazyStart((QueryDescriptor*) (lazy_node->data));
-////		cir_queue_insert(cirq_busy_queries, lazy_node->data);
-////#ifndef THREAD_ENABLE
-////		lazyStart(0);
-////#endif
-//		lazy_nodes[((QueryDescriptor*) (lazy_node->data))->queryId] = 0;
-//		delete_node(lazy_node);
-//	}
-
 	DNode_t* lazy_node = lazy_list->head.next, *tmp;
 
 	while (lazy_node != &(lazy_list->tail)) {

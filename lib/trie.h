@@ -17,6 +17,7 @@ typedef struct TrieNode2 {
 	char terminal;
 	int docId;
 	long long word_time;
+	LinkedList_t* list;
 } TrieNode_t2;
 
 typedef struct Trie2 {

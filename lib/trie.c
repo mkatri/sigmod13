@@ -94,12 +94,12 @@ TrieNode_t2 * newTrieNode2(Trie_t2 *t) {
 	ret = (TrieNode_t2*) t->pool;
 	t->pool++;
 	t->pool_space--;
-
 	memset(ret, 0, sizeof(TrieNode_t2));
 	return ret;
 }
 
-long long TriewordExist(Trie_t2* trie, char * str, int length, int docId,LinkedList_t** list) {
+long long TriewordExist(Trie_t2* trie, char * str, int length, int docId,
+		LinkedList_t** list) {
 	TrieNode_t2 *cur = &(trie->root);
 	int i;
 	for (i = 0; i < length; i++)
@@ -107,26 +107,26 @@ long long TriewordExist(Trie_t2* trie, char * str, int length, int docId,LinkedL
 			cur = cur->next[str[i] - BASE_CHAR];
 		else {
 			for (; i < length; i++) {
-				if (cur->next[str[i] - BASE_CHAR] == 0) {
-					cur->next[str[i] - BASE_CHAR] = newTrieNode2(trie);
-					cur->next[str[i] - BASE_CHAR]->terminal |=
-							(i == length - 1);
-					cur->next[str[i] - BASE_CHAR]->docId = docId;
-				}
+				cur->next[str[i] - BASE_CHAR] = newTrieNode2(trie);
+				cur->next[str[i] - BASE_CHAR]->terminal |= (i == length - 1);
+				cur->next[str[i] - BASE_CHAR]->docId = docId;
+
 				cur = cur->next[str[i] - BASE_CHAR];
+				cur->terminal = 0;
 			}
-			cur->terminal = 1;
-			cur->docId = docId;
-			return 0;
 		}
+
 	if (cur->terminal) {
 		long long ret = cur->word_time;
 		if (cur->docId == docId)
 			ret *= -1;
 		cur->docId = docId;
 		cur->word_time = global_time;
+		*list = cur->list;
 		return ret;
 	} else {
+		cur->list = newLinkedList();
+		*list = cur->list;
 		cur->terminal = 1;
 		cur->docId = docId;
 		cur->word_time = global_time;
