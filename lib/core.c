@@ -1,4 +1,3 @@
-//#define CORE_DEBUG
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -121,6 +120,7 @@ void *matcher_thread(void *n) {
 				if (time > 0) {
 					matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
 							eltire, lists[tid][0], time);
+					DNode_t* lists[tid];
 				}
 			}
 			i = e;
@@ -210,14 +210,6 @@ ErrorCode DestroyIndex() {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
-
-void printWords(char out[6][32], int num) {
-#ifdef CORE_DEBUG
-	int i = 0;
-	for (i = 0; i < num; i++)
-	puts(out[i]);
-#endif
-}
 
 //void *lazyStart(void *n) {
 //	int tid = (uintptr_t) n;
@@ -338,9 +330,6 @@ void split(int length[6], QueryDescriptor *desc, const char* query_str,
 
 int cnt5 = 0;
 ErrorCode EndQuery(QueryID query_id) {
-#ifdef CORE_DEBUG
-	puts("inside here");
-#endif
 #ifdef THREAD_ENABLE
 	waitTillFull(&cirq_free_segments);
 	waitTillFull(&cirq_free_docs);
