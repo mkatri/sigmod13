@@ -96,6 +96,7 @@ void init() {
 
 LinkedList_t* lists[NUM_THREADS_DOC][1];
 long long doc_word_num[NUM_THREADS_DOC];
+long long overhead[NUM_THREADS_DOC];
 
 void *matcher_thread(void *n) {
 	int tid = (uintptr_t) n;
@@ -131,6 +132,7 @@ void *matcher_thread(void *n) {
 						global_list_data * tmp = (global_list_data*) (cur->data);
 
 						if (!active_queries[tmp->qid]) {
+							overhead[tid]++;
 							DNode_t* tmp = cur->next;
 							delete_node(cur);
 							cur = tmp;
@@ -246,6 +248,10 @@ ErrorCode InitializeIndex() {
 
 ErrorCode DestroyIndex() {
 	//printf("%d\n", cntz);
+	long long tmp=0;
+	for (int i = 0; i < NUM_THREADS_DOC; ++i)
+		tmp+=overhead[i];
+	printf("overhead = %lld\n",tmp);
 	return EC_SUCCESS;
 }
 

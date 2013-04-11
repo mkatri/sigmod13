@@ -8,7 +8,7 @@
 #ifndef THREADING_H_
 #define THREADING_H_
 
-#define HOME
+//#define HOME
 
 #ifdef HOME
 //#define PROFILER
@@ -24,7 +24,7 @@
 
 #else
 #define THREAD_ENABLE
-#define NUM_THREADS_DOC 22
+#define NUM_THREADS_DOC 12
 #define NUM_THREADS_QUERY 22
 #define QDESC_MAP_SIZE (int)3E6 /* TODO this WILL bite us in the final test */
 #define TRIE2_INIT_SIZE 1E6 /* 4 is the actual maximum in small AND big test */
