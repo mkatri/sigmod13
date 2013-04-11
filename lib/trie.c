@@ -6,18 +6,9 @@
 #include "trie.h"
 #include "atomic.h"
 
-void dfs(TrieNode3 * node, char last);
+extern long long global_time;
 
-TrieNode_t * newTrieNode() {
-	TrieNode_t* ret = (TrieNode_t*) (malloc(sizeof(TrieNode_t)));
-	memset(ret, 0, sizeof(TrieNode_t));
-	return ret;
-}
-Trie_t * newTrie() {
-	Trie_t* t = (Trie_t *) malloc(sizeof(Trie_t));
-	memset(t, 0, sizeof(Trie_t));
-	return t;
-}
+void dfs(TrieNode3 * node, char last);
 
 Trie_t2 * newTrie2() {
 	Trie_t2* t = (Trie_t2 *) malloc(sizeof(Trie_t2));
@@ -86,135 +77,11 @@ DNode_t* InsertTrie3(Trie3 * trie, char * str, int length, SegmentData* segData)
 	return ret;
 }
 
-TrieNode_t* next_node(TrieNode_t *current, char c) {
-	if (current == 0)
-		return 0;
-	if (c >= 'a' && c <= 'z')
-		return current->next[c - BASE_CHAR];
-	return 0;
-}
 
 inline TrieNode_t2* next_node2(TrieNode_t2 *current, char c) {
 	return current->next[c - BASE_CHAR];
 }
 
-DNode_t* insertParts(TrieNode_t** n, int type, int dist, int len, char* str,
-		SegmentData* queryData, int s, int e) {
-
-	TrieNode_t* node = n[0];
-	n[0] = 0;
-	int i;
-	for (i = 0; i < len; i++) {
-		if (node->next[str[i] - BASE_CHAR] == 0)
-			node->next[str[i] - BASE_CHAR] = newTrieNode();
-		node = node->next[str[i] - BASE_CHAR];
-	}
-
-	if (node->next[s] == 0)
-		node->next[s] = newTrieNode();
-	node = node->next[s];
-
-	if (node->next[e] == 0)
-		node->next[e] = newTrieNode();
-	node = node->next[e];
-	if (node->edit_dist_list[len] == 0)
-		node->edit_dist_list[len] = newLinkedList();
-
-	if (node->max_dist[len] < dist)
-		node->max_dist[len] = dist;
-
-	int empty = isEmpty(node->edit_dist_list[len]);
-
-	DNode_t* ret = append(node->edit_dist_list[len], queryData);
-
-	if (empty)
-		n[0] = node;
-	else
-		ret->tmp = node->edit_dist_list[len]->head.next->tmp;
-
-	return ret;
-}
-
-int cnt3 = 0, cnt4 = 0;
-
-DNode_t* TrieInsert(Trie_t * trie, char * str, char* word, int length, int type,
-		SegmentData* queryData, int wordLength, int s, int e) {
-#ifdef CORE_DEBUG
-	puts(str);
-#endif
-	TrieNode_t* current = &(trie->root);
-	current->count[type]++;
-	int i;
-	for (i = 0; i < length; i++) {
-		if (current->next[str[i] - BASE_CHAR] == 0)
-			current->next[str[i] - BASE_CHAR] = newTrieNode();
-		current = current->next[str[i] - BASE_CHAR];
-		current->count[type]++;
-	}
-
-	current->counter++;
-	if (type == MT_EDIT_DIST) {
-		if (current->list1[wordLength] == 0)
-			current->list1[wordLength] = newLinkedList();
-
-		if (current->edit_dist_Trie == 0)
-			current->edit_dist_Trie = newTrieNode();
-
-		TrieNode_t* node[1];
-		node[0] = current->edit_dist_Trie;
-
-		DNode_t* ret = insertParts(node, type,
-				queryData->parentQuery->matchDistance, wordLength, word,
-				queryData, s, e);
-
-		if (node[0])
-			ret->tmp = append(current->list1[wordLength], node[0]);
-
-		return ret;
-	} else {
-		if (current->list2[wordLength] == 0)
-			current->list2[wordLength] = newLinkedList();
-
-		return append(current->list2[wordLength], queryData);
-	}
-}
-
-//void deleteTrieNode(TrieNode_t* node) {
-//#ifdef CORE_DEBUG
-//	printf("DELETING NODE\n");
-//#endif
-//	if (node->list != 0)
-//		free(node->list);
-//	free(node);
-//}
-
-//NODE END QUERY BEFORE CALLING THIS FUNCTION MUST DELETE ALL LINKEDLIST NODES BELONGING TO SUCH QUERY
-void TrieDelete(Trie_t* trie, char*str, int length, int type) {
-	TrieNode_t* current = &(trie->root);
-#ifdef CORE_DEBUG
-	printf("----> deleting %d characters\n", length);
-	puts(str);
-#endif
-	int i;
-	for (i = 0; i < length; i++) {
-		TrieNode_t *next = next_node(current, str[i]);
-		next->count[type]--;
-		if (next->count[0] + next->count[1] + next->count[2] == 0) {
-			current->next[str[i] - BASE_CHAR] = 0;
-		}
-//		if (current->count[0] + current->count[1] + current->count[2] == 0
-//				&& current != &(trie->root)) {
-//			deleteTrieNode(current);
-//		}
-		current = next;
-	}
-	current->counter++;
-//Alternative Implementation:Delete LinkedList node here (note:full traversal is required)
-//	if (current->count[0] + current->count[1] + current->count[2] == 0
-//			&& current != &(trie->root)) { //Note the check if current!=&(trie.root) is not really required unless we are kidding (LOL)
-//		deleteTrieNode(current);
-//	}
-}
 
 // NEW TRIE !
 //--------------------------------------------------------------------------------------------------------------

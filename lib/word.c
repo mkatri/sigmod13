@@ -6,7 +6,7 @@
 #include "query.h"
 #include "word.h"
 
-extern Trie3 eltire;
+extern long long global_time;
 
 void matchEditDIstance(int did, int tid, char *w, int l, int *count,
 		TrieNode3 * current, int used, int ind) {
@@ -47,31 +47,6 @@ void matchEditDIstance(int did, int tid, char *w, int l, int *count,
 		}
 	}
 }
-void matchWord(int did, int tid, char *w, int l, int *count, Trie_t * trie,
-		Trie3 * trie3) {
-	if (l > 34)
-		return;
+void matchWord(int did, int tid, char *w, int l, int *count, Trie3 * trie3) {
 	matchEditDIstance(did, tid, w, l, count, &trie3->root, 0, 0);
-//	int i = 0;
-//	for (i = 0; i < l; i++) {
-//		int j = i;
-//		TrieNode_t *n = &trie->root;
-//		while ((n = next_node(n, w[j])) && j < l) {
-//			if (n->count[MT_EDIT_DIST] == 0 && n->count[MT_HAMMING_DIST] == 0
-//					&& (i > 0 || n->count[MT_EXACT_MATCH] == 0))
-//				break;
-//			j++;
-//			LinkedList_t * list;
-//			list = n->list2[l];
-//			if (!isEmpty(list)) {
-//				DNode_t *cur = list->head.next;
-//				while (/*cur->data &&*/cur != &(list->tail)) {
-//					handleQuery(tid, did, cur, l,
-//							((SegmentData*) cur->data)->parentQuery->matchType,
-//							i, j, w, l, count);
-//					cur = cur->next;
-//				}
-//			}
-//		}
-//	}
 }

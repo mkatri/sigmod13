@@ -8,8 +8,6 @@
 #ifndef LINKEDLIST_H_
 #define LINKEDLIST_H_
 
-//#include <pthread.h>
-
 typedef struct DNode {
 	struct DNode *prev, *next;
 	struct DNode *tmp;

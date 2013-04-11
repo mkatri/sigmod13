@@ -17,7 +17,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //////////////// DOC THREADING STRUCTS //////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////
-
+long long global_time = 0;
 #define CIR_QUEUE_SIZE 12 * NUM_THREADS_QUERY
 
 pthread_t matcher_threads[NUM_THREADS_DOC];
@@ -43,7 +43,6 @@ int cmpfunc(const QueryID * a, const QueryID * b);
 //void generate_candidates(char * str, int len, int dist, SegmentData* segData);
 void *generate_candidates(void *n);
 ///////////////////////////////////////////////////////////////////////////////////////////////
-Trie_t *trie;
 Trie_t2 * dtrie[NUM_THREADS_DOC];
 DocumentDescriptor docList;
 LinkedList_t *queries;
@@ -87,8 +86,6 @@ void init() {
 	int numCPU = sysconf(_SC_NPROCESSORS_ONLN);
 //	ht = new_Hash_Table();
 	//THREAD_ENABLE=1;
-	trie = newTrie();
-	int i = 0;
 	eltire = newTrie3();
 //	dtrie = newTrie();
 //	docList = newLinkedList();
@@ -117,10 +114,9 @@ void *matcher_thread(void *n) {
 			int e = i;
 			while (doc[e] != ' ' && doc[e] != '\0')
 				e++;
-			int en, st, z;
 			if (!TriewordExist(dtrie[tid], &doc[i], e - i, doc_desc->docId)) {
 				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
-						trie, eltire);
+						eltire);
 			} else
 				cnt++;
 			i = e;
