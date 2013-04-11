@@ -141,8 +141,8 @@ void *matcher_thread(void *n) {
 
 						if ((queryData->matchedWords[tid]
 								& (1 << (tmp->wordIndex))) == 0) {
-//							queryData->matchedWords[tid] |= (1
-//									<< (segData->wordIndex));
+							queryData->matchedWords[tid] |= (1
+									<< (tmp->wordIndex));
 
 							if (queryData->matchedWords[tid]
 									== (1 << (queryData->numWords)) - 1) {

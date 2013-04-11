@@ -50,9 +50,9 @@ void matchEditDIstance(int did, int tid, char *w, int l, int *count,
 			tmp->wordIndex = segData->wordIndex;
 			append(list, tmp);
 
-			if ( /*word_time == 0
-			 &&*/(queryData->matchedWords[tid] & (1 << (segData->wordIndex)))
-					== 0) {
+			if (word_time == 0
+					&& (queryData->matchedWords[tid]
+							& (1 << (segData->wordIndex))) == 0) {
 				queryData->matchedWords[tid] |= (1 << (segData->wordIndex));
 
 				if (queryData->matchedWords[tid]
