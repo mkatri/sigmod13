@@ -17,7 +17,8 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //////////////// DOC THREADING STRUCTS //////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////
-
+long long overhead[NUM_THREADS];
+long long total[NUM_THREADS];
 #define CIR_QUEUE_SIZE 12 * NUM_THREADS
 
 pthread_t matcher_threads[NUM_THREADS];
@@ -54,25 +55,13 @@ char lamda = 'a' + 26;
 int cntz = 0;
 /*QUERY DESCRIPTOR MAP GOES HERE*/
 QueryDescriptor qmap[QDESC_MAP_SIZE ];
+
 DNode_t qnodes[QDESC_MAP_SIZE ];
 
 DNode_t *lazy_nodes[QDESC_MAP_SIZE ];
 LinkedList_t* lazy_list;
 
 LinkedList_t * edit_list[QDESC_MAP_SIZE ];
-
-//inline void addQuery(int queryId, QueryDescriptor * qds) {
-//	DNode_t* node = &qnodes[queryId];
-//	node->data = qds;
-//	node->prev = queries->tail.prev, node->next = &(queries->tail);
-//	node->next->prev = node, node->prev->next = node;
-//}
-//
-//inline void removeQuery(int queryId, QueryDescriptor *qds) {
-//	DNode_t* node = &qnodes[queryId];
-//	node->next->prev = node->prev;
-//	node->prev->next = node->next;
-//}
 
 /*QUERY DESCRIPTOR MAP ENDS HERE*/
 
@@ -87,11 +76,11 @@ void init() {
 	initLinkedListDefaultPool();
 	lazy_list = newLinkedList();
 	queries = newLinkedList();
-	int numCPU = sysconf(_SC_NPROCESSORS_ONLN);
+//	int numCPU = sysconf(_SC_NPROCESSORS_ONLN);
 //	ht = new_Hash_Table();
 	//THREAD_ENABLE=1;
 	trie = newTrie();
-	int i = 0;
+//	int i = 0;
 	eltire = newTrie3();
 //	dtrie = newTrie();
 //	docList = newLinkedList();
@@ -121,17 +110,12 @@ void *matcher_thread(void *n) {
 			int e = i;
 			while (doc[e] != ' ' && doc[e] != '\0')
 				e++;
-			int en, st, z;
 			TrieDocInsert(dtrie[tid], &doc[i], e - i, doc_desc->docId);
-//			if (!TriewordExist(dtrie[tid], &doc[i], e - i, doc_desc->docId)) {
-//				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
-//						trie, eltire, &qresult[tid], &qresult_pool[tid]);
-//			}
 			i = e;
 		}
 
-		matchTrie(doc_desc->docId, tid, &matchCount, &(dtrie[tid]->root), &(eltire->root),
-				&qresult[tid], &qresult_pool[tid]);
+		matchTrie(doc_desc->docId, tid, &matchCount, &(dtrie[tid]->root),
+				&(eltire->root), &qresult[tid], &qresult_pool[tid]);
 
 		cir_queue_insert(&cirq_free_docs, doc_desc->document);
 
@@ -216,7 +200,14 @@ ErrorCode InitializeIndex() {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode DestroyIndex() {
-	//printf("%d\n", cntz);
+	long long oh1 = 0, t = 0;
+	for (int i = 0; i < NUM_THREADS; ++i) {
+		oh1 += overhead[i];
+		t += total[i];
+	}
+	printf("\n%lld total iterations\n", t);
+	printf("\n%lld overhead iterations: \n\n", oh1);
+
 	return EC_SUCCESS;
 }
 
@@ -240,11 +231,9 @@ void lazyStart(QueryDescriptor* queryDescriptor) {
 #ifdef THREAD_ENABLE
 	waitTillFull(&cirq_free_docs);
 #endif
-	int in, match_type = queryDescriptor->matchType, numOfWords =
-			queryDescriptor->numWords, query_id = queryDescriptor->queryId,
-			match_dist = queryDescriptor->matchDistance, iq = 0, wordLength, i,
-			j, s;
-	int numOfSegments = match_dist + 1;
+	int in, numOfWords = queryDescriptor->numWords, query_id =
+			queryDescriptor->queryId;
+
 	for (in = 0; in < numOfWords; in++) {
 		SegmentData *sd = &(queryDescriptor->segments[in]);
 		sd->parentQuery = queryDescriptor;
@@ -274,7 +263,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 #ifdef THREAD_ENABLE
 	//waitTillFull(&cirq_free_docs);
 #endif
-	int in = 0, i = 0, j = 0, wordLength = 0, iq = 0, s;
+	int in = 0;
 
 	int wordSizes[6];
 	int numOfWords = 0;
@@ -357,10 +346,10 @@ ErrorCode EndQuery(QueryID query_id) {
 	waitTillFull(&cirq_free_docs);
 #endif
 
-	QueryDescriptor* queryDescriptor = &qmap[query_id];
+//	QueryDescriptor* queryDescriptor = &qmap[query_id];
 //	removeQuery(query_id, queryDescriptor);
 	if (lazy_nodes[query_id]) {
-		DNode_t*tmp = lazy_nodes[query_id];
+//		DNode_t*tmp = lazy_nodes[query_id];
 		delete_node(lazy_nodes[query_id]);
 		lazy_nodes[query_id] = 0;
 //		removeQuery(query_id, queryDescriptor);
@@ -549,7 +538,7 @@ void *generate_candidates(void *n) {
 void core_test() {
 	InitializeIndex();
 	char f[32] = "air";
-	char f2[32] = "aix";
+//	char f2[32] = "aix";
 
 	StartQuery(5, f, MT_EDIT_DIST, 1);
 	MatchDocument(10, "air");

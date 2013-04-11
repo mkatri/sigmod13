@@ -34,7 +34,6 @@
 #define INIT_DOCPOOL_SIZE (int)1E4
 #define INIT_QUEUE_SIZE (int)5E5
 
-
 //#define CONC_TRIE3
 
 #endif

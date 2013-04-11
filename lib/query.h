@@ -28,10 +28,10 @@ typedef struct QueryDescriptor {
 //		char matchedWords;
 //		char docId;
 //	} thSpec[NUM_THREADS];
-	char matchedWords[NUM_THREADS];
 	int docId[NUM_THREADS];
 //	DNode_t ** segmentsData;
 	SegmentData segments[5];
+	char matchedWords[NUM_THREADS];
 	char numWords;
 	int matchType;
 	int matchDistance;
