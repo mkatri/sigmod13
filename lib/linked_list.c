@@ -6,7 +6,6 @@
 
 #include "atomic.h"
 
-
 LinkedList_t default_pool;
 long appendCount;
 long deleteCount;
@@ -20,6 +19,14 @@ void initLinkedListDefaultPool() {
 	default_pool.spinLock = 0;
 }
 
+void initLinkedListPool(LinkedList_t *pool, int size) {
+	pool->head.next = 0;
+	pool->tail.next = (DNode_t*) malloc(sizeof(DNode_t) * size);
+	pool->head.prev = pool->tail.next;
+	pool->tail.prev = pool->tail.next + size;
+	pool->spinLock = 0;
+}
+
 LinkedList_t* newLinkedList() {
 	LinkedList_t* ret = (LinkedList_t*) malloc(sizeof(LinkedList_t));
 	memset(ret, 0, sizeof(LinkedList_t));
@@ -27,10 +34,17 @@ LinkedList_t* newLinkedList() {
 	return ret;
 }
 
-inline DNode_t* alloc_node(LinkedList_t *pool) {
-	DNode_t* node;
+inline void lock_pool(LinkedList_t *pool) {
 	while (xchg(&(pool->spinLock), 1))
 		;
+}
+
+inline void unlock_pool(LinkedList_t *pool) {
+	pool->spinLock = 0;
+}
+
+inline DNode_t* alloc_node(LinkedList_t *pool) {
+	DNode_t* node;
 	if (pool->head.next) {
 		node = pool->head.next;
 		pool->head.next = node->next;
@@ -46,36 +60,36 @@ inline DNode_t* alloc_node(LinkedList_t *pool) {
 		node = (DNode_t*) pool->tail.next;
 		pool->tail.next++;
 	}
-	pool->spinLock = 0;
 	return node;
 }
 
 inline void dealloc_node(DNode_t *node, LinkedList_t *pool) {
-	while (xchg(&(pool->spinLock), 1))
-		;
 	node->next = pool->head.next;
 	pool->head.next = node;
-	pool->spinLock = 0;
 }
 
 DNode_t* append(LinkedList_t* list, void * data) {
+	lock_pool(&default_pool);
 	DNode_t* node = alloc_node(&default_pool);
+	unlock_pool(&default_pool);
 	node->prev = list->tail.prev, node->next = &(list->tail);
 	node->next->prev = node, node->prev->next = node;
 	node->data = data;
 	return node;
 }
 
-/*DNode_t* append_from_pool(LinkedList_t *list, void * data, LinkedList_t *pool) {
- DNode_t* node = alloc_node(pool);
- node->prev = list->tail.prev, node->next = &(list->tail);
- node->next->prev = node, node->prev->next = node;
- node->data = data;
- return node;
- }*/
+DNode_t* append_with_pool(LinkedList_t *list, void * data, LinkedList_t *pool) {
+	DNode_t* node = alloc_node(pool);
+	node->prev = list->tail.prev, node->next = &(list->tail);
+	node->next->prev = node, node->prev->next = node;
+	node->data = data;
+	return node;
+}
 
 DNode_t* sync_append(LinkedList_t* list, void * data) {
+	lock_pool(&default_pool);
 	DNode_t* node = alloc_node(&default_pool);
+	unlock_pool(&default_pool);
 	while (xchg(&(list->spinLock), 1))
 		;
 	node->prev = list->tail.prev, node->next = &(list->tail);
@@ -89,7 +103,17 @@ DNode_t* delete_node(DNode_t * node) {
 	node->next->prev = node->prev;
 	node->prev->next = node->next;
 	DNode_t* nxt = node->next;
+	lock_pool(&default_pool);
 	dealloc_node(node, &default_pool);
+	unlock_pool(&default_pool);
+	return nxt;
+}
+
+DNode_t* delete_node_with_pool(DNode_t * node, LinkedList_t* pool) {
+	node->next->prev = node->prev;
+	node->prev->next = node->next;
+	DNode_t* nxt = node->next;
+	dealloc_node(node, pool);
 	return nxt;
 }
 

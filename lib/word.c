@@ -1,19 +1,19 @@
 #include <pthread.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include "submit_params.h"
 #include "linked_list.h"
 #include "trie.h"
 #include "query.h"
 #include "word.h"
 
-extern Trie3 eltire;
-
 void matchEditDIstance(int did, int tid, char *w, int l, int *count,
-		TrieNode3 * current, int used, int ind) {
+		TrieNode3 * current, int used, int ind, LinkedList_t *results,
+		LinkedList_t *pool) {
 	while (ind < l && current) {
 		if (current->next[26] && used < 3)
 			matchEditDIstance(did, tid, w, l, count, current->next[26],
-					used + 1, ind + 1);
+					used + 1, ind + 1, results, pool);
 		current = current->next[w[ind] - BASE_CHAR];
 		ind++;
 	}
@@ -41,17 +41,20 @@ void matchEditDIstance(int did, int tid, char *w, int l, int *count,
 				if (queryData->matchedWords[tid]
 						== (1 << (queryData->numWords)) - 1) {
 					(*count)++;
+					append_with_pool(results,
+							(void *) (uintptr_t) queryData->queryId, pool);
 				}
 			}
 			cur = cur->next;
 		}
 	}
 }
+
 void matchWord(int did, int tid, char *w, int l, int *count, Trie_t * trie,
-		Trie3 * trie3) {
+		Trie3 * trie3, LinkedList_t *results, LinkedList_t *pool) {
 	if (l > 34)
 		return;
-	matchEditDIstance(did, tid, w, l, count, &trie3->root, 0, 0);
+	matchEditDIstance(did, tid, w, l, count, &trie3->root, 0, 0, results, pool);
 //	int i = 0;
 //	for (i = 0; i < l; i++) {
 //		int j = i;

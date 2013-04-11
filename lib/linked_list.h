@@ -27,7 +27,9 @@ LinkedList_t* newLinkedList();
  * node it doesn't copy the data.
  */
 void initLinkedListDefaultPool();
+void initLinkedListPool(LinkedList_t *pool, int size);
 DNode_t* append(LinkedList_t* list, void * data);
+DNode_t* append_with_pool(LinkedList_t *list, void * data, LinkedList_t *pool);
 DNode_t* sync_append(LinkedList_t *list, void *data);
 /**
  * deletes node from the linkedlist it belongs, and frees memory used by node
@@ -35,6 +37,7 @@ DNode_t* sync_append(LinkedList_t *list, void *data);
  * returns the node->next (for deletion while iteration).
  */
 DNode_t* delete_node(DNode_t * node);
+DNode_t* delete_node_with_pool(DNode_t * node, LinkedList_t* pool);
 /**
  * returns true if the linkedlist list is empty
  */
