@@ -52,6 +52,7 @@ char lamda = 'a' + 26;
 int cntz = 0;
 /*QUERY DESCRIPTOR MAP GOES HERE*/
 QueryDescriptor qmap[QDESC_MAP_SIZE ];
+char active_queries[QDESC_MAP_SIZE ];
 DNode_t qnodes[QDESC_MAP_SIZE ];
 
 DNode_t *lazy_nodes[QDESC_MAP_SIZE ];
@@ -127,6 +128,29 @@ void *matcher_thread(void *n) {
 					DNode_t* cur = lists[tid][0]->head.next;
 					while (cur != &(lists[tid][0]->tail)) {
 
+						global_list_data * tmp = (global_list_data*) (cur->data);
+
+						if (!active_queries[tmp->qid]) {
+							DNode_t* tmp = cur->next;
+							delete_node(cur);
+							cur = tmp;
+							continue;
+						}
+
+						QueryDescriptor* queryData = &qmap[tmp->qid];
+
+						if ((queryData->matchedWords[tid]
+								& (1 << (tmp->wordIndex))) == 0) {
+//							queryData->matchedWords[tid] |= (1
+//									<< (segData->wordIndex));
+
+							if (queryData->matchedWords[tid]
+									== (1 << (queryData->numWords)) - 1) {
+								matchCount++;
+							}
+						}
+
+						cur = cur->next;
 					}
 				}
 			}
@@ -143,8 +167,12 @@ void *matcher_thread(void *n) {
 		while (cur != &(queries->tail)) {
 			QueryDescriptor * cqd = (QueryDescriptor *) cur->data;
 			if (cqd->docId[tid] == doc_desc->docId
-					&& cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1)
+					&& cqd->matchedWords[tid] == (1 << (cqd->numWords)) - 1) {
+//				printf("%d\n", cqd->queryId);
+//				fflush(0);
 				doc_desc->matches[p++] = cqd->queryId;
+			}
+
 			if (p == matchCount)
 				break;
 			cur = cur->next;
@@ -191,8 +219,10 @@ ErrorCode InitializeIndex() {
 		free_docs[i] = documents[i];
 	}
 
-	for (i = 0; i < QDESC_MAP_SIZE ; i++)
+	for (i = 0; i < QDESC_MAP_SIZE ; i++) {
+		active_queries[i] = 0;
 		edit_list[i] = newLinkedList();
+	}
 
 	cirq_free_docs.size = CIR_QUEUE_SIZE;
 	cirq_free_segments.size = CIR_QUEUE_SIZE;
@@ -262,8 +292,8 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 #ifdef THREAD_ENABLE
 	//waitTillFull(&cirq_free_docs);
 #endif
-	int in = 0, i = 0, j = 0, wordLength = 0, iq = 0, s;
-
+	int in = 0;
+	active_queries[query_id] = 1;
 	int wordSizes[6];
 	int numOfWords = 0;
 	//get query descriptor for the query
@@ -341,7 +371,7 @@ ErrorCode EndQuery(QueryID query_id) {
 	waitTillFull(&cirq_free_segments);
 	waitTillFull(&cirq_free_docs);
 #endif
-
+	active_queries[query_id] = 0;
 	QueryDescriptor* queryDescriptor = &qmap[query_id];
 	removeQuery(query_id, queryDescriptor);
 	if (lazy_nodes[query_id]) {

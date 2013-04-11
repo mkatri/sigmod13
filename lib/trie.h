@@ -12,6 +12,11 @@
 #include "query.h"
 //#include <pthread.h>
 
+typedef struct global_list_data {
+	int qid;
+	int wordIndex;
+} global_list_data;
+
 typedef struct TrieNode2 {
 	struct TrieNode2* next[CHAR_SET_SIZE];
 	char terminal;

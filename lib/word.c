@@ -41,15 +41,19 @@ void matchEditDIstance(int did, int tid, char *w, int l, int *count,
 				continue;
 			}
 
-//			append(list,queryData);
+			queryData->last_doc_word_matched[tid][segData->wordIndex] =
+					doc_word_num;
 
-			if (/*word_time == 0
-					&&*/ (queryData->matchedWords[tid]
-							& (1 << (segData->wordIndex))) == 0) {
+			global_list_data* tmp = (global_list_data*) malloc(
+					sizeof(global_list_data));
+			tmp->qid = segData->queryId;
+			tmp->wordIndex = segData->wordIndex;
+			append(list, tmp);
+
+			if ( /*word_time == 0
+			 &&*/(queryData->matchedWords[tid] & (1 << (segData->wordIndex)))
+					== 0) {
 				queryData->matchedWords[tid] |= (1 << (segData->wordIndex));
-
-				queryData->last_doc_word_matched[tid][segData->wordIndex] =
-						doc_word_num;
 
 				if (queryData->matchedWords[tid]
 						== (1 << (queryData->numWords)) - 1) {
