@@ -16,6 +16,7 @@ typedef struct TrieNode2 {
 	struct TrieNode2* next[CHAR_SET_SIZE];
 	char terminal;
 	int docId;
+	long long word_time;
 } TrieNode_t2;
 
 typedef struct Trie2 {
@@ -50,6 +51,7 @@ Trie_t2 * newTrie2();
 
 TrieNode_t2 * newTrieNode2();
 void TrieDelete2(Trie_t2* trie);
-char TriewordExist(Trie_t2* trie, char * str, int length, int docId);
+long long TriewordExist(Trie_t2* trie, char * str, int length, int docId,
+		LinkedList_t** list);
 
 #endif /* TRIE_H_ */

@@ -17,7 +17,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //////////////// DOC THREADING STRUCTS //////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////
-long long global_time = 0;
+long long global_time = 1;
 #define CIR_QUEUE_SIZE 12 * NUM_THREADS_QUERY
 
 pthread_t matcher_threads[NUM_THREADS_DOC];
@@ -84,11 +84,8 @@ void init() {
 	lazy_list = newLinkedList();
 	queries = newLinkedList();
 	int numCPU = sysconf(_SC_NPROCESSORS_ONLN);
-//	ht = new_Hash_Table();
-	//THREAD_ENABLE=1;
+	printf("%d\n", numCPU);
 	eltire = newTrie3();
-//	dtrie = newTrie();
-//	docList = newLinkedList();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +93,7 @@ void init() {
 // Keeps all currently active queries
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
-int cnt = 0;
+LinkedList_t* lists[NUM_THREADS_DOC][1];
 void *matcher_thread(void *n) {
 	int tid = (uintptr_t) n;
 #ifdef THREAD_ENABLE
@@ -114,11 +111,18 @@ void *matcher_thread(void *n) {
 			int e = i;
 			while (doc[e] != ' ' && doc[e] != '\0')
 				e++;
-			if (!TriewordExist(dtrie[tid], &doc[i], e - i, doc_desc->docId)) {
+			long long time = TriewordExist(dtrie[tid], &doc[i], e - i,
+					doc_desc->docId, lists[tid]);
+
+			if (!time) {
 				matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
-						eltire);
-			} else
-				cnt++;
+						eltire, lists[tid][0], 0);
+			} else {
+				if (time > 0) {
+					matchWord(doc_desc->docId, tid, &doc[i], e - i, &matchCount,
+							eltire, lists[tid][0], time);
+				}
+			}
 			i = e;
 		}
 

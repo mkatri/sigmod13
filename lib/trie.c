@@ -8,8 +8,6 @@
 
 extern long long global_time;
 
-void dfs(TrieNode3 * node, char last);
-
 Trie_t2 * newTrie2() {
 	Trie_t2* t = (Trie_t2 *) malloc(sizeof(Trie_t2));
 	memset(t, 0, sizeof(Trie_t2));
@@ -77,11 +75,9 @@ DNode_t* InsertTrie3(Trie3 * trie, char * str, int length, SegmentData* segData)
 	return ret;
 }
 
-
 inline TrieNode_t2* next_node2(TrieNode_t2 *current, char c) {
 	return current->next[c - BASE_CHAR];
 }
-
 
 // NEW TRIE !
 //--------------------------------------------------------------------------------------------------------------
@@ -103,7 +99,7 @@ TrieNode_t2 * newTrieNode2(Trie_t2 *t) {
 	return ret;
 }
 
-char TriewordExist(Trie_t2* trie, char * str, int length, int docId) {
+long long TriewordExist(Trie_t2* trie, char * str, int length, int docId,LinkedList_t** list) {
 	TrieNode_t2 *cur = &(trie->root);
 	int i;
 	for (i = 0; i < length; i++)
@@ -124,25 +120,16 @@ char TriewordExist(Trie_t2* trie, char * str, int length, int docId) {
 			return 0;
 		}
 	if (cur->terminal) {
+		long long ret = cur->word_time;
 		if (cur->docId == docId)
-			return 1;
+			ret *= -1;
 		cur->docId = docId;
+		cur->word_time = global_time;
+		return ret;
 	} else {
 		cur->terminal = 1;
 		cur->docId = docId;
+		cur->word_time = global_time;
 	}
 	return 0;
-}
-
-void dfs(TrieNode3 * node, char last) {
-	int i;
-#ifdef CORE_DEBUG
-	printf("%d %d %d\n", node->count[0], node->count[1], node->count[2]);
-#endif
-	for (i = 0; i <= 26; i++) {
-		if (node->next[i] != 0) {
-			printf("%c", i + 'a');
-			dfs(node->next[i], i + 'a');
-		}
-	}
 }
