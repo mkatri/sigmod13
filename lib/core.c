@@ -61,18 +61,18 @@ LinkedList_t* lazy_list;
 
 LinkedList_t * edit_list[QDESC_MAP_SIZE ];
 
-inline void addQuery(int queryId, QueryDescriptor * qds) {
-	DNode_t* node = &qnodes[queryId];
-	node->data = qds;
-	node->prev = queries->tail.prev, node->next = &(queries->tail);
-	node->next->prev = node, node->prev->next = node;
-}
-
-inline void removeQuery(int queryId, QueryDescriptor *qds) {
-	DNode_t* node = &qnodes[queryId];
-	node->next->prev = node->prev;
-	node->prev->next = node->next;
-}
+//inline void addQuery(int queryId, QueryDescriptor * qds) {
+//	DNode_t* node = &qnodes[queryId];
+//	node->data = qds;
+//	node->prev = queries->tail.prev, node->next = &(queries->tail);
+//	node->next->prev = node, node->prev->next = node;
+//}
+//
+//inline void removeQuery(int queryId, QueryDescriptor *qds) {
+//	DNode_t* node = &qnodes[queryId];
+//	node->next->prev = node->prev;
+//	node->prev->next = node->next;
+//}
 
 /*QUERY DESCRIPTOR MAP ENDS HERE*/
 
@@ -281,7 +281,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	for (in = 0; in < NUM_THREADS; in++)
 		queryDescriptor->docId[in] = -1;
 
-	addQuery(query_id, queryDescriptor);
+//	addQuery(query_id, queryDescriptor);
 
 	//as the query words are space separated so this method return the words and it's length
 	split(wordSizes, queryDescriptor, query_str, &numOfWords);
@@ -353,12 +353,12 @@ ErrorCode EndQuery(QueryID query_id) {
 #endif
 
 	QueryDescriptor* queryDescriptor = &qmap[query_id];
-	removeQuery(query_id, queryDescriptor);
+//	removeQuery(query_id, queryDescriptor);
 	if (lazy_nodes[query_id]) {
 		DNode_t*tmp = lazy_nodes[query_id];
 		delete_node(lazy_nodes[query_id]);
 		lazy_nodes[query_id] = 0;
-		removeQuery(query_id, queryDescriptor);
+//		removeQuery(query_id, queryDescriptor);
 		return EC_SUCCESS;
 	}
 

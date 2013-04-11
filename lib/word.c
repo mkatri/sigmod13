@@ -8,12 +8,11 @@
 #include "word.h"
 
 void matchEditDIstance(int did, int tid, char *w, int l, int *count,
-		TrieNode3 * current, int used, int ind, LinkedList_t *results,
-		LinkedList_t *pool) {
+		TrieNode3 * current, int ind, LinkedList_t *results, LinkedList_t *pool) {
 	while (ind < l && current) {
-		if (current->next[26] && used < 3)
-			matchEditDIstance(did, tid, w, l, count, current->next[26],
-					used + 1, ind + 1, results, pool);
+		if (current->next[26])
+			matchEditDIstance(did, tid, w, l, count, current->next[26], ind + 1,
+					results, pool);
 		current = current->next[w[ind] - BASE_CHAR];
 		ind++;
 	}
@@ -54,7 +53,7 @@ void matchWord(int did, int tid, char *w, int l, int *count, Trie_t * trie,
 		Trie3 * trie3, LinkedList_t *results, LinkedList_t *pool) {
 	if (l > 34)
 		return;
-	matchEditDIstance(did, tid, w, l, count, &trie3->root, 0, 0, results, pool);
+	matchEditDIstance(did, tid, w, l, count, &trie3->root, 0, results, pool);
 //	int i = 0;
 //	for (i = 0; i < l; i++) {
 //		int j = i;
