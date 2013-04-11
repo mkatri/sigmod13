@@ -18,10 +18,10 @@
 //////////////// DOC THREADING STRUCTS //////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-#define CIR_QUEUE_SIZE 12 * NUM_THREADS
+#define CIR_QUEUE_SIZE 12 * NUM_THREADS_QUERY
 
-pthread_t matcher_threads[NUM_THREADS];
-pthread_t candidate_gen_threads[NUM_THREADS];
+pthread_t matcher_threads[NUM_THREADS_DOC];
+pthread_t candidate_gen_threads[NUM_THREADS_QUERY];
 char documents[CIR_QUEUE_SIZE][MAX_DOC_LENGTH];
 CircularQueue cirq_free_docs;
 CircularQueue cirq_busy_docs;
@@ -44,7 +44,7 @@ int cmpfunc(const QueryID * a, const QueryID * b);
 void *generate_candidates(void *n);
 ///////////////////////////////////////////////////////////////////////////////////////////////
 Trie_t *trie;
-Trie_t2 * dtrie[NUM_THREADS];
+Trie_t2 * dtrie[NUM_THREADS_DOC];
 DocumentDescriptor docList;
 LinkedList_t *queries;
 unsigned long docCount;
@@ -175,7 +175,7 @@ ErrorCode InitializeIndex() {
 	pthread_cond_init(&docList_avail, NULL );
 
 	int i;
-	for (i = 0; i < NUM_THREADS; i++) {
+	for (i = 0; i < NUM_THREADS_DOC; i++) {
 		//dyn_array_init(&matches[i], RES_POOL_INITSIZE);
 		dtrie[i] = newTrie2();
 	}
@@ -191,9 +191,11 @@ ErrorCode InitializeIndex() {
 	cirq_free_segments.size = CIR_QUEUE_SIZE;
 
 #ifdef THREAD_ENABLE
-	for (i = 0; i < NUM_THREADS; i++) {
+	for (i = 0; i < NUM_THREADS_DOC; i++) {
 		pthread_create(&matcher_threads[i], NULL, matcher_thread,
 				(void *) (uintptr_t) i);
+	}
+	for (i = 0; i < NUM_THREADS_QUERY; i++) {
 		pthread_create(&candidate_gen_threads[i], NULL, generate_candidates,
 				(void *) (uintptr_t) i);
 	}
@@ -270,7 +272,7 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	queryDescriptor->matchDistance = match_dist;
 	queryDescriptor->matchType = match_type;
 	queryDescriptor->queryId = query_id;
-	for (in = 0; in < NUM_THREADS; in++)
+	for (in = 0; in < NUM_THREADS_DOC; in++)
 		queryDescriptor->docId[in] = -1;
 
 	addQuery(query_id, queryDescriptor);
@@ -430,9 +432,9 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 	dealloc_docDesc(doc_desc);
 	return EC_SUCCESS;
 }
-char result[NUM_THREADS][300000][33];
-int lengths[NUM_THREADS][300000];
-int indexxx[NUM_THREADS][300000];
+char result[NUM_THREADS_QUERY][300000][33];
+int lengths[NUM_THREADS_QUERY][300000];
+int indexxx[NUM_THREADS_QUERY][300000];
 //int maxLen[NUM_THREADS] = 0;
 
 //void generate_candidates(char * str, int len, int dist, SegmentData* segData) {
@@ -441,7 +443,8 @@ void *generate_candidates(void *n) {
 #ifdef THREAD_ENABLE
 	while (1) {
 #endif
-		SegmentData* segData = (SegmentData *)cir_queue_remove(&cirq_busy_segments);
+		SegmentData* segData = (SegmentData *) cir_queue_remove(
+				&cirq_busy_segments);
 		char *str = segData->parentQuery->words[segData->wordIndex];
 		int len = segData->parentQuery->words[segData->wordIndex + 1]
 				- segData->parentQuery->words[segData->wordIndex];

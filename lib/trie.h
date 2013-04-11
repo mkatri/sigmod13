@@ -43,6 +43,7 @@ typedef struct Trie2 {
 typedef struct TrieNode3 {
 	struct TrieNode3* next[26 + 1];
 	LinkedList_t list;
+	long long node_time;
 } TrieNode3;
 typedef struct Trie3 {
 	TrieNode3 root;
