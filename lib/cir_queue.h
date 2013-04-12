@@ -26,4 +26,9 @@ void cir_queue_insert(CircularQueue *q, void *i);
 void *cir_queue_remove(CircularQueue *q);
 void waitTillFull(CircularQueue *q);
 
+void cir_queue_lock(CircularQueue *q);
+void cir_queue_unlock(CircularQueue *q);
+char cir_queue_nowait_insert(CircularQueue *q, void *i);
+void *cir_queue_nowait_remove(CircularQueue *q);
+
 #endif /* CIR_QUEUE_H_ */

@@ -6,6 +6,7 @@
  */
 #ifndef TRIE_H_
 #define TRIE_H_
+#include <stdint.h>
 #include "linked_list.h"
 #define CHAR_SET_SIZE 35
 #define BASE_CHAR 'a'
@@ -29,6 +30,7 @@ typedef struct TrieNode2 {
 	struct TrieNode2* next[CHAR_SET_SIZE];
 	char terminal;
 	int docId;
+	uint64_t fingerPrint;
 } TrieNode_t2;
 
 typedef struct Trie2 {
@@ -71,7 +73,8 @@ Trie_t2 * newTrie2();
 
 TrieNode_t2 * newTrieNode2();
 void TrieDelete2(Trie_t2* trie);
-void TrieDocInsert(Trie_t2* trie, char *str, int length, int docId);
+void TrieDocInsert(Trie_t2* trie, char *str, int length, int docId,
+		uint64_t fingerPrint);
 char TriewordExist(Trie_t2* trie, char * str, int length, int docId);
 
 #endif /* TRIE_H_ */

@@ -270,7 +270,8 @@ char TriewordExist(Trie_t2* trie, char * str, int length, int docId) {
 	return 0;
 }
 
-void TrieDocInsert(Trie_t2* trie, char *str, int length, int docId) {
+void TrieDocInsert(Trie_t2* trie, char *str, int length, int docId,
+		uint64_t fingerPrint) {
 	TrieNode_t2 *cur = &(trie->root);
 	int i;
 
@@ -278,15 +279,21 @@ void TrieDocInsert(Trie_t2* trie, char *str, int length, int docId) {
 		if (cur->docId != docId) {
 			cur->terminal = 0;
 			cur->docId = docId;
+			cur->fingerPrint = 0;
 		}
+
 		if (cur->next[str[i] - BASE_CHAR] == 0) {
 			cur->next[str[i] - BASE_CHAR] = newTrieNode2(trie);
 		}
 		cur = cur->next[str[i] - BASE_CHAR];
 	}
 
+	if (cur->docId != docId)
+		cur->fingerPrint = 0;
+
 	cur->terminal = 1;
 	cur->docId = docId;
+	cur->fingerPrint |= fingerPrint;
 }
 
 void dfs(TrieNode3 * node, char last) {
