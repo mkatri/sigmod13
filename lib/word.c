@@ -29,20 +29,29 @@ void matchTrie(int *did, int tid, int *count, int task_size, TrieNode_t2 *dTrie,
 //			return;
 
 		if (dTrie->terminal == 1 && qTrie && !isEmpty(&(qTrie->list))
-//				&& qTrie->done[tid] != did[0] //TODO not sure about this one
-				) {
+				&& (qTrie->done[tid] != did[0]
+						|| (qTrie->done_bitmask[tid]
+								!= (((uint64_t) 1 << task_size) - 1)))) {
 
-			qTrie->done[tid] = did[0]; //TODO this is the rest :D
-			DNode_t *cur = qTrie->list.head.next;
-			SegmentData * segData = (SegmentData *) (cur->data);
-			QueryDescriptor * queryData = segData->parentQuery;
+			if (qTrie->done[tid] != did[0]) {
+				qTrie->done_bitmask[tid] = 0;
+				qTrie->done[tid] = did[0];
+			}
+
 			int ok = 0, tmp = 0, d;
-			while (cur != &(qTrie->list.tail)) {
-				segData = (SegmentData *) (cur->data);
-				queryData = segData->parentQuery;
-				tmp++;
-				for (d = 0; d < task_size; d++) {
-					if ((dTrie->fingerPrint & (((uint64_t) 1) << d)) != 0) {
+			for (d = 0; d < task_size; d++) {
+				if ((dTrie->fingerPrint & (((uint64_t) 1) << d)) != 0
+						&& (qTrie->done_bitmask[tid] & (((uint64_t) 1) << d))
+								== 0) {
+					DNode_t *cur = qTrie->list.head.next;
+					SegmentData * segData = (SegmentData *) (cur->data);
+					QueryDescriptor * queryData = segData->parentQuery;
+					ok = 0, tmp = 0;
+					while (cur != &(qTrie->list.tail)) {
+						segData = (SegmentData *) (cur->data);
+						queryData = segData->parentQuery;
+						tmp++;
+
 						if (queryData->docId[tid][d] != did[d]) {
 							queryData->docId[tid][d] = did[d];
 							queryData->matchedWords[tid][d] = 0;
@@ -62,13 +71,16 @@ void matchTrie(int *did, int tid, int *count, int task_size, TrieNode_t2 *dTrie,
 										pool);
 							}
 						}
+
+						cur = cur->next;
 					}
+					if (!ok)
+						overhead[tid] += tmp;
+					total[tid] += tmp;
 				}
-				cur = cur->next;
 			}
-			if (!ok)
-				overhead[tid] += tmp;
-			total[tid] += tmp;
+
+			qTrie->done_bitmask[tid] |= dTrie->fingerPrint;
 		}
 
 		int i;

@@ -47,6 +47,7 @@ typedef struct TrieNode3 {
 	LinkedList_t list;
 	//TODO first thing to sacrifice :D
 	int done[NUM_THREADS];
+	uint64_t done_bitmask[NUM_THREADS];
 } TrieNode3;
 typedef struct Trie3 {
 	TrieNode3 root;
