@@ -118,72 +118,73 @@ void *matcher_thread(void *n) {
 #ifdef THREAD_ENABLE
 	while (1) {
 #endif
-	//pthread_mutex_lock(&big_debug_lock);
+		//pthread_mutex_lock(&big_debug_lock);
 //		DocumentDescriptor *doc_desc = (DocumentDescriptor *) cir_queue_remove(
 //				&cirq_busy_docs);
-	MatchTask *task = (MatchTask *) cir_queue_remove(&cirq_busy_tasks);
+		MatchTask *task = (MatchTask *) cir_queue_remove(&cirq_busy_tasks);
 
-	int task_size = task->numTasks;
+		int task_size = task->numTasks;
 
-	int d, i;
-	memset(matchCount, 0, sizeof(int) * DOC_PER_THREAD);
-	uint64_t fingerprint = 0;
-	for (d = 0; d < task_size; d++) {
-		doc_desc_array[d] = task->task_docs[d];
-		doc_id_array[d] = task->task_docs[d]->docId;
-		DocumentDescriptor *doc_desc = doc_desc_array[d];
-		fingerprint = 1 << d;
-		char *doc = doc_desc->document;
-		i = 0;
-		while (doc[i]) {
-			while (doc[i] == ' ')
-				i++;
-			int e = i;
-			while (doc[e] != ' ' && doc[e] != '\0')
-				e++;
-			TrieDocInsert(dtrie[tid], &doc[i], e - i, doc_desc_array[0]->docId,
-					fingerprint);
-			i = e;
-		}
-	}
-
-	matchTrie(doc_id_array, tid, matchCount, task_size, &(dtrie[tid]->root),
-			&(eltire->root), qresult[tid], &qresult_pool[tid]);
-
-	for (d = 0; d < task_size; d++)
-		cir_queue_insert(&cirq_free_docs, doc_desc_array[d]->document);
-
-	cir_queue_insert(&cirq_free_tasks, task);
-
-	for (d = 0; d < task_size; d++) {
-		doc_desc_array[d]->matches = (QueryID *) malloc(
-				sizeof(QueryID) * matchCount[d]);
-		doc_desc_array[d]->numResults = matchCount[d];
-
-		int p = 0;
-
-		DNode_t* cur = qresult[tid][d].head.next;
-		while (cur != &(qresult[tid][d].tail)) {
-
-			doc_desc_array[d]->matches[p++] = (QueryID) (uintptr_t) cur->data;
-
-			cur = delete_node_with_pool(cur, &qresult_pool[tid]);
+		int d, i;
+		memset(matchCount, 0, sizeof(int) * DOC_PER_THREAD);
+		uint64_t fingerprint = 0;
+		for (d = 0; d < task_size; d++) {
+			doc_desc_array[d] = task->task_docs[d];
+			doc_id_array[d] = task->task_docs[d]->docId;
+			DocumentDescriptor *doc_desc = doc_desc_array[d];
+			fingerprint = 1 << d;
+			char *doc = doc_desc->document;
+			i = 0;
+			while (doc[i]) {
+				while (doc[i] == ' ')
+					i++;
+				int e = i;
+				while (doc[e] != ' ' && doc[e] != '\0')
+					e++;
+				TrieDocInsert(dtrie[tid], &doc[i], e - i,
+						doc_desc_array[0]->docId, fingerprint);
+				i = e;
+			}
 		}
 
-		qsort(doc_desc_array[d]->matches, matchCount[d], sizeof(QueryID),
-				cmpfunc);
-	}
+		matchTrie(doc_id_array, tid, matchCount, task_size, &(dtrie[tid]->root),
+				&(eltire->root), qresult[tid], &qresult_pool[tid]);
 
-	pthread_mutex_lock(&docList_lock);
-	for (d = 0; d < task_size; d++) {
-		doc_desc_array[d]->next = docList.next;
-		docList.next = doc_desc_array[d];
-	}
-	pthread_cond_signal(&docList_avail);
-	pthread_mutex_unlock(&docList_lock);
-	//pthread_mutex_unlock(&big_debug_lock);
+		for (d = 0; d < task_size; d++)
+			cir_queue_insert(&cirq_free_docs, doc_desc_array[d]->document);
+
+		cir_queue_insert(&cirq_free_tasks, task);
+
+		for (d = 0; d < task_size; d++) {
+			doc_desc_array[d]->matches = (QueryID *) malloc(
+					sizeof(QueryID) * matchCount[d]);
+			doc_desc_array[d]->numResults = matchCount[d];
+
+			int p = 0;
+
+			DNode_t* cur = qresult[tid][d].head.next;
+			while (cur != &(qresult[tid][d].tail)) {
+
+				doc_desc_array[d]->matches[p++] =
+						(QueryID) (uintptr_t) cur->data;
+
+				cur = delete_node_with_pool(cur, &qresult_pool[tid]);
+			}
+
+			qsort(doc_desc_array[d]->matches, matchCount[d], sizeof(QueryID),
+					cmpfunc);
+		}
+
+		pthread_mutex_lock(&docList_lock);
+		for (d = 0; d < task_size; d++) {
+			doc_desc_array[d]->next = docList.next;
+			docList.next = doc_desc_array[d];
+		}
+		pthread_cond_signal(&docList_avail);
+		pthread_mutex_unlock(&docList_lock);
+		//pthread_mutex_unlock(&big_debug_lock);
 #ifdef THREAD_ENABLE
-}
+	}
 #endif
 	return 0;
 }
@@ -401,6 +402,16 @@ ErrorCode EndQuery(QueryID query_id) {
 #ifdef CORE_DEBUG
 	puts("inside here");
 #endif
+
+	if (curTaskProgress != 0) {
+		curTask->numTasks = curTaskProgress;
+		curTaskProgress = 0;
+		cir_queue_insert(&cirq_busy_tasks, curTask);
+#ifndef THREAD_ENABLE
+		matcher_thread(0);
+#endif
+	}
+
 #ifdef THREAD_ENABLE
 	waitTillFull(&cirq_free_segments);
 	waitTillFull(&cirq_free_docs);
@@ -525,31 +536,63 @@ void *generate_candidates(void *n) {
 #ifdef THREAD_ENABLE
 	while (1) {
 #endif
-	SegmentData* segData = (SegmentData *) cir_queue_remove(
-			&cirq_busy_segments);
-	char *str = segData->parentQuery->words[segData->wordIndex];
-	int len = segData->parentQuery->words[segData->wordIndex + 1]
-			- segData->parentQuery->words[segData->wordIndex];
-	int dist = segData->parentQuery->matchDistance;
-	int type = segData->parentQuery->matchType;
-	if (type == MT_EXACT_MATCH)
-		dist = 0;
-	int start = 0, end = 1;
-	lengths[tid][0] = len;
-	int i;
-	for (i = 0; i < len; i++)
-		result[tid][0][i] = str[i];
-	int id = 0;
-	int resIndex = 1;
-	indexxx[tid][0] = 0;
-	while (dist > 0) {
-		for (id = start; id < end; id++) {
-			str = result[tid][id];
-			int i, j;
-			// insert
-			for (i = indexxx[tid][id]; i < lengths[tid][id]; i++) {
-				int ptr = 0;
+		SegmentData* segData = (SegmentData *) cir_queue_remove(
+				&cirq_busy_segments);
+		char *str = segData->parentQuery->words[segData->wordIndex];
+		int len = segData->parentQuery->words[segData->wordIndex + 1]
+				- segData->parentQuery->words[segData->wordIndex];
+		int dist = segData->parentQuery->matchDistance;
+		int type = segData->parentQuery->matchType;
+		if (type == MT_EXACT_MATCH)
+			dist = 0;
+		int start = 0, end = 1;
+		lengths[tid][0] = len;
+		int i;
+		for (i = 0; i < len; i++)
+			result[tid][0][i] = str[i];
+		int id = 0;
+		int resIndex = 1;
+		indexxx[tid][0] = 0;
+		while (dist > 0) {
+			for (id = start; id < end; id++) {
+				str = result[tid][id];
+				int i, j;
+				// insert
+				for (i = indexxx[tid][id]; i < lengths[tid][id]; i++) {
+					int ptr = 0;
+					if (type == MT_EDIT_DIST) {
+						for (j = 0; j < i; j++)
+							result[tid][resIndex][ptr++] = str[j];
+						result[tid][resIndex][ptr++] = lamda;
+						for (j = i; j < lengths[tid][id]; j++)
+							result[tid][resIndex][ptr++] = str[j];
+						result[tid][resIndex][ptr] = '\0';
+						lengths[tid][resIndex] = lengths[tid][id] + 1;
+						indexxx[tid][resIndex] = i + 1;
+						resIndex++;
+						// delete
+						ptr = 0;
+						for (j = 0; j < i; j++)
+							result[tid][resIndex][ptr++] = str[j];
+						for (j = i + 1; j < lengths[tid][id]; j++)
+							result[tid][resIndex][ptr++] = str[j];
+						result[tid][resIndex][ptr] = '\0';
+						lengths[tid][resIndex] = lengths[tid][id] - 1;
+						indexxx[tid][resIndex] = i;
+						resIndex++;
+					}
+					// swap
+					ptr = 0;
+					for (j = 0; j < lengths[tid][id]; j++)
+						result[tid][resIndex][ptr++] = str[j];
+					result[tid][resIndex][i] = lamda;
+					result[tid][resIndex][ptr] = '\0';
+					lengths[tid][resIndex] = lengths[tid][id];
+					indexxx[tid][resIndex] = i + 1;
+					resIndex++;
+				}
 				if (type == MT_EDIT_DIST) {
+					int ptr = 0;
 					for (j = 0; j < i; j++)
 						result[tid][resIndex][ptr++] = str[j];
 					result[tid][resIndex][ptr++] = lamda;
@@ -559,60 +602,28 @@ void *generate_candidates(void *n) {
 					lengths[tid][resIndex] = lengths[tid][id] + 1;
 					indexxx[tid][resIndex] = i + 1;
 					resIndex++;
-					// delete
-					ptr = 0;
-					for (j = 0; j < i; j++)
-						result[tid][resIndex][ptr++] = str[j];
-					for (j = i + 1; j < lengths[tid][id]; j++)
-						result[tid][resIndex][ptr++] = str[j];
-					result[tid][resIndex][ptr] = '\0';
-					lengths[tid][resIndex] = lengths[tid][id] - 1;
-					indexxx[tid][resIndex] = i;
-					resIndex++;
 				}
-				// swap
-				ptr = 0;
-				for (j = 0; j < lengths[tid][id]; j++)
-					result[tid][resIndex][ptr++] = str[j];
-				result[tid][resIndex][i] = lamda;
-				result[tid][resIndex][ptr] = '\0';
-				lengths[tid][resIndex] = lengths[tid][id];
-				indexxx[tid][resIndex] = i + 1;
-				resIndex++;
 			}
-			if (type == MT_EDIT_DIST) {
-				int ptr = 0;
-				for (j = 0; j < i; j++)
-					result[tid][resIndex][ptr++] = str[j];
-				result[tid][resIndex][ptr++] = lamda;
-				for (j = i; j < lengths[tid][id]; j++)
-					result[tid][resIndex][ptr++] = str[j];
-				result[tid][resIndex][ptr] = '\0';
-				lengths[tid][resIndex] = lengths[tid][id] + 1;
-				indexxx[tid][resIndex] = i + 1;
-				resIndex++;
-			}
+			start = end;
+			end = resIndex;
+			dist--;
 		}
-		start = end;
-		end = resIndex;
-		dist--;
-	}
 #ifndef CONC_TRIE3
-	pthread_mutex_lock(&trie_lock);
+		pthread_mutex_lock(&trie_lock);
 #endif
-	int ind = start;
-	while (ind < end) {
-		DNode_t * node = InsertTrie3(eltire, result[tid][ind],
-				lengths[tid][ind], segData);
-		sync_append(edit_list[segData->queryId], node);
-		ind++;
-	}
+		int ind = start;
+		while (ind < end) {
+			DNode_t * node = InsertTrie3(eltire, result[tid][ind],
+					lengths[tid][ind], segData);
+			sync_append(edit_list[segData->queryId], node);
+			ind++;
+		}
 #ifndef CONC_TRIE3
-	pthread_mutex_unlock(&trie_lock);
+		pthread_mutex_unlock(&trie_lock);
 #endif
-	cir_queue_insert(&cirq_free_segments, NULL );
+		cir_queue_insert(&cirq_free_segments, NULL );
 #ifdef THREAD_ENABLE
-}
+	}
 #endif
 	return 0;
 }
