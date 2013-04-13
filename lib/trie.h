@@ -27,6 +27,9 @@ typedef struct Trie {
 } Trie_t;
 typedef struct TrieNode2 {
 	struct TrieNode2* next[CHAR_SET_SIZE];
+	struct TrieNode2* list[CHAR_SET_SIZE];
+	char pos[CHAR_SET_SIZE];
+	int at;
 	char terminal;
 	int docId;
 } TrieNode_t2;

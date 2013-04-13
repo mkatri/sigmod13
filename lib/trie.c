@@ -227,11 +227,9 @@ TrieNode_t2 * newTrieNode2(Trie_t2 *t) {
 		t->pool = (TrieNode_t2 *) malloc(sizeof(TrieNode_t2) * t->pool_size);
 		t->pool_space = t->pool_size;
 	}
-
 	ret = (TrieNode_t2*) t->pool;
 	t->pool++;
 	t->pool_space--;
-
 	memset(ret, 0, sizeof(TrieNode_t2));
 	return ret;
 }
@@ -281,6 +279,8 @@ void TrieDocInsert(Trie_t2* trie, char *str, int length, int docId) {
 		}
 		if (cur->next[str[i] - BASE_CHAR] == 0) {
 			cur->next[str[i] - BASE_CHAR] = newTrieNode2(trie);
+			cur->pos[cur->at]=str[i]-BASE_CHAR;
+			cur->list[cur->at++] = cur->next[str[i] - BASE_CHAR];
 		}
 		cur = cur->next[str[i] - BASE_CHAR];
 	}

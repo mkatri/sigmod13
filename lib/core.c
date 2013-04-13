@@ -37,7 +37,6 @@ QueryDescriptor *busy_segments[CIR_QUEUE_SIZE];
 pthread_mutex_t docList_lock;
 pthread_cond_t docList_avail;
 pthread_mutex_t trie_lock;
-
 pthread_mutex_t big_debug_lock;
 //DynamicArray matches[NUM_THREADS];
 int cmpfunc(const void* a, const void* b);
@@ -54,14 +53,14 @@ Trie3 * eltire;
 char lamda = 'a' + 26;
 int cntz = 0;
 /*QUERY DESCRIPTOR MAP GOES HERE*/
-QueryDescriptor qmap[QDESC_MAP_SIZE ];
+QueryDescriptor qmap[QDESC_MAP_SIZE];
 
-DNode_t qnodes[QDESC_MAP_SIZE ];
+DNode_t qnodes[QDESC_MAP_SIZE];
 
-DNode_t *lazy_nodes[QDESC_MAP_SIZE ];
+DNode_t *lazy_nodes[QDESC_MAP_SIZE];
 LinkedList_t* lazy_list;
 
-LinkedList_t * edit_list[QDESC_MAP_SIZE ];
+LinkedList_t * edit_list[QDESC_MAP_SIZE];
 
 /*QUERY DESCRIPTOR MAP ENDS HERE*/
 
@@ -163,10 +162,10 @@ ErrorCode InitializeIndex() {
 	cir_queue_init(&cirq_busy_segments, (void **) &busy_segments,
 	CIR_QUEUE_SIZE);
 
-	pthread_mutex_init(&big_debug_lock, NULL );
-	pthread_mutex_init(&trie_lock, NULL );
-	pthread_mutex_init(&docList_lock, NULL );
-	pthread_cond_init(&docList_avail, NULL );
+	pthread_mutex_init(&big_debug_lock, NULL);
+	pthread_mutex_init(&trie_lock, NULL);
+	pthread_mutex_init(&docList_lock, NULL);
+	pthread_cond_init(&docList_avail, NULL);
 
 	int i;
 	for (i = 0; i < NUM_THREADS; i++) {
@@ -181,7 +180,7 @@ ErrorCode InitializeIndex() {
 		free_docs[i] = documents[i];
 	}
 
-	for (i = 0; i < QDESC_MAP_SIZE ; i++)
+	for (i = 0; i < QDESC_MAP_SIZE; i++)
 		edit_list[i] = newLinkedList();
 
 	cirq_free_docs.size = CIR_QUEUE_SIZE;
@@ -528,7 +527,7 @@ void *generate_candidates(void *n) {
 #ifndef CONC_TRIE3
 		pthread_mutex_unlock(&trie_lock);
 #endif
-		cir_queue_insert(&cirq_free_segments, NULL );
+		cir_queue_insert(&cirq_free_segments, NULL);
 #ifdef THREAD_ENABLE
 	}
 #endif
