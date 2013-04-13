@@ -82,6 +82,13 @@ DNode_t* InsertTrie3(Trie3 * trie, char * str, int length, SegmentData* segData)
 		}
 		current = current->next[str[i] - BASE_CHAR];
 	}
+	DNode_t* last = (&(current->list))->tail.prev;
+	if (last->data) {
+		SegmentData * segData2 = (SegmentData*) last->data;
+		if (segData2->queryId == segData->queryId
+				&& segData2->wordIndex == segData->wordIndex)
+			return 0;
+	}
 	DNode_t* ret = sync_append(&(current->list), segData);
 	return ret;
 }

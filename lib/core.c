@@ -53,14 +53,14 @@ Trie3 * eltire;
 char lamda = 'a' + 26;
 int cntz = 0;
 /*QUERY DESCRIPTOR MAP GOES HERE*/
-QueryDescriptor qmap[QDESC_MAP_SIZE];
+QueryDescriptor qmap[QDESC_MAP_SIZE ];
 
-DNode_t qnodes[QDESC_MAP_SIZE];
+DNode_t qnodes[QDESC_MAP_SIZE ];
 
-DNode_t *lazy_nodes[QDESC_MAP_SIZE];
+DNode_t *lazy_nodes[QDESC_MAP_SIZE ];
 LinkedList_t* lazy_list;
 
-LinkedList_t * edit_list[QDESC_MAP_SIZE];
+LinkedList_t * edit_list[QDESC_MAP_SIZE ];
 
 /*QUERY DESCRIPTOR MAP ENDS HERE*/
 
@@ -162,10 +162,10 @@ ErrorCode InitializeIndex() {
 	cir_queue_init(&cirq_busy_segments, (void **) &busy_segments,
 	CIR_QUEUE_SIZE);
 
-	pthread_mutex_init(&big_debug_lock, NULL);
-	pthread_mutex_init(&trie_lock, NULL);
-	pthread_mutex_init(&docList_lock, NULL);
-	pthread_cond_init(&docList_avail, NULL);
+	pthread_mutex_init(&big_debug_lock, NULL );
+	pthread_mutex_init(&trie_lock, NULL );
+	pthread_mutex_init(&docList_lock, NULL );
+	pthread_cond_init(&docList_avail, NULL );
 
 	int i;
 	for (i = 0; i < NUM_THREADS; i++) {
@@ -180,7 +180,7 @@ ErrorCode InitializeIndex() {
 		free_docs[i] = documents[i];
 	}
 
-	for (i = 0; i < QDESC_MAP_SIZE; i++)
+	for (i = 0; i < QDESC_MAP_SIZE ; i++)
 		edit_list[i] = newLinkedList();
 
 	cirq_free_docs.size = CIR_QUEUE_SIZE;
@@ -434,6 +434,7 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 char result[NUM_THREADS][300000][33];
 int lengths[NUM_THREADS][300000];
 int indexxx[NUM_THREADS][300000];
+int lastOperation[NUM_THREADS][300000];
 //int maxLen[NUM_THREADS] = 0;
 
 //void generate_candidates(char * str, int len, int dist, SegmentData* segData) {
@@ -463,19 +464,27 @@ void *generate_candidates(void *n) {
 			for (id = start; id < end; id++) {
 				str = result[tid][id];
 				int i, j;
-				// insert
+				char test = (lastOperation[tid][id] == 1 ? 1 : 0);
 				for (i = indexxx[tid][id]; i < lengths[tid][id]; i++) {
 					int ptr = 0;
 					if (type == MT_EDIT_DIST) {
-						for (j = 0; j < i; j++)
-							result[tid][resIndex][ptr++] = str[j];
-						result[tid][resIndex][ptr++] = lamda;
-						for (j = i; j < lengths[tid][id]; j++)
-							result[tid][resIndex][ptr++] = str[j];
-						result[tid][resIndex][ptr] = '\0';
-						lengths[tid][resIndex] = lengths[tid][id] + 1;
-						indexxx[tid][resIndex] = i + 1;
-						resIndex++;
+						if (test)
+							i++;
+						if (i < lengths[tid][id]) {
+							// insert
+							for (j = 0; j < i; j++)
+								result[tid][resIndex][ptr++] = str[j];
+							result[tid][resIndex][ptr++] = lamda;
+							for (j = i; j < lengths[tid][id]; j++)
+								result[tid][resIndex][ptr++] = str[j];
+							result[tid][resIndex][ptr] = '\0';
+							lengths[tid][resIndex] = lengths[tid][id] + 1;
+							indexxx[tid][resIndex] = i + 1;
+							lastOperation[tid][resIndex] = 0;
+							resIndex++;
+						}
+						if (test)
+							i--;
 						// delete
 						ptr = 0;
 						for (j = 0; j < i; j++)
@@ -485,6 +494,7 @@ void *generate_candidates(void *n) {
 						result[tid][resIndex][ptr] = '\0';
 						lengths[tid][resIndex] = lengths[tid][id] - 1;
 						indexxx[tid][resIndex] = i;
+						lastOperation[tid][resIndex] = 1;
 						resIndex++;
 					}
 					// swap
@@ -495,9 +505,14 @@ void *generate_candidates(void *n) {
 					result[tid][resIndex][ptr] = '\0';
 					lengths[tid][resIndex] = lengths[tid][id];
 					indexxx[tid][resIndex] = i + 1;
+					lastOperation[tid][resIndex] = 2;
 					resIndex++;
 				}
 				if (type == MT_EDIT_DIST) {
+//					if (test)
+//						i++;
+//					if (i == lengths[tid][id]) {
+//					if (!test) {
 					int ptr = 0;
 					for (j = 0; j < i; j++)
 						result[tid][resIndex][ptr++] = str[j];
@@ -507,7 +522,12 @@ void *generate_candidates(void *n) {
 					result[tid][resIndex][ptr] = '\0';
 					lengths[tid][resIndex] = lengths[tid][id] + 1;
 					indexxx[tid][resIndex] = i + 1;
+					lastOperation[tid][resIndex] = 0;
 					resIndex++;
+//					}
+//					}
+//					if (test)
+//						i--;
 				}
 			}
 			start = end;
@@ -521,13 +541,15 @@ void *generate_candidates(void *n) {
 		while (ind < end) {
 			DNode_t * node = InsertTrie3(eltire, result[tid][ind],
 					lengths[tid][ind], segData);
-			sync_append(edit_list[segData->queryId], node);
+//			printf("%s\n", result[tid][ind]);
+			if (node)
+				sync_append(edit_list[segData->queryId], node);
 			ind++;
 		}
 #ifndef CONC_TRIE3
 		pthread_mutex_unlock(&trie_lock);
 #endif
-		cir_queue_insert(&cirq_free_segments, NULL);
+		cir_queue_insert(&cirq_free_segments, NULL );
 #ifdef THREAD_ENABLE
 	}
 #endif
@@ -536,11 +558,11 @@ void *generate_candidates(void *n) {
 ///////////////////////////////////////////
 void core_test() {
 	InitializeIndex();
-	char f[32] = "air";
+	char f[32] = "abcd";
 //	char f2[32] = "aix";
 
-	StartQuery(5, f, MT_EDIT_DIST, 1);
-	MatchDocument(10, "air");
+	StartQuery(5, f, MT_EDIT_DIST, 3);
+	MatchDocument(10, "s");
 	EndQuery(5);
 	puts("====");
 	fflush(0);

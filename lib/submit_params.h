@@ -13,7 +13,7 @@
 #ifdef HOME
 //#define PROFILER
 #define THREAD_ENABLE
-#define NUM_THREADS 4
+#define NUM_THREADS 2
 #define QDESC_MAP_SIZE (int)5E4
 #define TRIE2_INIT_SIZE 1E4 /* this is the actual maximum in small AND big test */
 #define TRIE3_INIT_SIZE 1E5
@@ -21,7 +21,7 @@
 #define INIT_RESPOOL_SIZE (int)1E4
 #define INIT_DOCPOOL_SIZE (int)1E2
 #define INIT_QUEUE_SIZE (int)5E5
-#define CONC_TRIE3
+//#define CONC_TRIE3
 
 #else
 #define THREAD_ENABLE
