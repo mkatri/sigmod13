@@ -7,9 +7,13 @@
 #include "trie.h"
 #include "query.h"
 #include "word.h"
-char matched[QDESC_MAP_SIZE][6];
-TrieNode_t2 * dtrieQueue[NUM_THREADS][INIT_QUEUE_SIZE];
-TrieNode3 * qtrieQueue[NUM_THREADS][INIT_QUEUE_SIZE];
+char matched[QDESC_MAP_SIZE ][6];
+TrieNode_t2 * dtrieQueue[NUM_THREADS][INIT_QUEUE_SIZE ];
+TrieNode3 * qtrieQueue[NUM_THREADS][INIT_QUEUE_SIZE ];
+
+extern long long overhead[NUM_THREADS];
+extern long long total[NUM_THREADS];
+
 void matchTrie(int did, int tid, int *count, TrieNode_t2 * dTrie,
 		TrieNode3 * qTrie, LinkedList_t *results, LinkedList_t *pool) {
 	dtrieQueue[tid][0] = dTrie;
@@ -57,6 +61,10 @@ void matchTrie(int did, int tid, int *count, TrieNode_t2 * dTrie,
 				}
 				cur = cur->next;
 			}
+
+			if (!ok)
+				overhead[tid] += tmp;
+			total[tid] += tmp;
 		}
 
 		int i;

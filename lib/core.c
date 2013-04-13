@@ -19,6 +19,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////
 long long overhead[NUM_THREADS];
 long long total[NUM_THREADS];
+
 #define CIR_QUEUE_SIZE 12 * NUM_THREADS
 
 pthread_t matcher_threads[NUM_THREADS];
