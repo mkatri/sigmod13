@@ -79,6 +79,7 @@ DNode_t* InsertTrie3(Trie3 * trie, char * str, int length, SegmentData* segData)
 			if (!cmpxchg(&(current->next[str[i] - BASE_CHAR]), (uintptr_t) 0,
 					(uintptr_t) newNode))
 				returnToPool(trie, newNode);
+			current->qmask |= (1 << (str[i] - BASE_CHAR)); //XXX: out of this if
 		}
 		current = current->next[str[i] - BASE_CHAR];
 	}
@@ -283,15 +284,17 @@ void TrieDocInsert(Trie_t2* trie, char *str, int length, int docId) {
 		if (cur->docId != docId) {
 			cur->terminal = 0;
 			cur->docId = docId;
+			cur->dmask = 0;
 		}
 		if (cur->next[str[i] - BASE_CHAR] == 0) {
 			cur->next[str[i] - BASE_CHAR] = newTrieNode2(trie);
-			cur->pos[cur->at]=str[i]-BASE_CHAR;
-			cur->list[cur->at++] = cur->next[str[i] - BASE_CHAR];
 		}
+		cur->dmask |= (1 << (str[i] - BASE_CHAR));
 		cur = cur->next[str[i] - BASE_CHAR];
 	}
 
+	if (cur->docId != docId)
+		cur->dmask = 0;
 	cur->terminal = 1;
 	cur->docId = docId;
 }

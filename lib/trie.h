@@ -27,9 +27,10 @@ typedef struct Trie {
 } Trie_t;
 typedef struct TrieNode2 {
 	struct TrieNode2* next[CHAR_SET_SIZE];
-	struct TrieNode2* list[CHAR_SET_SIZE];
-	char pos[CHAR_SET_SIZE];
-	int at;
+//	struct TrieNode2* list[CHAR_SET_SIZE];
+//	char pos[CHAR_SET_SIZE];
+//	int at;
+	int dmask;
 	char terminal;
 	int docId;
 } TrieNode_t2;
@@ -48,6 +49,7 @@ typedef struct TrieNode3 {
 	LinkedList_t list;
 	//TODO first thing to sacrifice :D
 	int done[NUM_THREADS];
+	int qmask;
 } TrieNode3;
 typedef struct Trie3 {
 	TrieNode3 root;

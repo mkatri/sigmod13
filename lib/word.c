@@ -14,6 +14,23 @@ TrieNode3 * qtrieQueue[NUM_THREADS][INIT_QUEUE_SIZE ];
 extern long long overhead[NUM_THREADS];
 extern long long total[NUM_THREADS];
 
+inline int bsf(int bitmask) {
+	char isZero = 0;
+	int first = 0;
+
+	//TODO read from memroy directly?
+	asm volatile(
+			"bsf %2, %1\n\t"
+			"sete %0"
+			:"=r"(isZero), "=r"(first)
+			:"r"(bitmask)
+			:);
+
+	if (isZero)
+		return -1;
+	return first;
+}
+
 void matchTrie(int did, int tid, int *count, TrieNode_t2 * dTrie,
 		TrieNode3 * qTrie, LinkedList_t *results, LinkedList_t *pool) {
 	dtrieQueue[tid][0] = dTrie;
@@ -67,21 +84,25 @@ void matchTrie(int did, int tid, int *count, TrieNode_t2 * dTrie,
 			total[tid] += tmp;
 		}
 
-		int i;
-		int s = dTrie->at;
-		for (i = 0; i < s; i++) {
-			if (dTrie->list[i]->docId == did) {
-				if (qTrie->next[26]) {
-					dtrieQueue[tid][p] = dTrie->list[i];
-					qtrieQueue[tid][p++] = qTrie->next[26];
-					size++;
-				}
-				if (qTrie->next[dTrie->pos[i]]) {
-					dtrieQueue[tid][p] = dTrie->list[i];
-					qtrieQueue[tid][p++] = qTrie->next[dTrie->pos[i]];
-					size++;
-				}
+		int band = (qTrie->qmask & dTrie->dmask), dmask = dTrie->dmask, index;
+
+		TrieNode3* star = qTrie->next[26];
+
+		if (star) {
+			while ((index = bsf(dmask)) > -1) {
+				dmask ^= (1 << index);
+				dtrieQueue[tid][p] = dTrie->next[index];
+				qtrieQueue[tid][p++] = star;
+				size++;
 			}
 		}
+
+		while ((index = bsf(band)) > -1) {
+			band ^= (1 << index);
+			dtrieQueue[tid][p] = dTrie->next[index];
+			qtrieQueue[tid][p++] = qTrie->next[index];
+			size++;
+		}
+
 	}
 }
