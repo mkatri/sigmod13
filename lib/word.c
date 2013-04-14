@@ -27,7 +27,20 @@ inline int bsf(int bitmask) {
 	return first;
 }
 
-void matchTrie(int *did, int tid, int *count, int task_size, TrieNode_t2 *dTrie,
+inline long bsfl(long bitmask) {
+	long first = 0;
+	long isZero = -1;
+	asm(
+			"bsf %1, %0\n\t"
+			"cmove %2, %0"
+			:"=r"(first)
+			:"g"(bitmask), "rm"(isZero)
+			:);
+
+	return first;
+}
+
+void matchTrie(int did, int tid, int *count, int task_size, TrieNode_t2 *dTrie,
 		TrieNode3 *qTrie, LinkedList_t *results, LinkedList_t *pool) {
 	dtrieQueue[tid][0] = dTrie;
 	qtrieQueue[tid][0] = qTrie;
@@ -44,20 +57,19 @@ void matchTrie(int *did, int tid, int *count, int task_size, TrieNode_t2 *dTrie,
 //			return;
 
 		if (dTrie->terminal == 1 && qTrie && !isEmpty(&(qTrie->list))
-				&& (qTrie->done[tid] != did[0]
+				&& (qTrie->done[tid] != did
 						|| (qTrie->done_bitmask[tid]
 								!= (((uint64_t) 1L << task_size) - 1)))) {
 
-			if (qTrie->done[tid] != did[0]) {
+			if (qTrie->done[tid] != did) {
 				qTrie->done_bitmask[tid] = 0;
-				qTrie->done[tid] = did[0];
+				qTrie->done[tid] = did;
 			}
 
-			int notDoneFingerPrint = dTrie->fingerPrint
+			long notDoneFingerPrint = dTrie->fingerPrint
 					& ~qTrie->done_bitmask[tid];
-			int d;
-			while ((d = bsf(notDoneFingerPrint)) > -1) {
-				notDoneFingerPrint ^= (1 << d);
+
+			if (notDoneFingerPrint != 0) {
 				DNode_t *cur = qTrie->list.head.next;
 				SegmentData * segData = (SegmentData *) (cur->data);
 				QueryDescriptor * queryData = segData->parentQuery;
@@ -66,30 +78,51 @@ void matchTrie(int *did, int tid, int *count, int task_size, TrieNode_t2 *dTrie,
 					segData = (SegmentData *) (cur->data);
 					queryData = segData->parentQuery;
 					//						tmp++;
-					if (queryData->thSpec[tid].docId[d] != did[d]) {
-						queryData->thSpec[tid].docId[d] = did[d];
-						queryData->thSpec[tid].matchedWords[d] = 0;
+					if (queryData->thSpec[tid].docId != did) {
+						queryData->thSpec[tid].docId = did;
+						memset(queryData->thSpec[tid].docsMatchedWord, 0,
+								5 * sizeof(long));
 					}
 
-					if ((queryData->thSpec[tid].matchedWords[d]
-							& (1 << (segData->wordIndex))) == 0) {
-						//							ok = 1;
-						queryData->thSpec[tid].matchedWords[d] |= (1
-								<< (segData->wordIndex));
+					long localNotDoneFingerPrint =
+							notDoneFingerPrint
+									& ~queryData->thSpec[tid].docsMatchedWord[segData->wordIndex];
 
-						if (queryData->thSpec[tid].matchedWords[d]
-								== (1 << (queryData->numWords)) - 1) {
-							count[d]++;
-							append_with_pool(&results[d],
-									(void *) (uintptr_t) queryData->queryId,
-									pool);
+					if (localNotDoneFingerPrint != 0) {
+
+						int w;
+						long oldQueryStatus, newQueryStatus;
+						oldQueryStatus =
+								queryData->thSpec[tid].docsMatchedWord[0];
+						for (w = 1; w < queryData->numWords; w++)
+							oldQueryStatus &=
+									queryData->thSpec[tid].docsMatchedWord[w];
+
+						//TODO check this bitch? :D
+						queryData->thSpec[tid].docsMatchedWord[segData->wordIndex] |=
+								notDoneFingerPrint;
+
+						newQueryStatus =
+								queryData->thSpec[tid].docsMatchedWord[0];
+						for (w = 1; w < queryData->numWords; w++)
+							newQueryStatus &=
+									queryData->thSpec[tid].docsMatchedWord[w];
+
+						if (oldQueryStatus == 0 && newQueryStatus != 0) {
+							append_with_pool(results,
+									(void *) (uintptr_t) queryData, pool);
+						}
+
+						long d;
+						while ((d = bsfl(localNotDoneFingerPrint)) > -1) {
+							localNotDoneFingerPrint ^= (1L << d);
+							if (((oldQueryStatus & (1L << d)) == 0)
+									&& ((newQueryStatus & (1L << d)) != 0))
+								count[d]++;
 						}
 					}
 					cur = cur->next;
 				}
-				//					if (!ok)
-				//						overhead[tid] += tmp;
-				//					total[tid] += tmp;
 			}
 
 			qTrie->done_bitmask[tid] |= dTrie->fingerPrint;

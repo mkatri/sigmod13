@@ -26,8 +26,8 @@ typedef struct {
 } SegmentData __attribute__ ((aligned (64)));
 
 struct compact {
-	int docId[DOC_PER_THREAD];
-	char matchedWords[DOC_PER_THREAD];
+	int docId;
+	long docsMatchedWord[5];
 }__attribute__ ((aligned (64)));
 
 typedef struct QueryDescriptor {

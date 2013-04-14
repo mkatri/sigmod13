@@ -86,7 +86,7 @@ LinkedList_t * edit_list[QDESC_MAP_SIZE ];
 void split(int length[6], QueryDescriptor *desc, const char* query_str,
 		int * idx);
 
-LinkedList_t qresult[NUM_THREADS][DOC_PER_THREAD] __attribute__ ((aligned (64)));
+LinkedList_t qresult[NUM_THREADS] __attribute__ ((aligned (64)));
 LinkedList_t qresult_pool[NUM_THREADS] __attribute__ ((aligned (64)));
 
 void init() {
@@ -112,10 +112,22 @@ void init() {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 int cnt = 0;
 
+inline long bsfl2(long bitmask) {
+	long first = 0;
+	long isZero = -1;
+	asm(
+			"bsf %1, %0\n\t"
+			"cmove %2, %0"
+			:"=r"(first)
+			:"g"(bitmask), "rm"(isZero)
+			:);
+
+	return first;
+}
+
 void *matcher_thread(void *n) {
 	int tid = (uintptr_t) n;
 	DocumentDescriptor *doc_desc_array[DOC_PER_THREAD];
-	int doc_id_array[DOC_PER_THREAD];
 	int matchCount[DOC_PER_THREAD];
 #ifdef THREAD_ENABLE
 	while (1) {
@@ -132,7 +144,6 @@ void *matcher_thread(void *n) {
 		uint64_t fingerprint = 0;
 		for (d = 0; d < task_size; d++) {
 			doc_desc_array[d] = task->task_docs[d];
-			doc_id_array[d] = task->task_docs[d]->docId;
 			DocumentDescriptor *doc_desc = doc_desc_array[d];
 			fingerprint = 1L << d;
 			char *doc = doc_desc->document;
@@ -149,30 +160,42 @@ void *matcher_thread(void *n) {
 			}
 		}
 
-		matchTrie(doc_id_array, tid, matchCount, task_size, &(dtrie[tid]->root),
-				&(eltire->root), qresult[tid], &qresult_pool[tid]);
+		matchTrie(doc_desc_array[0]->docId, tid, matchCount, task_size,
+				&(dtrie[tid]->root), &(eltire->root), &qresult[tid],
+				&qresult_pool[tid]);
 
 		for (d = 0; d < task_size; d++)
 			cir_queue_insert(&cirq_free_docs, doc_desc_array[d]->document);
 
 		cir_queue_insert(&cirq_free_tasks, task);
 
+		int p[DOC_PER_THREAD];
 		for (d = 0; d < task_size; d++) {
 			doc_desc_array[d]->matches = (QueryID *) malloc(
 					sizeof(QueryID) * matchCount[d]);
 			doc_desc_array[d]->numResults = matchCount[d];
+			p[d] = 0;
+		}
 
-			int p = 0;
+		int w;
+		long queryStatus;
 
-			DNode_t* cur = qresult[tid][d].head.next;
-			while (cur != &(qresult[tid][d].tail)) {
+		DNode_t* cur = qresult[tid].head.next;
+		while (cur != &(qresult[tid].tail)) {
+			QueryDescriptor *qdesc = (QueryDescriptor *) cur->data;
+			queryStatus = qdesc->thSpec[tid].docsMatchedWord[0];
+			for (w = 1; w < qdesc->numWords; w++)
+				queryStatus &= qdesc->thSpec[tid].docsMatchedWord[w];
 
-				doc_desc_array[d]->matches[p++] =
-						(QueryID) (uintptr_t) cur->data;
-
-				cur = delete_node_with_pool(cur, &qresult_pool[tid]);
+			long d;
+			while ((d = bsfl2(queryStatus)) > -1) {
+				queryStatus ^= (1L << d);
+				doc_desc_array[d]->matches[p[d]++] = qdesc->queryId;
 			}
+			cur = delete_node_with_pool(cur, &qresult_pool[tid]);
+		}
 
+		for (d = 0; d < task_size; d++) {
 			qsort(doc_desc_array[d]->matches, matchCount[d], sizeof(QueryID),
 					cmpfunc);
 		}
@@ -218,10 +241,9 @@ ErrorCode InitializeIndex() {
 		//dyn_array_init(&matches[i], RES_POOL_INITSIZE);
 		dtrie[i] = newTrie2();
 		initLinkedListPool(&qresult_pool[i], INIT_RESPOOL_SIZE);
-		for (j = 0; j < DOC_PER_THREAD; j++) {
-			qresult[i][j].head.next = &(qresult[i][j].tail), qresult[i][j].tail.prev =
-					&(qresult[i][j].head);
-		}
+		qresult[i].head.next = &(qresult[i].tail), qresult[i].tail.prev =
+				&(qresult[i].head);
+
 	}
 
 	for (i = 0; i < CIR_QUEUE_SIZE; i++) {
