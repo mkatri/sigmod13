@@ -25,15 +25,25 @@ typedef struct {
 	};
 } SegmentData __attribute__ ((aligned (64)));
 
+struct compact {
+	union {
+		struct {
+			int docId;
+			char matchedWords;
+		};
+		char padding[64];
+	};
+}__attribute__ ((aligned (64)));
+
 typedef struct QueryDescriptor {
 	char *words[6];
 	char segmentSizes[6][6];
 	char queryString[MAX_WORD_LENGTH * MAX_QUERY_WORDS + 1];
-//	struct compact thSpec[NUM_THREADS];
-	int docId[NUM_THREADS];
+	struct compact thSpec[NUM_THREADS] __attribute__ ((aligned (64)));
+//	int docId[NUM_THREADS];
 //	DNode_t ** segmentsData;
 	SegmentData segments[5] __attribute__ ((aligned (64)));
-	char matchedWords[NUM_THREADS];
+//	char matchedWords[NUM_THREADS];
 	char numWords;
 	int matchType;
 	int matchDistance;

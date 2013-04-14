@@ -55,17 +55,17 @@ void matchTrie(int did, int tid, int *count, TrieNode_t2 * dTrie,
 				segData = (SegmentData *) (cur->data);
 				queryData = segData->parentQuery;
 //				tmp++;
-				if (queryData->docId[tid] != did) {
-					queryData->docId[tid] = did;
-					queryData->matchedWords[tid] = 0;
+				if (queryData->thSpec[tid].docId != did) {
+					queryData->thSpec[tid].docId = did;
+					queryData->thSpec[tid].matchedWords = 0;
 				}
 
-				if ((queryData->matchedWords[tid] & (1 << (segData->wordIndex)))
+				if ((queryData->thSpec[tid].matchedWords & (1 << (segData->wordIndex)))
 						== 0) {
 //					ok = 1;
-					queryData->matchedWords[tid] |= (1 << (segData->wordIndex));
+					queryData->thSpec[tid].matchedWords |= (1 << (segData->wordIndex));
 
-					if (queryData->matchedWords[tid]
+					if (queryData->thSpec[tid].matchedWords
 							== (1 << (queryData->numWords)) - 1) {
 						(*count)++;
 						append_with_pool(results,
