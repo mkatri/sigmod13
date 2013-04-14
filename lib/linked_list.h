@@ -10,15 +10,20 @@
 
 //#include <pthread.h>
 
+//TODO padd DNODE?
 typedef struct DNode {
 	struct DNode *prev, *next;
-	struct DNode *tmp;
 	void * data;
 } DNode_t;
+
 typedef struct LinkedList {
-	DNode_t head, tail;
-	unsigned char spinLock;
-//	pthread_spinlock_t spinLock;
+	union {
+		struct {
+			DNode_t head, tail;
+			unsigned char spinLock;
+		};
+		char padding[64];
+	};
 } LinkedList_t;
 /*creates a new empty linkedlist */
 LinkedList_t* newLinkedList();

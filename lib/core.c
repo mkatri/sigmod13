@@ -17,11 +17,13 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //////////////// DOC THREADING STRUCTS //////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////
-long long overhead[NUM_THREADS];
-long long total[NUM_THREADS];
-#define FLOOD_FACTOR 12
+//long long overhead[NUM_THREADS];
+//long long total[NUM_THREADS];
+
+#define FLOOD_FACTOR 2
 #define TASK_QUEUE_SIZE FLOOD_FACTOR * NUM_THREADS
 #define CIR_QUEUE_SIZE FLOOD_FACTOR * DOC_PER_THREAD * NUM_THREADS
+#define QUERY_QUEUE_SIZE FLOOD_FACTOR * NUM_THREADS
 
 pthread_t matcher_threads[NUM_THREADS];
 pthread_t candidate_gen_threads[NUM_THREADS];
@@ -30,7 +32,7 @@ CircularQueue cirq_free_docs;
 //CircularQueue cirq_busy_docs;
 CircularQueue cirq_free_tasks;
 CircularQueue cirq_busy_tasks;
-CircularQueue cirq_busy_queries;
+//CircularQueue cirq_busy_queries;
 CircularQueue cirq_free_segments;
 CircularQueue cirq_busy_segments;
 char *free_docs[CIR_QUEUE_SIZE];
@@ -48,13 +50,12 @@ MatchTask *busy_tasks[TASK_QUEUE_SIZE];
 int curTaskProgress = 0;
 MatchTask *curTask;
 
-QueryDescriptor *busy_queries[CIR_QUEUE_SIZE];
-char *free_segments[CIR_QUEUE_SIZE];
-QueryDescriptor *busy_segments[CIR_QUEUE_SIZE];
+//QueryDescriptor *busy_queries[QUERY_QUEUE_SIZE];
+char *free_segments[QUERY_QUEUE_SIZE];
+QueryDescriptor *busy_segments[QUERY_QUEUE_SIZE];
 pthread_mutex_t docList_lock;
 pthread_cond_t docList_avail;
 pthread_mutex_t trie_lock;
-
 pthread_mutex_t big_debug_lock;
 //DynamicArray matches[NUM_THREADS];
 int cmpfunc(const void* a, const void* b);
@@ -85,10 +86,11 @@ LinkedList_t * edit_list[QDESC_MAP_SIZE ];
 void split(int length[6], QueryDescriptor *desc, const char* query_str,
 		int * idx);
 
-LinkedList_t qresult[NUM_THREADS][DOC_PER_THREAD];
-LinkedList_t qresult_pool[NUM_THREADS];
+LinkedList_t qresult[NUM_THREADS][DOC_PER_THREAD] __attribute__ ((aligned (64)));
+LinkedList_t qresult_pool[NUM_THREADS] __attribute__ ((aligned (64)));
 
 void init() {
+//	printf("%d \n", sizeof(Trie3));
 	initDocumentDescriptorPool();
 	initLinkedListDefaultPool();
 	lazy_list = newLinkedList();
@@ -132,7 +134,7 @@ void *matcher_thread(void *n) {
 			doc_desc_array[d] = task->task_docs[d];
 			doc_id_array[d] = task->task_docs[d]->docId;
 			DocumentDescriptor *doc_desc = doc_desc_array[d];
-			fingerprint = 1 << d;
+			fingerprint = 1L << d;
 			char *doc = doc_desc->document;
 			i = 0;
 			while (doc[i]) {
@@ -199,12 +201,12 @@ ErrorCode InitializeIndex() {
 	TASK_QUEUE_SIZE);
 	cir_queue_init(&cirq_busy_tasks, (void **) &busy_tasks,
 	TASK_QUEUE_SIZE);
-	cir_queue_init(&cirq_busy_queries, (void **) &busy_queries,
-	CIR_QUEUE_SIZE);
+//	cir_queue_init(&cirq_busy_queries, (void **) &busy_queries,
+//	CIR_QUEUE_SIZE);
 	cir_queue_init(&cirq_free_segments, (void **) &free_segments,
-	CIR_QUEUE_SIZE);
+	QUERY_QUEUE_SIZE);
 	cir_queue_init(&cirq_busy_segments, (void **) &busy_segments,
-	CIR_QUEUE_SIZE);
+	QUERY_QUEUE_SIZE);
 
 	pthread_mutex_init(&big_debug_lock, NULL );
 	pthread_mutex_init(&trie_lock, NULL );
@@ -235,7 +237,7 @@ ErrorCode InitializeIndex() {
 
 	cirq_free_docs.size = CIR_QUEUE_SIZE;
 	cirq_free_tasks.size = TASK_QUEUE_SIZE;
-	cirq_free_segments.size = CIR_QUEUE_SIZE;
+	cirq_free_segments.size = QUERY_QUEUE_SIZE;
 
 #ifdef THREAD_ENABLE
 	for (i = 0; i < NUM_THREADS; i++) {
@@ -251,12 +253,12 @@ ErrorCode InitializeIndex() {
 
 ErrorCode DestroyIndex() {
 	long long oh1 = 0, t = 0;
-	for (int i = 0; i < NUM_THREADS; ++i) {
-		oh1 += overhead[i];
-		t += total[i];
-	}
-	printf("\n%lld total iterations\n", t);
-	printf("\n%lld overhead iterations: \n\n", oh1);
+//	for (int i = 0; i < NUM_THREADS; ++i) {
+//		oh1 += overhead[i];
+//		t += total[i];
+//	}
+//	printf("\n%lld total iterations\n", t);
+//	printf("\n%lld overhead iterations: \n\n", oh1);
 
 	return EC_SUCCESS;
 }
@@ -332,9 +334,8 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	queryDescriptor->matchDistance = match_dist;
 	queryDescriptor->matchType = match_type;
 	queryDescriptor->queryId = query_id;
-	for (in = 0; in < NUM_THREADS; in++)
-		for (j = 0; j < DOC_PER_THREAD; j++)
-			queryDescriptor->docId[in][j] = -1;
+//	for (in = 0; in < NUM_THREADS; in++)
+//		queryDescriptor->docId[in] = -1;
 
 //	addQuery(query_id, queryDescriptor);
 
@@ -528,6 +529,7 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 char result[NUM_THREADS][300000][33];
 int lengths[NUM_THREADS][300000];
 int indexxx[NUM_THREADS][300000];
+int lastOperation[NUM_THREADS][300000];
 //int maxLen[NUM_THREADS] = 0;
 
 //void generate_candidates(char * str, int len, int dist, SegmentData* segData) {
@@ -557,19 +559,27 @@ void *generate_candidates(void *n) {
 			for (id = start; id < end; id++) {
 				str = result[tid][id];
 				int i, j;
-				// insert
+				char test = (lastOperation[tid][id] == 1 ? 1 : 0);
 				for (i = indexxx[tid][id]; i < lengths[tid][id]; i++) {
 					int ptr = 0;
 					if (type == MT_EDIT_DIST) {
-						for (j = 0; j < i; j++)
-							result[tid][resIndex][ptr++] = str[j];
-						result[tid][resIndex][ptr++] = lamda;
-						for (j = i; j < lengths[tid][id]; j++)
-							result[tid][resIndex][ptr++] = str[j];
-						result[tid][resIndex][ptr] = '\0';
-						lengths[tid][resIndex] = lengths[tid][id] + 1;
-						indexxx[tid][resIndex] = i + 1;
-						resIndex++;
+						if (test)
+							i++;
+						if (i < lengths[tid][id]) {
+							// insert
+							for (j = 0; j < i; j++)
+								result[tid][resIndex][ptr++] = str[j];
+							result[tid][resIndex][ptr++] = lamda;
+							for (j = i; j < lengths[tid][id]; j++)
+								result[tid][resIndex][ptr++] = str[j];
+							result[tid][resIndex][ptr] = '\0';
+							lengths[tid][resIndex] = lengths[tid][id] + 1;
+							indexxx[tid][resIndex] = i + 1;
+							lastOperation[tid][resIndex] = 0;
+							resIndex++;
+						}
+						if (test)
+							i--;
 						// delete
 						ptr = 0;
 						for (j = 0; j < i; j++)
@@ -579,8 +589,12 @@ void *generate_candidates(void *n) {
 						result[tid][resIndex][ptr] = '\0';
 						lengths[tid][resIndex] = lengths[tid][id] - 1;
 						indexxx[tid][resIndex] = i;
+						lastOperation[tid][resIndex] = 1;
 						resIndex++;
 					}
+					if (i == lengths[tid][id] - 1 && dist > 1)
+						continue;
+
 					// swap
 					ptr = 0;
 					for (j = 0; j < lengths[tid][id]; j++)
@@ -589,9 +603,14 @@ void *generate_candidates(void *n) {
 					result[tid][resIndex][ptr] = '\0';
 					lengths[tid][resIndex] = lengths[tid][id];
 					indexxx[tid][resIndex] = i + 1;
+					lastOperation[tid][resIndex] = 2;
 					resIndex++;
 				}
 				if (type == MT_EDIT_DIST) {
+//					if (test)
+//						i++;
+//					if (i == lengths[tid][id]) {
+//					if (!test) {
 					int ptr = 0;
 					for (j = 0; j < i; j++)
 						result[tid][resIndex][ptr++] = str[j];
@@ -601,7 +620,12 @@ void *generate_candidates(void *n) {
 					result[tid][resIndex][ptr] = '\0';
 					lengths[tid][resIndex] = lengths[tid][id] + 1;
 					indexxx[tid][resIndex] = i + 1;
+					lastOperation[tid][resIndex] = 0;
 					resIndex++;
+//					}
+//					}
+//					if (test)
+//						i--;
 				}
 			}
 			start = end;
@@ -615,7 +639,9 @@ void *generate_candidates(void *n) {
 		while (ind < end) {
 			DNode_t * node = InsertTrie3(eltire, result[tid][ind],
 					lengths[tid][ind], segData);
-			sync_append(edit_list[segData->queryId], node);
+//			printf("%s\n", result[tid][ind]);
+			if (node)
+				append(edit_list[segData->queryId], node);
 			ind++;
 		}
 #ifndef CONC_TRIE3
@@ -630,21 +656,21 @@ void *generate_candidates(void *n) {
 ///////////////////////////////////////////
 void core_test() {
 	InitializeIndex();
-	char f[32] = "air";
+	char f[32] = "abcd";
 //	char f2[32] = "aix";
 
-	StartQuery(5, f, MT_EDIT_DIST, 1);
-	MatchDocument(10, "air");
+	StartQuery(5, f, MT_EDIT_DIST, 3);
+	MatchDocument(10, "s");
 	EndQuery(5);
 	puts("====");
 	fflush(0);
 
-//	DocID did;
-//	QueryID *qid;
-//	unsigned int numRes;
-//	GetNextAvailRes(&did, &numRes, &qid);
-//	int i;
-//	for (i = 0; i < numRes; i++)
-//		printf("---->%d\n", qid[i]);
-//	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
+	DocID did;
+	QueryID *qid;
+	unsigned int numRes;
+	GetNextAvailRes(&did, &numRes, &qid);
+	int i;
+	for (i = 0; i < numRes; i++)
+		printf("---->%d\n", qid[i]);
+	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
 }

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <core.h>
+#include <malloc.h>
 #include "linked_list.h"
 #include "trie.h"
 #include "atomic.h"
@@ -20,10 +21,13 @@ Trie_t * newTrie() {
 }
 
 Trie_t2 * newTrie2() {
-	Trie_t2* t = (Trie_t2 *) malloc(sizeof(Trie_t2));
+	Trie_t2* t = (Trie_t2 *) memalign(64, sizeof(Trie_t2));
+//	Trie_t2* t;
+//	posix_memalign((void **) &t, 64, sizeof(Trie_t2));
 	memset(t, 0, sizeof(Trie_t2));
 	t->pool_size = TRIE2_INIT_SIZE;
-	t->pool = (TrieNode_t2 *) malloc(sizeof(TrieNode_t2) * t->pool_size);
+//	posix_memalign((void **) &t->pool, 64, sizeof(TrieNode_t2) * t->pool_size);
+	t->pool = (TrieNode_t2 *) memalign(64, sizeof(TrieNode_t2) * t->pool_size);
 	t->pool_space = t->pool_size;
 	return t;
 }
@@ -47,14 +51,13 @@ void returnToPool(Trie3 *t, TrieNode3 *node) {
 
 TrieNode3 * newTrieNode3(Trie3 *t) {
 	TrieNode3* ret;
-	while (xchg(&(t->spinLock), 1))
-		;
+//	while (xchg(&(t->spinLock), 1))
+//		;
 	if (t->returned.next[0]) {
 		ret = t->returned.next[0];
 		t->returned.next[0] = ret->next[0];
 	} else {
 		if (t->pool_space == 0) {
-			t->pool_size *= 2;
 			t->pool = (TrieNode3 *) malloc(sizeof(TrieNode3) * t->pool_size);
 			t->pool_space = t->pool_size;
 		}
@@ -63,7 +66,7 @@ TrieNode3 * newTrieNode3(Trie3 *t) {
 		t->pool++;
 		t->pool_space--;
 	}
-	t->spinLock = 0;
+//	t->spinLock = 0;
 	memset(ret, 0, sizeof(TrieNode3));
 	ret->list.head.next = &(ret->list.tail), ret->list.tail.prev =
 			&(ret->list.head);
@@ -73,16 +76,27 @@ TrieNode3 * newTrieNode3(Trie3 *t) {
 DNode_t* InsertTrie3(Trie3 * trie, char * str, int length, SegmentData* segData) {
 	TrieNode3* current = &(trie->root);
 	int i;
+
 	for (i = 0; i < length; i++) {
 		if (current->next[str[i] - BASE_CHAR] == 0) {
-			TrieNode3 *newNode = newTrieNode3(trie);
-			if (!cmpxchg(&(current->next[str[i] - BASE_CHAR]), (uintptr_t) 0,
-					(uintptr_t) newNode))
-				returnToPool(trie, newNode);
+//			TrieNode3 *newNode = newTrieNode3(trie);
+//			if (!cmpxchg(&(current->next[str[i] - BASE_CHAR]), (uintptr_t) 0,
+//					(uintptr_t) newNode))
+//				returnToPool(trie, newNode);
+			current->next[str[i] - BASE_CHAR] = newTrieNode3(trie);
+			current->qmask |= (1 << (str[i] - BASE_CHAR)); //XXX: out of this if
 		}
 		current = current->next[str[i] - BASE_CHAR];
 	}
-	DNode_t* ret = sync_append(&(current->list), segData);
+
+	DNode_t* last = (&(current->list))->tail.prev;
+	if (last->data) {
+		SegmentData * segData2 = (SegmentData*) last->data;
+		if (segData2->queryId == segData->queryId
+				&& segData2->wordIndex == segData->wordIndex)
+			return 0;
+	}
+	DNode_t* ret = append(&(current->list), segData);
 	return ret;
 }
 
@@ -98,86 +112,86 @@ inline TrieNode_t2* next_node2(TrieNode_t2 *current, char c) {
 	return current->next[c - BASE_CHAR];
 }
 
-DNode_t* insertParts(TrieNode_t** n, int type, int dist, int len, char* str,
-		SegmentData* queryData, int s, int e) {
-
-	TrieNode_t* node = n[0];
-	n[0] = 0;
-	int i;
-	for (i = 0; i < len; i++) {
-		if (node->next[str[i] - BASE_CHAR] == 0)
-			node->next[str[i] - BASE_CHAR] = newTrieNode();
-		node = node->next[str[i] - BASE_CHAR];
-	}
-
-	if (node->next[s] == 0)
-		node->next[s] = newTrieNode();
-	node = node->next[s];
-
-	if (node->next[e] == 0)
-		node->next[e] = newTrieNode();
-	node = node->next[e];
-	if (node->edit_dist_list[len] == 0)
-		node->edit_dist_list[len] = newLinkedList();
-
-	if (node->max_dist[len] < dist)
-		node->max_dist[len] = dist;
-
-	int empty = isEmpty(node->edit_dist_list[len]);
-
-	DNode_t* ret = append(node->edit_dist_list[len], queryData);
-
-	if (empty)
-		n[0] = node;
-	else
-		ret->tmp = node->edit_dist_list[len]->head.next->tmp;
-
-	return ret;
-}
+//DNode_t* insertParts(TrieNode_t** n, int type, int dist, int len, char* str,
+//		SegmentData* queryData, int s, int e) {
+//
+//	TrieNode_t* node = n[0];
+//	n[0] = 0;
+//	int i;
+//	for (i = 0; i < len; i++) {
+//		if (node->next[str[i] - BASE_CHAR] == 0)
+//			node->next[str[i] - BASE_CHAR] = newTrieNode();
+//		node = node->next[str[i] - BASE_CHAR];
+//	}
+//
+//	if (node->next[s] == 0)
+//		node->next[s] = newTrieNode();
+//	node = node->next[s];
+//
+//	if (node->next[e] == 0)
+//		node->next[e] = newTrieNode();
+//	node = node->next[e];
+//	if (node->edit_dist_list[len] == 0)
+//		node->edit_dist_list[len] = newLinkedList();
+//
+//	if (node->max_dist[len] < dist)
+//		node->max_dist[len] = dist;
+//
+//	int empty = isEmpty(node->edit_dist_list[len]);
+//
+//	DNode_t* ret = append(node->edit_dist_list[len], queryData);
+//
+//	if (empty)
+//		n[0] = node;
+//	else
+//		ret->tmp = node->edit_dist_list[len]->head.next->tmp;
+//
+//	return ret;
+//}
 
 int cnt3 = 0, cnt4 = 0;
 
-DNode_t* TrieInsert(Trie_t * trie, char * str, char* word, int length, int type,
-		SegmentData* queryData, int wordLength, int s, int e) {
-#ifdef CORE_DEBUG
-	puts(str);
-#endif
-	TrieNode_t* current = &(trie->root);
-	current->count[type]++;
-	int i;
-	for (i = 0; i < length; i++) {
-		if (current->next[str[i] - BASE_CHAR] == 0)
-			current->next[str[i] - BASE_CHAR] = newTrieNode();
-		current = current->next[str[i] - BASE_CHAR];
-		current->count[type]++;
-	}
-
-	current->counter++;
-	if (type == MT_EDIT_DIST) {
-		if (current->list1[wordLength] == 0)
-			current->list1[wordLength] = newLinkedList();
-
-		if (current->edit_dist_Trie == 0)
-			current->edit_dist_Trie = newTrieNode();
-
-		TrieNode_t* node[1];
-		node[0] = current->edit_dist_Trie;
-
-		DNode_t* ret = insertParts(node, type,
-				queryData->parentQuery->matchDistance, wordLength, word,
-				queryData, s, e);
-
-		if (node[0])
-			ret->tmp = append(current->list1[wordLength], node[0]);
-
-		return ret;
-	} else {
-		if (current->list2[wordLength] == 0)
-			current->list2[wordLength] = newLinkedList();
-
-		return append(current->list2[wordLength], queryData);
-	}
-}
+//DNode_t* TrieInsert(Trie_t * trie, char * str, char* word, int length, int type,
+//		SegmentData* queryData, int wordLength, int s, int e) {
+//#ifdef CORE_DEBUG
+//	puts(str);
+//#endif
+//	TrieNode_t* current = &(trie->root);
+//	current->count[type]++;
+//	int i;
+//	for (i = 0; i < length; i++) {
+//		if (current->next[str[i] - BASE_CHAR] == 0)
+//			current->next[str[i] - BASE_CHAR] = newTrieNode();
+//		current = current->next[str[i] - BASE_CHAR];
+//		current->count[type]++;
+//	}
+//
+//	current->counter++;
+//	if (type == MT_EDIT_DIST) {
+//		if (current->list1[wordLength] == 0)
+//			current->list1[wordLength] = newLinkedList();
+//
+//		if (current->edit_dist_Trie == 0)
+//			current->edit_dist_Trie = newTrieNode();
+//
+//		TrieNode_t* node[1];
+//		node[0] = current->edit_dist_Trie;
+//
+//		DNode_t* ret = insertParts(node, type,
+//				queryData->parentQuery->matchDistance, wordLength, word,
+//				queryData, s, e);
+//
+//		if (node[0])
+//			ret->tmp = append(current->list1[wordLength], node[0]);
+//
+//		return ret;
+//	} else {
+//		if (current->list2[wordLength] == 0)
+//			current->list2[wordLength] = newLinkedList();
+//
+//		return append(current->list2[wordLength], queryData);
+//	}
+//}
 
 //void deleteTrieNode(TrieNode_t* node) {
 //#ifdef CORE_DEBUG
@@ -223,15 +237,15 @@ TrieNode_t2 * newTrieNode2(Trie_t2 *t) {
 	//XXX we never return those nodes
 	if (t->pool_space == 0) {
 		//XXX does not seem we need to double this one
-		t->pool_size *= 2;
-		t->pool = (TrieNode_t2 *) malloc(sizeof(TrieNode_t2) * t->pool_size);
+//		posix_memalign((void **) &t->pool, 64,
+//				sizeof(TrieNode_t2) * t->pool_size);
+		t->pool = (TrieNode_t2 *) memalign(64,
+				sizeof(TrieNode_t2) * t->pool_size);
 		t->pool_space = t->pool_size;
 	}
-
 	ret = (TrieNode_t2*) t->pool;
 	t->pool++;
 	t->pool_space--;
-
 	memset(ret, 0, sizeof(TrieNode_t2));
 	return ret;
 }
@@ -280,17 +294,20 @@ void TrieDocInsert(Trie_t2* trie, char *str, int length, int docId,
 			cur->terminal = 0;
 			cur->docId = docId;
 			cur->fingerPrint = 0;
+			cur->dmask = 0;
 		}
 
 		if (cur->next[str[i] - BASE_CHAR] == 0) {
 			cur->next[str[i] - BASE_CHAR] = newTrieNode2(trie);
 		}
+		cur->dmask |= (1 << (str[i] - BASE_CHAR));
 		cur = cur->next[str[i] - BASE_CHAR];
 	}
 
-	if (cur->docId != docId)
+	if (cur->docId != docId) {
 		cur->fingerPrint = 0;
-
+		cur->dmask = 0;
+	}
 	cur->terminal = 1;
 	cur->docId = docId;
 	cur->fingerPrint |= fingerPrint;

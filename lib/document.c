@@ -6,6 +6,7 @@
  */
 #include <stdlib.h>
 #include <string.h>
+#include <malloc.h>
 #include "document.h"
 #include "submit_params.h"
 
@@ -18,7 +19,9 @@ void initDocumentDescriptorPool() {
 	poolSize = INIT_DOCPOOL_SIZE;
 	poolSpace = INIT_DOCPOOL_SIZE;
 	reuse.next = 0;
-	pool = (DocumentDescriptor *) malloc(poolSize * sizeof(DocumentDescriptor));
+//	posix_memalign((void **)? &pool, 64, poolSize * sizeof(DocumentDescriptor));
+	pool = (DocumentDescriptor *) memalign(64,
+			poolSize * sizeof(DocumentDescriptor));
 }
 
 DocumentDescriptor *newDocumentDescriptor() {
@@ -28,7 +31,9 @@ DocumentDescriptor *newDocumentDescriptor() {
 		reuse.next = desc->next;
 	} else {
 		if (poolSpace == 0) {
-			pool = (DocumentDescriptor *) malloc(
+//			posix_memalign((void **) &pool, 64,
+//					poolSize * sizeof(DocumentDescriptor));
+			pool = (DocumentDescriptor *) memalign(64,
 					poolSize * sizeof(DocumentDescriptor));
 			poolSpace = poolSize;
 		}
