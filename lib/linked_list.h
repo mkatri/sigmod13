@@ -18,7 +18,7 @@ typedef struct DNode {
 
 typedef struct LinkedList {
 	DNode_t head, tail;
-//	unsigned char spinLock;
+	unsigned char spinLock;
 } LinkedList_t;
 /*creates a new empty linkedlist */
 LinkedList_t* newLinkedList();

@@ -36,8 +36,7 @@ CC  = gcc
 CXX = g++
 CFLAGS=-O3 -std=c++11 -fPIC -Wall -g -I. -I./include
 CXXFLAGS=$(CFLAGS)
-#LDFLAGS=-lpthread
-LDFFLAGS=
+LDFLAGS=-lpthread
 
 LIB_SRC_FILES := $(wildcard lib/*.c)
 LIB_OBJ_DIR := bin/obj/lib

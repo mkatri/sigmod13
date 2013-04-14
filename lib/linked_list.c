@@ -36,14 +36,14 @@ LinkedList_t* newLinkedList() {
 	return ret;
 }
 
-//inline void lock_pool(LinkedList_t *pool) {
-//	while (xchg(&(pool->spinLock), 1))
-//		;
-//}
-//
-//inline void unlock_pool(LinkedList_t *pool) {
-//	pool->spinLock = 0;
-//}
+inline void lock_pool(LinkedList_t *pool) {
+	while (xchg(&(pool->spinLock), 1))
+		;
+}
+
+inline void unlock_pool(LinkedList_t *pool) {
+	pool->spinLock = 0;
+}
 
 inline DNode_t* alloc_node(LinkedList_t *pool) {
 	DNode_t* node;
@@ -89,14 +89,14 @@ DNode_t* append_with_pool(LinkedList_t *list, void * data, LinkedList_t *pool) {
 }
 
 DNode_t* sync_append(LinkedList_t* list, void * data) {
-//	lock_pool(&default_pool);
+	lock_pool(&default_pool);
 	DNode_t* node = alloc_node(&default_pool);
-//	unlock_pool(&default_pool);
-//	while (xchg(&(list->spinLock), 1))
-//		;
+	unlock_pool(&default_pool);
+	while (xchg(&(list->spinLock), 1))
+		;
 	node->prev = list->tail.prev, node->next = &(list->tail);
 	node->next->prev = node, node->prev->next = node;
-//	list->spinLock = 0;
+	list->spinLock = 0;
 	node->data = data;
 	return node;
 }

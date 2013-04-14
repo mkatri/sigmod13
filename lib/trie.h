@@ -49,6 +49,7 @@ typedef struct TrieNode3 {
 	int done;
 	uint64_t done_bitmask;
 	int qmask;
+	unsigned char spinLock;
 } TrieNode3;
 typedef struct Trie3 {
 	TrieNode3 root;

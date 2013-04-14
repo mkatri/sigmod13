@@ -90,7 +90,7 @@ void do_match() {
 	int d;
 	memset(matchCount, 0, sizeof(int) * DOC_PER_TASK);
 
-	matchTrie(doc_desc_array[0]->docId, matchCount, task_size, &(dtrie->root),
+	threaded_matchTrie(doc_desc_array[0]->docId, matchCount, task_size, &(dtrie->root),
 			&(eltire->root), &qresult);
 
 	int p[DOC_PER_TASK];
@@ -138,7 +138,7 @@ ErrorCode InitializeIndex() {
 
 	dtrie = newTrie2();
 	qresult.head.next = &(qresult.tail), qresult.tail.prev = &(qresult.head);
-
+	initialize_matchTrie();
 	int i;
 	for (i = 0; i < QDESC_MAP_SIZE ; i++)
 		edit_list[i] = newLinkedList();

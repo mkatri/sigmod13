@@ -38,6 +38,7 @@ typedef struct QueryDescriptor {
 	int matchType;
 	int matchDistance;
 	int queryId;
+	unsigned char spinLock;
 } QueryDescriptor;
 //TODO padd to 64 bytes when we dynamically allocate
 
