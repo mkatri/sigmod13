@@ -13,7 +13,8 @@
 #ifdef HOME
 //#define PROFILER
 #define THREAD_ENABLE
-#define NUM_THREADS 2
+#define NUM_THREADS_DOC 8
+#define NUM_THREADS_QUERY 2
 #define QDESC_MAP_SIZE (int)5E4
 #define TRIE2_INIT_SIZE 1E4 /* this is the actual maximum in small AND big test */
 #define TRIE3_INIT_SIZE 1E5
@@ -25,7 +26,8 @@
 
 #else
 #define THREAD_ENABLE
-#define NUM_THREADS 22
+#define NUM_THREADS_DOC 22
+#define NUM_THREADS_QUERY 22
 #define QDESC_MAP_SIZE (int)3E6 /* TODO this WILL bite us in the final test */
 #define TRIE2_INIT_SIZE 1E6 /* 4 is the actual maximum in small AND big test */
 #define TRIE3_INIT_SIZE 1E7 /* 1 billion items */

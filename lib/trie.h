@@ -58,7 +58,7 @@ typedef struct TrieNode3 {
 	struct TrieNode3* next[26 + 1];
 	LinkedList_t list;
 	//TODO first thing to sacrifice :D
-	int done[NUM_THREADS];
+	int done[NUM_THREADS_DOC];
 	int qmask;
 } TrieNode3;
 typedef struct Trie3 {

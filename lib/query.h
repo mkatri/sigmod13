@@ -39,7 +39,7 @@ typedef struct QueryDescriptor {
 	char *words[6];
 	char segmentSizes[6][6];
 	char queryString[MAX_WORD_LENGTH * MAX_QUERY_WORDS + 1];
-	struct compact thSpec[NUM_THREADS] __attribute__ ((aligned (64)));
+	struct compact thSpec[NUM_THREADS_DOC] __attribute__ ((aligned (64)));
 //	int docId[NUM_THREADS];
 //	DNode_t ** segmentsData;
 	SegmentData segments[5] __attribute__ ((aligned (64)));

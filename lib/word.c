@@ -8,8 +8,8 @@
 #include "query.h"
 #include "word.h"
 char matched[QDESC_MAP_SIZE ][6];
-TrieNode_t2 * dtrieQueue[NUM_THREADS][INIT_QUEUE_SIZE ];
-TrieNode3 * qtrieQueue[NUM_THREADS][INIT_QUEUE_SIZE ];
+TrieNode_t2 * dtrieQueue[NUM_THREADS_DOC][INIT_QUEUE_SIZE ];
+TrieNode3 * qtrieQueue[NUM_THREADS_DOC][INIT_QUEUE_SIZE ];
 
 //extern long long overhead[NUM_THREADS];
 //extern long long total[NUM_THREADS];
@@ -60,10 +60,11 @@ void matchTrie(int did, int tid, int *count, TrieNode_t2 * dTrie,
 					queryData->thSpec[tid].matchedWords = 0;
 				}
 
-				if ((queryData->thSpec[tid].matchedWords & (1 << (segData->wordIndex)))
-						== 0) {
+				if ((queryData->thSpec[tid].matchedWords
+						& (1 << (segData->wordIndex))) == 0) {
 //					ok = 1;
-					queryData->thSpec[tid].matchedWords |= (1 << (segData->wordIndex));
+					queryData->thSpec[tid].matchedWords |= (1
+							<< (segData->wordIndex));
 
 					if (queryData->thSpec[tid].matchedWords
 							== (1 << (queryData->numWords)) - 1) {

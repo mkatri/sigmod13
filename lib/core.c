@@ -17,13 +17,13 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //////////////// DOC THREADING STRUCTS //////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////
-long long overhead[NUM_THREADS];
-long long total[NUM_THREADS];
+long long overhead[NUM_THREADS_DOC];
+long long total[NUM_THREADS_DOC];
 
-#define CIR_QUEUE_SIZE 12 * NUM_THREADS
+#define CIR_QUEUE_SIZE 12 * NUM_THREADS_QUERY
 
-pthread_t matcher_threads[NUM_THREADS];
-pthread_t candidate_gen_threads[NUM_THREADS];
+pthread_t matcher_threads[NUM_THREADS_DOC];
+pthread_t candidate_gen_threads[NUM_THREADS_QUERY];
 char documents[CIR_QUEUE_SIZE][MAX_DOC_LENGTH];
 CircularQueue cirq_free_docs;
 CircularQueue cirq_busy_docs;
@@ -45,7 +45,7 @@ int cmpfunc(const void* a, const void* b);
 void *generate_candidates(void *n);
 ///////////////////////////////////////////////////////////////////////////////////////////////
 Trie_t *trie;
-Trie_t2 * dtrie[NUM_THREADS];
+Trie_t2 * dtrie[NUM_THREADS_DOC];
 DocumentDescriptor docList;
 LinkedList_t *queries;
 unsigned long docCount;
@@ -68,8 +68,8 @@ LinkedList_t * edit_list[QDESC_MAP_SIZE ];
 void split(int length[6], QueryDescriptor *desc, const char* query_str,
 		int * idx);
 
-LinkedList_t qresult[NUM_THREADS] __attribute__ ((aligned (64)));
-LinkedList_t qresult_pool[NUM_THREADS] __attribute__ ((aligned (64)));
+LinkedList_t qresult[NUM_THREADS_DOC] __attribute__ ((aligned (64)));
+LinkedList_t qresult_pool[NUM_THREADS_DOC] __attribute__ ((aligned (64)));
 
 void init() {
 //	printf("%d \n", sizeof(Trie3));
@@ -170,7 +170,7 @@ ErrorCode InitializeIndex() {
 	pthread_cond_init(&docList_avail, NULL );
 
 	int i;
-	for (i = 0; i < NUM_THREADS; i++) {
+	for (i = 0; i < NUM_THREADS_DOC; i++) {
 		//dyn_array_init(&matches[i], RES_POOL_INITSIZE);
 		dtrie[i] = newTrie2();
 		initLinkedListPool(&qresult_pool[i], INIT_RESPOOL_SIZE);
@@ -189,12 +189,13 @@ ErrorCode InitializeIndex() {
 	cirq_free_segments.size = CIR_QUEUE_SIZE;
 
 #ifdef THREAD_ENABLE
-	for (i = 0; i < NUM_THREADS; i++) {
+	for (i = 0; i < NUM_THREADS_DOC; i++)
 		pthread_create(&matcher_threads[i], NULL, matcher_thread,
 				(void *) (uintptr_t) i);
+	for (i = 0; i < NUM_THREADS_QUERY; i++)
 		pthread_create(&candidate_gen_threads[i], NULL, generate_candidates,
 				(void *) (uintptr_t) i);
-	}
+
 #endif
 	return EC_SUCCESS;
 }
@@ -202,7 +203,7 @@ ErrorCode InitializeIndex() {
 
 ErrorCode DestroyIndex() {
 	long long oh1 = 0, t = 0;
-	for (int i = 0; i < NUM_THREADS; ++i) {
+	for (int i = 0; i < NUM_THREADS_DOC; ++i) {
 		oh1 += overhead[i];
 		t += total[i];
 	}
@@ -433,10 +434,10 @@ ErrorCode GetNextAvailRes(DocID* p_doc_id, unsigned int* p_num_res,
 	dealloc_docDesc(doc_desc);
 	return EC_SUCCESS;
 }
-char result[NUM_THREADS][300000][33];
-int lengths[NUM_THREADS][300000];
-int indexxx[NUM_THREADS][300000];
-int lastOperation[NUM_THREADS][300000];
+char result[NUM_THREADS_QUERY][300000][33];
+int lengths[NUM_THREADS_QUERY][300000];
+int indexxx[NUM_THREADS_QUERY][300000];
+int lastOperation[NUM_THREADS_QUERY][300000];
 //int maxLen[NUM_THREADS] = 0;
 
 //void generate_candidates(char * str, int len, int dist, SegmentData* segData) {
