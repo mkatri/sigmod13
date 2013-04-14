@@ -17,8 +17,8 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //////////////// DOC THREADING STRUCTS //////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////
-//long long overhead[NUM_THREADS];
-//long long total[NUM_THREADS];
+long long overhead[NUM_THREADS];
+long long total[NUM_THREADS];
 
 #define FLOOD_FACTOR 2
 #define TASK_QUEUE_SIZE FLOOD_FACTOR * NUM_THREADS
@@ -275,12 +275,12 @@ ErrorCode InitializeIndex() {
 
 ErrorCode DestroyIndex() {
 	long long oh1 = 0, t = 0;
-//	for (int i = 0; i < NUM_THREADS; ++i) {
-//		oh1 += overhead[i];
-//		t += total[i];
-//	}
-//	printf("\n%lld total iterations\n", t);
-//	printf("\n%lld overhead iterations: \n\n", oh1);
+	for (int i = 0; i < NUM_THREADS; ++i) {
+		oh1 += overhead[i];
+		t += total[i];
+	}
+	printf("\n%lld total iterations\n", t);
+	printf("\n%lld overhead iterations: \n\n", oh1);
 
 	return EC_SUCCESS;
 }

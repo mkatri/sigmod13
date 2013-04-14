@@ -11,8 +11,8 @@ char matched[QDESC_MAP_SIZE ][6];
 TrieNode_t2 * dtrieQueue[NUM_THREADS][INIT_QUEUE_SIZE ];
 TrieNode3 * qtrieQueue[NUM_THREADS][INIT_QUEUE_SIZE ];
 
-//extern long long overhead[NUM_THREADS];
-//extern long long total[NUM_THREADS];
+extern long long overhead[NUM_THREADS];
+extern long long total[NUM_THREADS];
 
 inline int bsf(int bitmask) {
 	int first = 0;
@@ -73,11 +73,11 @@ void matchTrie(int did, int tid, int *count, int task_size, TrieNode_t2 *dTrie,
 				DNode_t *cur = qTrie->list.head.next;
 				SegmentData * segData = (SegmentData *) (cur->data);
 				QueryDescriptor * queryData = segData->parentQuery;
-				//					int ok = 0, tmp = 0;
+				int ok = 0, tmp = 0;
 				while (cur != &(qTrie->list.tail)) {
 					segData = (SegmentData *) (cur->data);
 					queryData = segData->parentQuery;
-					//						tmp++;
+					tmp++;
 					if (queryData->thSpec[tid].docId != did) {
 						queryData->thSpec[tid].docId = did;
 						memset(queryData->thSpec[tid].docsMatchedWord, 0,
@@ -89,7 +89,7 @@ void matchTrie(int did, int tid, int *count, int task_size, TrieNode_t2 *dTrie,
 									& ~queryData->thSpec[tid].docsMatchedWord[segData->wordIndex];
 
 					if (localNotDoneFingerPrint != 0) {
-
+						ok = 1;
 						int w;
 						long oldQueryStatus, newQueryStatus;
 						oldQueryStatus =
@@ -123,6 +123,10 @@ void matchTrie(int did, int tid, int *count, int task_size, TrieNode_t2 *dTrie,
 					}
 					cur = cur->next;
 				}
+				if (!ok)
+					overhead[tid] += tmp;
+				total[tid] += tmp;
+
 			}
 
 			qTrie->done_bitmask[tid] |= dTrie->fingerPrint;
