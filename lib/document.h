@@ -1,16 +1,10 @@
 #include <core.h>
 
 typedef struct DocumentDescriptor {
-	union {
-		struct {
-			char *document;
-			DocID docId;
-			QueryID *matches;
-			unsigned int numResults;
-			struct DocumentDescriptor *next;
-		};
-		char padding[64];
-	};
+	DocID docId;
+	QueryID *matches;
+	unsigned int numResults;
+	struct DocumentDescriptor *next;
 } DocumentDescriptor;
 
 void initDocumentDescriptorPool();

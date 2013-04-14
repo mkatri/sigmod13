@@ -41,13 +41,13 @@ Trie3 * newTrie3() {
 	return t;
 }
 
-void returnToPool(Trie3 *t, TrieNode3 *node) {
-	while (xchg(&(t->spinLock), 1))
-		;
-	node->next[0] = t->returned.next[0];
-	t->returned.next[0] = node;
-	t->spinLock = 0;
-}
+//void returnToPool(Trie3 *t, TrieNode3 *node) {
+//	while (xchg(&(t->spinLock), 1))
+//		;
+//	node->next[0] = t->returned.next[0];
+//	t->returned.next[0] = node;
+//	t->spinLock = 0;
+//}
 
 TrieNode3 * newTrieNode3(Trie3 *t) {
 	TrieNode3* ret;
@@ -284,7 +284,7 @@ char TriewordExist(Trie_t2* trie, char * str, int length, int docId) {
 	return 0;
 }
 
-void TrieDocInsert(Trie_t2* trie, char *str, int length, int docId,
+void TrieDocInsert(Trie_t2* trie, const char *str, int length, int docId,
 		uint64_t fingerPrint) {
 	TrieNode_t2 *cur = &(trie->root);
 	int i;

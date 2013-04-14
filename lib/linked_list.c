@@ -16,7 +16,7 @@ void initLinkedListDefaultPool() {
 			sizeof(DNode_t) * INIT_LLPOOL_SIZE);
 	default_pool.head.prev = default_pool.tail.next;
 	default_pool.tail.prev = default_pool.tail.next + INIT_LLPOOL_SIZE;
-	default_pool.spinLock = 0;
+//	default_pool.spinLock = 0;
 }
 
 void initLinkedListPool(LinkedList_t *pool, int size) {
@@ -24,7 +24,7 @@ void initLinkedListPool(LinkedList_t *pool, int size) {
 	pool->tail.next = (DNode_t*) malloc(sizeof(DNode_t) * size);
 	pool->head.prev = pool->tail.next;
 	pool->tail.prev = pool->tail.next + size;
-	pool->spinLock = 0;
+//	pool->spinLock = 0;
 }
 
 LinkedList_t* newLinkedList() {
@@ -36,14 +36,14 @@ LinkedList_t* newLinkedList() {
 	return ret;
 }
 
-inline void lock_pool(LinkedList_t *pool) {
-	while (xchg(&(pool->spinLock), 1))
-		;
-}
-
-inline void unlock_pool(LinkedList_t *pool) {
-	pool->spinLock = 0;
-}
+//inline void lock_pool(LinkedList_t *pool) {
+//	while (xchg(&(pool->spinLock), 1))
+//		;
+//}
+//
+//inline void unlock_pool(LinkedList_t *pool) {
+//	pool->spinLock = 0;
+//}
 
 inline DNode_t* alloc_node(LinkedList_t *pool) {
 	DNode_t* node;
@@ -71,9 +71,9 @@ inline void dealloc_node(DNode_t *node, LinkedList_t *pool) {
 }
 
 DNode_t* append(LinkedList_t* list, void * data) {
-	lock_pool(&default_pool);
+//	lock_pool(&default_pool);
 	DNode_t* node = alloc_node(&default_pool);
-	unlock_pool(&default_pool);
+//	unlock_pool(&default_pool);
 	node->prev = list->tail.prev, node->next = &(list->tail);
 	node->next->prev = node, node->prev->next = node;
 	node->data = data;
@@ -89,14 +89,14 @@ DNode_t* append_with_pool(LinkedList_t *list, void * data, LinkedList_t *pool) {
 }
 
 DNode_t* sync_append(LinkedList_t* list, void * data) {
-	lock_pool(&default_pool);
+//	lock_pool(&default_pool);
 	DNode_t* node = alloc_node(&default_pool);
-	unlock_pool(&default_pool);
-	while (xchg(&(list->spinLock), 1))
-		;
+//	unlock_pool(&default_pool);
+//	while (xchg(&(list->spinLock), 1))
+//		;
 	node->prev = list->tail.prev, node->next = &(list->tail);
 	node->next->prev = node, node->prev->next = node;
-	list->spinLock = 0;
+//	list->spinLock = 0;
 	node->data = data;
 	return node;
 }
@@ -105,9 +105,9 @@ DNode_t* delete_node(DNode_t * node) {
 	node->next->prev = node->prev;
 	node->prev->next = node->next;
 	DNode_t* nxt = node->next;
-	lock_pool(&default_pool);
+//	lock_pool(&default_pool);
 	dealloc_node(node, &default_pool);
-	unlock_pool(&default_pool);
+//	unlock_pool(&default_pool);
 	return nxt;
 }
 

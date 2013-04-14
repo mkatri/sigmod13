@@ -17,13 +17,8 @@ typedef struct DNode {
 } DNode_t;
 
 typedef struct LinkedList {
-	union {
-		struct {
-			DNode_t head, tail;
-			unsigned char spinLock;
-		};
-		char padding[64];
-	};
+	DNode_t head, tail;
+//	unsigned char spinLock;
 } LinkedList_t;
 /*creates a new empty linkedlist */
 LinkedList_t* newLinkedList();

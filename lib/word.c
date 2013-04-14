@@ -8,11 +8,11 @@
 #include "query.h"
 #include "word.h"
 char matched[QDESC_MAP_SIZE ][6];
-TrieNode_t2 * dtrieQueue[NUM_THREADS][INIT_QUEUE_SIZE ];
-TrieNode3 * qtrieQueue[NUM_THREADS][INIT_QUEUE_SIZE ];
+TrieNode_t2 * dtrieQueue[INIT_QUEUE_SIZE ];
+TrieNode3 * qtrieQueue[INIT_QUEUE_SIZE ];
 
-extern long long overhead[NUM_THREADS];
-extern long long total[NUM_THREADS];
+extern long long overhead;
+extern long long total;
 
 inline int bsf(int bitmask) {
 	int first = 0;
@@ -39,17 +39,18 @@ inline long bsfl(long bitmask) {
 
 	return first;
 }
-
-void matchTrie(int did, int tid, int *count, int task_size, TrieNode_t2 *dTrie,
-		TrieNode3 *qTrie, LinkedList_t *results, LinkedList_t *pool) {
-	dtrieQueue[tid][0] = dTrie;
-	qtrieQueue[tid][0] = qTrie;
+//matchTrie(doc_desc_array[0]->docId, matchCount, task_size, &(dtrie->root),
+//			&(eltire->root), &qresult);
+void matchTrie(int did, int *count, int task_size, TrieNode_t2 *dTrie,
+		TrieNode3 *qTrie, LinkedList_t *results) {
+	dtrieQueue[0] = dTrie;
+	qtrieQueue[0] = qTrie;
 	int size = 1;
 	int ptr = 0;
 	int p = 1;
 	while (size != 0) {
-		qTrie = qtrieQueue[tid][ptr];
-		dTrie = dtrieQueue[tid][ptr];
+		qTrie = qtrieQueue[ptr];
+		dTrie = dtrieQueue[ptr];
 		ptr++;
 		size--;
 
@@ -57,17 +58,16 @@ void matchTrie(int did, int tid, int *count, int task_size, TrieNode_t2 *dTrie,
 //			return;
 
 		if (dTrie->terminal == 1 && qTrie && !isEmpty(&(qTrie->list))
-				&& (qTrie->done[tid] != did
-						|| (qTrie->done_bitmask[tid]
+				&& (qTrie->done != did
+						|| (qTrie->done_bitmask
 								!= (((uint64_t) 1L << task_size) - 1)))) {
 
-			if (qTrie->done[tid] != did) {
-				qTrie->done_bitmask[tid] = 0;
-				qTrie->done[tid] = did;
+			if (qTrie->done != did) {
+				qTrie->done_bitmask = 0;
+				qTrie->done = did;
 			}
 
-			long notDoneFingerPrint = dTrie->fingerPrint
-					& ~qTrie->done_bitmask[tid];
+			long notDoneFingerPrint = dTrie->fingerPrint & ~qTrie->done_bitmask;
 
 			if (notDoneFingerPrint != 0) {
 				DNode_t *cur = qTrie->list.head.next;
@@ -78,39 +78,37 @@ void matchTrie(int did, int tid, int *count, int task_size, TrieNode_t2 *dTrie,
 					segData = (SegmentData *) (cur->data);
 					queryData = segData->parentQuery;
 					tmp++;
-					if (queryData->thSpec[tid].docId != did) {
-						queryData->thSpec[tid].docId = did;
-						memset(queryData->thSpec[tid].docsMatchedWord, 0,
+					if (queryData->thSpec.docId != did) {
+						queryData->thSpec.docId = did;
+						memset(queryData->thSpec.docsMatchedWord, 0,
 								5 * sizeof(long));
 					}
 
 					long localNotDoneFingerPrint =
 							notDoneFingerPrint
-									& ~queryData->thSpec[tid].docsMatchedWord[segData->wordIndex];
+									& ~queryData->thSpec.docsMatchedWord[segData->wordIndex];
 
 					if (localNotDoneFingerPrint != 0) {
 						ok = 1;
 						int w;
 						long oldQueryStatus, newQueryStatus;
-						oldQueryStatus =
-								queryData->thSpec[tid].docsMatchedWord[0];
+						oldQueryStatus = queryData->thSpec.docsMatchedWord[0];
 						for (w = 1; w < queryData->numWords; w++)
 							oldQueryStatus &=
-									queryData->thSpec[tid].docsMatchedWord[w];
+									queryData->thSpec.docsMatchedWord[w];
 
 						//TODO check this bitch? :D
-						queryData->thSpec[tid].docsMatchedWord[segData->wordIndex] |=
+						queryData->thSpec.docsMatchedWord[segData->wordIndex] |=
 								notDoneFingerPrint;
 
-						newQueryStatus =
-								queryData->thSpec[tid].docsMatchedWord[0];
+						newQueryStatus = queryData->thSpec.docsMatchedWord[0];
 						for (w = 1; w < queryData->numWords; w++)
 							newQueryStatus &=
-									queryData->thSpec[tid].docsMatchedWord[w];
+									queryData->thSpec.docsMatchedWord[w];
 
 						if (oldQueryStatus == 0 && newQueryStatus != 0) {
-							append_with_pool(results,
-									(void *) (uintptr_t) queryData, pool);
+							append(results,
+									(void *) (uintptr_t) queryData);
 						}
 
 						long d;
@@ -124,12 +122,12 @@ void matchTrie(int did, int tid, int *count, int task_size, TrieNode_t2 *dTrie,
 					cur = cur->next;
 				}
 				if (!ok)
-					overhead[tid] += tmp;
-				total[tid] += tmp;
+					overhead += tmp;
+				total += tmp;
 
 			}
 
-			qTrie->done_bitmask[tid] |= dTrie->fingerPrint;
+			qTrie->done_bitmask |= dTrie->fingerPrint;
 		}
 
 		int band = (qTrie->qmask & dTrie->dmask), dmask = dTrie->dmask, ind;
@@ -139,13 +137,13 @@ void matchTrie(int did, int tid, int *count, int task_size, TrieNode_t2 *dTrie,
 		while ((ind = bsf(dmask)) > -1) {
 			dmask ^= (1 << ind);
 			if (star) {
-				dtrieQueue[tid][p] = dTrie->next[ind];
-				qtrieQueue[tid][p++] = star;
+				dtrieQueue[p] = dTrie->next[ind];
+				qtrieQueue[p++] = star;
 				size++;
 			}
 			if (band & (1 << ind)) {
-				dtrieQueue[tid][p] = dTrie->next[ind];
-				qtrieQueue[tid][p++] = qTrie->next[ind];
+				dtrieQueue[p] = dTrie->next[ind];
+				qtrieQueue[p++] = qTrie->next[ind];
 				size++;
 			}
 		}
