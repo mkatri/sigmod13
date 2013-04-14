@@ -26,23 +26,33 @@ typedef struct Trie {
 	TrieNode_t root;
 } Trie_t;
 typedef struct TrieNode2 {
-	struct TrieNode2* next[CHAR_SET_SIZE];
-//	struct TrieNode2* list[CHAR_SET_SIZE];
-//	char pos[CHAR_SET_SIZE];
-//	int at;
-	int dmask;
-	char terminal;
-	int docId;
+	union {
+		struct {
+			struct TrieNode2* next[CHAR_SET_SIZE];
+			//	struct TrieNode2* list[CHAR_SET_SIZE];
+			//	char pos[CHAR_SET_SIZE];
+			//	int at;
+			int dmask;
+			char terminal;
+			int docId;
+		};
+		char padding[320];
+	};
 } TrieNode_t2;
 
 typedef struct Trie2 {
-	TrieNode_t2 root;
-	TrieNode_t2 *pool;
-	unsigned long pool_size;
-	unsigned long pool_space;
-	TrieNode_t2 returned;
-	unsigned char spinLock;
-} Trie_t2;
+	union {
+		struct {
+			TrieNode_t2 root;
+			TrieNode_t2 *pool;
+			unsigned long pool_size;
+			unsigned long pool_space;
+			TrieNode_t2 returned;
+			unsigned char spinLock;
+		};
+		char padding[704];
+	};
+} Trie_t2 __attribute__ ((aligned (64)));
 
 typedef struct TrieNode3 {
 	struct TrieNode3* next[26 + 1];

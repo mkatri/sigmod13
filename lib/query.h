@@ -14,29 +14,32 @@
 struct QueryDescriptor;
 
 typedef struct {
-	int queryId;
-	struct QueryDescriptor* parentQuery;
-	unsigned char wordIndex;
-	char* startIndex;
-} SegmentData;
+	union {
+		struct {
+			int queryId;
+			struct QueryDescriptor* parentQuery;
+			unsigned char wordIndex;
+			char* startIndex;
+		};
+		char padding[64];
+	};
+} SegmentData __attribute__ ((aligned (64)));
 
 typedef struct QueryDescriptor {
 	char *words[6];
 	char segmentSizes[6][6];
 	char queryString[MAX_WORD_LENGTH * MAX_QUERY_WORDS + 1];
-//	__attribute__((align(64))) struct {
-//		char matchedWords;
-//		char docId;
-//	} thSpec[NUM_THREADS];
+//	struct compact thSpec[NUM_THREADS];
 	int docId[NUM_THREADS];
 //	DNode_t ** segmentsData;
-	SegmentData segments[5];
+	SegmentData segments[5] __attribute__ ((aligned (64)));
 	char matchedWords[NUM_THREADS];
 	char numWords;
 	int matchType;
 	int matchDistance;
 	int queryId;
-} QueryDescriptor;
+} QueryDescriptor __attribute__ ((aligned (64)));
+//TODO padd to 64 bytes when we dynamically allocate
 
 SegmentData * newSegmentdata();
 QueryDescriptor * newQueryDescriptor();

@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <malloc.h>
 #include "submit_params.h"
-
 #include "atomic.h"
 
 LinkedList_t default_pool;
@@ -28,7 +28,9 @@ void initLinkedListPool(LinkedList_t *pool, int size) {
 }
 
 LinkedList_t* newLinkedList() {
-	LinkedList_t* ret = (LinkedList_t*) malloc(sizeof(LinkedList_t));
+	LinkedList_t* ret = (LinkedList_t*) memalign(64, sizeof(LinkedList_t));
+//	LinkedList_t* ret;
+//	posix_memalign((void **)&ret, 64, sizeof(LinkedList_t));
 	memset(ret, 0, sizeof(LinkedList_t));
 	ret->head.next = &(ret->tail), ret->tail.prev = &(ret->head);
 	return ret;

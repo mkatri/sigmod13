@@ -68,10 +68,11 @@ LinkedList_t * edit_list[QDESC_MAP_SIZE ];
 void split(int length[6], QueryDescriptor *desc, const char* query_str,
 		int * idx);
 
-LinkedList_t qresult[NUM_THREADS];
-LinkedList_t qresult_pool[NUM_THREADS];
+LinkedList_t qresult[NUM_THREADS] __attribute__ ((aligned (64)));
+LinkedList_t qresult_pool[NUM_THREADS] __attribute__ ((aligned (64)));
 
 void init() {
+//	printf("%d \n", sizeof(Trie3));
 	initDocumentDescriptorPool();
 	initLinkedListDefaultPool();
 	lazy_list = newLinkedList();
@@ -272,8 +273,8 @@ ErrorCode StartQuery(QueryID query_id, const char* query_str,
 	queryDescriptor->matchDistance = match_dist;
 	queryDescriptor->matchType = match_type;
 	queryDescriptor->queryId = query_id;
-	for (in = 0; in < NUM_THREADS; in++)
-		queryDescriptor->docId[in] = -1;
+//	for (in = 0; in < NUM_THREADS; in++)
+//		queryDescriptor->docId[in] = -1;
 
 //	addQuery(query_id, queryDescriptor);
 
@@ -498,6 +499,9 @@ void *generate_candidates(void *n) {
 						lastOperation[tid][resIndex] = 1;
 						resIndex++;
 					}
+					if (i == lengths[tid][id] - 1 && dist > 1)
+						continue;
+
 					// swap
 					ptr = 0;
 					for (j = 0; j < lengths[tid][id]; j++)
@@ -544,7 +548,7 @@ void *generate_candidates(void *n) {
 					lengths[tid][ind], segData);
 //			printf("%s\n", result[tid][ind]);
 			if (node)
-				sync_append(edit_list[segData->queryId], node);
+				append(edit_list[segData->queryId], node);
 			ind++;
 		}
 #ifndef CONC_TRIE3
@@ -568,12 +572,12 @@ void core_test() {
 	puts("====");
 	fflush(0);
 
-//	DocID did;
-//	QueryID *qid;
-//	unsigned int numRes;
-//	GetNextAvailRes(&did, &numRes, &qid);
-//	int i;
-//	for (i = 0; i < numRes; i++)
-//		printf("---->%d\n", qid[i]);
-//	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
+	DocID did;
+	QueryID *qid;
+	unsigned int numRes;
+	GetNextAvailRes(&did, &numRes, &qid);
+	int i;
+	for (i = 0; i < numRes; i++)
+		printf("---->%d\n", qid[i]);
+	printf("did = %d, first qid = %d, numRes = %d\n", did, qid[0], numRes);
 }

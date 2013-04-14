@@ -11,23 +11,19 @@ char matched[QDESC_MAP_SIZE ][6];
 TrieNode_t2 * dtrieQueue[NUM_THREADS][INIT_QUEUE_SIZE ];
 TrieNode3 * qtrieQueue[NUM_THREADS][INIT_QUEUE_SIZE ];
 
-extern long long overhead[NUM_THREADS];
-extern long long total[NUM_THREADS];
+//extern long long overhead[NUM_THREADS];
+//extern long long total[NUM_THREADS];
 
 inline int bsf(int bitmask) {
-	char isZero = 0;
 	int first = 0;
-
-	//TODO read from memroy directly?
-	asm volatile(
-			"bsf %2, %1\n\t"
-			"sete %0"
-			:"=r"(isZero), "=r"(first)
-			:"r"(bitmask)
+	int isZero = -1;
+	asm(
+			"bsf %1, %0\n\t"
+			"cmove %2, %0"
+			:"=r"(first)
+			:"g"(bitmask), "rm"(isZero)
 			:);
 
-	if (isZero)
-		return -1;
 	return first;
 }
 
@@ -54,11 +50,11 @@ void matchTrie(int did, int tid, int *count, TrieNode_t2 * dTrie,
 			DNode_t *cur = qTrie->list.head.next;
 			SegmentData * segData = (SegmentData *) (cur->data);
 			QueryDescriptor * queryData = segData->parentQuery;
-			int ok = 0, tmp = 0;
+//			int ok = 0, tmp = 0;
 			while (cur != &(qTrie->list.tail)) {
 				segData = (SegmentData *) (cur->data);
 				queryData = segData->parentQuery;
-				tmp++;
+//				tmp++;
 				if (queryData->docId[tid] != did) {
 					queryData->docId[tid] = did;
 					queryData->matchedWords[tid] = 0;
@@ -66,7 +62,7 @@ void matchTrie(int did, int tid, int *count, TrieNode_t2 * dTrie,
 
 				if ((queryData->matchedWords[tid] & (1 << (segData->wordIndex)))
 						== 0) {
-					ok = 1;
+//					ok = 1;
 					queryData->matchedWords[tid] |= (1 << (segData->wordIndex));
 
 					if (queryData->matchedWords[tid]
@@ -79,29 +75,27 @@ void matchTrie(int did, int tid, int *count, TrieNode_t2 * dTrie,
 				cur = cur->next;
 			}
 
-			if (!ok)
-				overhead[tid] += tmp;
-			total[tid] += tmp;
+//			if (!ok)
+//				overhead[tid] += tmp;
+//			total[tid] += tmp;
 		}
 
 		int band = (qTrie->qmask & dTrie->dmask), dmask = dTrie->dmask, index;
 
 		TrieNode3* star = qTrie->next[26];
 
-		if (star) {
-			while ((index = bsf(dmask)) > -1) {
-				dmask ^= (1 << index);
+		while ((index = bsf(dmask)) > -1) {
+			dmask ^= (1 << index);
+			if (star) {
 				dtrieQueue[tid][p] = dTrie->next[index];
 				qtrieQueue[tid][p++] = star;
 				size++;
 			}
-		}
-
-		while ((index = bsf(band)) > -1) {
-			band ^= (1 << index);
-			dtrieQueue[tid][p] = dTrie->next[index];
-			qtrieQueue[tid][p++] = qTrie->next[index];
-			size++;
+			if (band & (1 << index)) {
+				dtrieQueue[tid][p] = dTrie->next[index];
+				qtrieQueue[tid][p++] = qTrie->next[index];
+				size++;
+			}
 		}
 
 	}
